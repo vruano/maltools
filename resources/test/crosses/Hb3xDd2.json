@@ -1,0 +1,128 @@
+{
+  "type" : "cross",
+  "samples" : {
+    "all" : [ "PG0004-CW", "PG0008-CW", "PG0015-C", "PG0016-C", "PG0017-C", "PG0018-C",
+              "PG0019-C", "PG0020-C", "PG0021-C", "PG0022-C", "PG0023-C", "PG0024-C",
+              "PG0025-C", "PG0026-C", "PG0027-C", "PG0028-C", "PG0029-C", "PG0030-C",
+              "PG0031-C", "PG0032-C", "PG0033-C", "PG0034-C", "PG0035-C", "PG0036-C",
+              "PG0037-C", "PG0038-C", "PG0039-C", "PG0040-C", "PG0041-C", "PG0042-C",
+              "PG0043-C", "PG0044-C", "PG0045-C", "PG0046-C", "PG0047-C", "PG0048-C",
+              "PG0074-C"
+    ],
+    "parents" : {
+        "HB3" : "PG0004-CW",
+        "DD2" : "PG0008-CW"
+    }
+  },
+ 
+
+  "sequences" : "nuclear",
+
+  "mappings" : {  
+         "initial" : {
+            "applies" : "laneAlign",
+            "analyses" : [ "baseCoverage", "baseQuality", "mapQuality" ]
+         },
+         "indels" : {     
+            "takes" : "initial",
+            "applies" : "indelRealignment", 
+            "analyses" : [ "baseCoverage", "baseQuality", "mapQuality" ]
+         },
+         "indels+som" : {
+            "takes" : "indels",
+            "applies" : "bwa2Som",
+            "analyses" : [ "baseCoverage", "baseQuality", "mapQuality" ]
+         },
+         "indels+som+recal" : {
+            "takes" : "indels+som",
+            "applies" : "baseQualityRecalibration",
+            "analyses" : [ "baseCoverage", "baseQuality", "mapQuality" ]
+         },
+         "indels+recal" : {
+            "takes" : "indels",
+            "applies" : "baseQualityRecalibration",
+            "analyses" : [ "baseCoverage", "baseQuality", "mapQuality" ]
+         },
+         "indels+dups" : {
+            "takes" : "indels",
+            "applies" : "markDuplicates",
+            "analyses" : [ "baseCoverage", "baseQuality", "mapQuality" ]
+         },
+         "indels+dups+som" : {
+            "takes" : "indels+dups",
+            "applies" : "bwa2Som",
+            "analyses" : [ "baseCoverage", "baseQuality", "mapQuality" ]
+         },
+         "indels+dups+recal" : {
+            "takes" : "indels+dups",
+            "applies" : "baseQualityRecalibration", 
+            "analyses" : [ "baseCoverage", "baseQuality", "mapQuality" ]
+         },
+         "indels+dups+som+recal" : {
+            "takes" : "indels+dups+som",
+            "applies" : "baseQualityRecalibration",
+            "analyses" : [ "baseCoverage", "baseQuality", "mapQuality" ]
+         },
+         "dups" : {
+            "takes" : "initial",
+            "applies" : "markDuplicates",
+            "analyses" : [ "baseCoverage", "baseQuality", "mapQuality" ]
+         },
+         "dups+som" : {
+            "takes" : "dups",
+            "applies" : "bwa2Som",
+            "analyses" : [ "baseCoverage", "baseQuality", "mapQuality" ]
+         },
+         "dups+recal" : {
+            "takes" : "dups",
+            "applies" : "baseQualityRecalibration",
+            "analyses" : [ "baseCoverage", "baseQuality", "mapQuality" ]
+         },
+         "dups+som+recal" : {
+            "takes" : "dups+som",
+            "applies" : "baseQualityRecalibration",
+            "analyses" : [ "baseCoverage", "baseQuality", "mapQuality" ]
+         },
+         "som" : {
+            "takes" : "initial",
+            "applies" : "bwa2Som",
+            "analyses" : [ "baseCoverage", "baseQuality", "mapQuality" ]
+         },
+         "som+recal" : {
+            "takes" : "som",
+            "applies" : "baseQualityRecalibration",
+            "analyses" : [ "baseCoverage", "baseQuality", "mapQuality" ]
+         },
+         "recal" : {
+            "takes" : "initial",
+            "applies" : "baseQualityRecalibration",
+            "analyses" : [ "baseCoverage", "baseQuality", "mapQuality" ]
+         }
+  },
+
+  "readCounts" : { "minBaseQ" : 27 },
+
+  "filters" : { 
+
+  },
+  
+  "makeCandidateSNPsListFrom" : "initial",
+  
+  "resources" : { 
+    "samples" : "/data/malariagen/PGV_RD/data/pgv/samples",
+    "reference" : "/data/malariagen/PGV_RD/data/pgv/reference/3D7_pm.fa",
+    "annotation" : "/data/malariagen/PGV_RD/data/pgv/reference/3D7_pm.gff",
+    "possibleSNPs" : "/data/malariagen/PGV_RD/data/pgv/reference/possible_snps.bed",
+    "uniquenessScores" : "/data/malariagen/PGV_RD/data/pgv/reference/3D7_pm.uq",
+    "varfilter" : {
+        "annotation" : "/data/malariagen/PGV_RD/data/pgv/reference/3D7_pm.vf-gff",
+        "codingRegions" : "/data/malariagen/PGV_RD/data/pgv/reference/coding_regions.txt" ,
+        "literatureSNPs" : "/data/malariagen/PGV_RD/data/pgv/reference/known_snps.tsv" ,
+        "candidateSNPs": { 
+           "list" : "/data/malariagen/PGV_RD/testbeds/Hb3xDd2-20111031/candidate.snps", 
+           "properties" : "/data/malariagen/PGV_RD/testbeds/Hb3xDd2-20111031/candidate.snp-props" 
+        }
+    }
+  }
+
+}

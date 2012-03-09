@@ -1,0 +1,38 @@
+#!/software/perl-5.10.1/bin/perl
+
+use strict;
+use warnings;
+use vars qw(@ARGV);
+
+use MalariaGEN::AGV::Command;
+use Samtrak::Site;
+
+syntax_and_exit(0) if scalar(@ARGV)  < 1;
+
+my $cmd = shift @ARGV;
+my $cls = cmd_to_class($cmd) or die "There is not such command '$cmd'";
+my $obj = $cls->new();
+$obj->engine_name('local');
+my $code = eval { $obj->run(Samtrak::Site->new,{arguments => \@ARGV}) };
+
+exit 0 if !$@ && $code == 0;
+
+print STDERR "Error occurred during command execution with message: $@\n" if $@;
+exit 1;
+
+### end of main script.
+
+### subrutines
+
+sub syntax_and_exit {
+ my $code = shift || 0;
+ print STDERR "Usage:\n";
+ print STDERR " agv cmd options arguments\n\n";
+ print STDERR "For a full list of available command use the 'help' command:\n";
+ print STDERR " agv help\n";
+ exit $code;
+}
+
+sub cmd_to_class {
+ return MalariaGEN::AGV::Command->command_class_by_name(@_);
+}

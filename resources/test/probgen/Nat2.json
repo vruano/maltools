@@ -1,0 +1,33 @@
+{
+  "comments" : [
+    "Example manifest for a Genome Variation pipeline.",
+    "This demo only analyses 25 samples listed in the 'samples' elemen below"
+  ],
+
+  "name" : "Nat25",
+  "class" : "probgen",
+  "version" : "0.1",
+
+  "intervals" : {
+    "maxSize" : 100000000000,
+    "minCount" : 1
+  },
+
+  "variables" : { 
+  },
+
+  "paths" : {
+    "alignments" : "/data/haldane/malariagen/pfalciparum/crosses/3d7xHb3/initial", 
+    "coverage" : "${basedir}/coverage",
+    "snpsdata" : "${basedir}/snps"
+  },
+
+  "parameters" : {
+    "candidateSnps" : "calculate",
+    "candidateSnpList" : "${basedir}/candidate-snps.list",
+    "minBaseQ" : 27
+  },
+
+  "samples" : [ "PG0051-C", "PG0052-C"  ]
+
+}

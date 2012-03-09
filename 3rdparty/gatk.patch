@@ -1,0 +1,41 @@
+diff --git build.xml build.xml
+index 91eb1f8..f4bc91c 100644
+--- build.xml
++++ build.xml
+@@ -352,6 +352,7 @@
+             <arg value="-outDir" />
+             <arg path="${queue-extensions.source.dir}" />
+             <arg value="-l" />
++	    <jvmarg value="-Xmx500m" />
+             <arg value="WARN" />
+             <classpath>
+                 <file file="${queue-extensions.gatk.jar}"/>
+@@ -451,6 +452,7 @@
+                  docletpathref="doclet.classpath"
+                  classpathref="external.dependencies"
+                  classpath="${java.classes}"
++                 maxmemory="500m"
+                  additionalparam="-build-timestamp &quot;${build.timestamp}&quot; -absolute-version ${build.version} -out ${basedir}/${resource.path} -quiet">
+             <sourcefiles>
+                 <union>
+@@ -941,6 +943,7 @@
+     <target name="javadoc" depends="init.buildall,resolve,queue-extensions.generate,init.scala.compile" description="generates javadoc">
+         <mkdir dir="javadoc"/>
+         <javadoc destdir="javadoc"
++                 maxmemory="500m"
+                  classpathref="external.dependencies">
+             <sourcepath path="${java.public.source.dir}"/>
+             <sourcepath path="${external.dir}"/>
+diff --git public/scala/src/org/broadinstitute/sting/queue/function/JavaCommandLineFunction.scala public/scala/src/org/broadinstitute/sting/queue/function/JavaCommandLineFunction.scala
+index 7244544..0b43ff3 100644
+--- public/scala/src/org/broadinstitute/sting/queue/function/JavaCommandLineFunction.scala
++++ public/scala/src/org/broadinstitute/sting/queue/function/JavaCommandLineFunction.scala
+@@ -72,7 +72,7 @@ trait JavaCommandLineFunction extends CommandLineFunction {
+   }
+ 
+   def javaOpts = "%s -Djava.io.tmpdir=%s"
+-    .format(optional(" -Xmx", javaMemoryLimit, "g"), jobTempDir)
++    .format(optional(" -Xmx", javaMemoryLimit, if (javaMemoryLimit.get < 100) "g" else "m"), jobTempDir)
+ 
+   def commandLine = "java%s %s"
+     .format(javaOpts, javaExecutable)

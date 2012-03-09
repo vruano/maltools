@@ -1,0 +1,121 @@
+#!/usr/bin/env perl
+
+use strict;
+use warnings;
+use Getopt::Long;
+
+my $before_file = undef;
+my $after_file = undef;
+my $map_file = undef;
+my $b_dist_file = undef;
+my $a_dist_file = undef;
+my $baq = 1;
+my $ref = undef;
+
+GetOptions("before|b=s" => \$before_file, "after|a=s" => \$after_file, "mat|out|m|o=s" => \$map_file,
+           "before-dist-out|bdo=s" => \$b_dist_file, "after-dist-out|ado=s" => \$a_dist_file,
+           "reference|ref|r=s" => \$ref, "baq!" => \$baq);
+
+$ref && -e $ref or die "you must provide a reference";
+$before_file && -e $before_file or die "you must provide a before alignment file";
+$after_file && -e $after_file or die "you must provide a after alignment file";
+$map_file or die "you must provide an matrix output file name";
+
+my $samtools_prefix = "samtools pileup -c" . ($baq ? "" : "B") . "f $ref ";
+
+open(BEFORE,"$samtools_prefix $before_file |") or die "$before_file";
+open(AFTER,"$samtools_prefix $after_file |") or die "$after_file";
+
+my $before = <BEFORE>;
+my $after = <AFTER>;
+
+my %map = ();
+
+my %bdist = ();
+
+my %adist = ();
+my $count = 0;
+
+while ($before && $after) {
+  chomp $before;
+  chomp $after;
+ 
+  my @before = split(/\t/,$before);
+  my @after = split(/\t/,$after);
+
+  unless ($#before == 9) {
+    $before = <BEFORE>;
+    $after = <AFTER>;
+    next;
+  }
+
+  my ($before_bases,$before_quals) = @before[8,9];
+  my ($after_bases,$after_quals) = @after[8,9];
+  
+  die "$before_bases\t$after_bases" unless $before_bases eq $after_bases;
+
+  my $b_len = length($before_quals);
+  my $a_len = length($after_quals);
+
+  die "$before\t$after" unless $b_len == $a_len;
+
+  foreach (my $i = 0; $i < $b_len; $i++) {
+    my $b = substr($before_quals,$i,1);
+    my $a = substr($after_quals,$i,1);
+    my $key = $b . "\t" . $a;
+    $map{$key}++;
+    $bdist{$b}++;
+    $adist{$a}++;
+  } 
+
+  $count++;
+
+  if (($count & (8192 + 8192 - 1)) == 8192) {
+    print STDERR "var $count\n";
+  }
+
+  $before = <BEFORE>;
+  $after = <AFTER>;
+}
+
+my @b_sorted = sort keys %bdist;
+my @a_sorted = sort keys %adist;
+
+my @all_sorted = sort (@b_sorted,@a_sorted);
+my $min = ord($all_sorted[0]) - 33;
+my $max = ord($all_sorted[$#all_sorted]) - 33;
+
+if ($b_dist_file) {
+  open(B_DIST,">$b_dist_file");
+  foreach my $b (@b_sorted) {
+    my $n = ord($b) - 33;
+    print B_DIST join("\t",$n,$bdist{$b}),"\n";
+  }
+  close(B_DIST);
+}
+
+if ($a_dist_file) {
+  open(A_DIST,">$a_dist_file");
+  foreach my $a (@a_sorted) {
+    my $n = ord($a) - 33;
+    print A_DIST join("\t",$n,$adist{$a}),"\n";
+  }
+  close(A_DIST);
+}
+
+open(MAP,">$map_file");
+print MAP join("\t", ( $min .. $max )),"\n";
+for (my $i = $min; $i <= $max; $i++) {
+  my $ic = chr($i + 33);
+  my @data = ();
+  for (my $j = $min; $j <= $max; $j++) {
+    my $jc = chr($j + 33);
+    push @data, $map{$ic . "\t" . $jc} || 0;
+  }
+  print MAP join("\t", $i, @data),"\n";
+}
+close(MAP);
+
+
+
+

@@ -1,0 +1,3 @@
+[% out_sample_dir _ '/%.bam' %] : [% in_sample_dir _ '/%.bam' %] [% in_sample_dir  _ '/%.bam.bai' %] $(CANDIDATE_SNPS_LIST)
+	pgv som-filter -i $< -o $@ --snpList $(CANDIDATE_SNPS_LIST)
+

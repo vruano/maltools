@@ -1,0 +1,432 @@
+#!/usr/bin/env Rscript
+suppressPackageStartupMessages(library("optparse"));
+
+optionList = list(
+    make_option(c("--data"),type="character",default=NULL,help="Input data"),
+    make_option(c("--static"),type="character",default=NULL,help="Static inforamtion directory"),
+    make_option(c("--output"),type="character",default=NULL,help="Output directory"),
+    make_option(c("--figures"),type="character",default=".",help="Output figures directory")
+);
+
+opt = parse_args(OptionParser(option_list=optionList));
+
+if (is.null(opt$data)) {
+ stop("input directory not provided");
+}
+if (is.null(opt$static)) {
+ stop("input static directory not provided");
+}
+if (is.null(opt$output)) {
+ stop("output directory not provided");
+}
+
+################# Jack's Code ###############
+
+
+calc.basic.stats = function(mendels,errants,parents)
+{
+	## finds the number of segregating and non-segregating sites
+
+	seg.sites = which(parents[,1]!=parents[,2]);
+	non.sites = which(parents[,1]==parents[,2]);
+
+	## mendelian errors and errant calls 
+
+	men.err = sum(mendels[non.sites,]);
+	err.err = sum(errants[seg.sites,]);
+
+	## num samples?
+	num.samples = dim(mendels)[2];
+
+	## matrix where they go
+	errors = matrix(rep(0,6),ncol=3);
+
+	## write them in
+	errors[1,1:2] = c(men.err,length(non.sites));
+	errors[2,1:2] = c(err.err,length(seg.sites));
+
+	## return them
+	return(errors);
+}
+
+calc.spatial.stats = function(mendels,errants,parents,positions, begin,end)
+{
+	## finds the number of segregating and non-segregating sites
+
+	non.sites = which(parents[,1]==parents[,2]);
+
+
+	core.pos = which((positions[,1] < end)&(positions[,1]>begin))
+	subt.pos = which((positions[,1] >= end)|(positions[,1]<=begin))
+
+	core.non = intersect(non.sites,core.pos);
+	subt.non = intersect(non.sites,subt.pos);
+
+
+	## mendelian errors and errant calls 
+
+	men.err.cor = sum(mendels[core.non,]);
+	men.err.sub = sum(mendels[subt.non,]);
+
+
+	## num samples?
+	num.samples = dim(mendels)[2];
+
+	## matrix where they go
+	errors = matrix(rep(0,6),ncol=3);
+
+	## write them in
+	errors[1,1:2] = c(men.err.cor,length(core.non));
+	errors[2,1:2] = c(men.err.sub,length(subt.non));
+
+	## return them
+	return(errors);
+}
+
+calc.coding.stats = function(mendels, parents, positions, cncs)
+{
+	## finds the number of segregating and non-segregating sites
+	non.sites = which(parents[,1]==parents[,2]);
+
+	## num samples?
+	num.samples = dim(mendels)[2];
+
+	## matrix where they go
+	coding = matrix(rep(0,6),ncol=3);
+
+	## calculate the coding / noncoding numbers
+	pos.non.seg = positions[non.sites,1];
+
+	coding.status = which(cncs[,4] == 1);
+	non.coding.status = which(cncs[,4] == 0);
+
+	coding.positions  = cncs[coding.status,2];
+	non.coding.positions = cncs[non.coding.status,2];
+
+	pos.non.seg.cod = pos.non.seg[which(pos.non.seg %in% coding.positions)];
+	pos.non.seg.non.cod = pos.non.seg[which(pos.non.seg %in% non.coding.positions)];
+
+	men.err = sum(mendels[which(positions[,1] %in% pos.non.seg.cod),])
+	coding[1,1:2] = c(men.err,length(non.sites[pos.non.seg.cod]));
+
+	men.err = sum(mendels[which(positions[,1] %in% pos.non.seg.non.cod),])
+	coding[2,1:2] = c(men.err,length(non.sites[pos.non.seg.non.cod]));
+
+
+	## return them
+	return(coding);
+}
+
+calc.uniq.stats = function(mendels,parents,positions,uniq)
+{
+
+	## finds the non-segregating sites
+	non.sites = which(parents[,1]==parents[,2]);
+	pos.non.seg = positions[non.sites,1];
+
+	## num samples?
+	num.samples = dim(mendels)[2];
+
+	## matrix where they go
+	uniq.errors = matrix(rep(0,14*3),ncol = 3);
+
+	## do the calculations
+	uniq.seq = seq(18,44,by = 2);
+
+	for (i in 1:length(uniq.seq))
+	{
+		this.score = which(uniq[,3] == uniq.seq[i])
+		this.score.positions = uniq[this.score,2];
+
+		uniq.pos = intersect(pos.non.seg,this.score.positions);
+
+		uniq.errors[i,1] = sum(mendels[which(positions[,1] %in% uniq.pos),]);
+		uniq.errors[i,2] = length(which(positions[,1] %in% uniq.pos));
+	}
+
+	## let them go
+	return(uniq.errors);
+}
+
+calc.cov.stats = function(mendels,parents, positions, cov, quants)
+{
+
+	## finds the non-segregating sites
+	non.sites = which(parents[,1]==parents[,2]);
+	pos.non.seg = positions[non.sites,1];
+
+	## num samples?
+	num.samples = dim(mendels)[2];
+
+	## quantile vector
+	cov.seq = as.vector(quants[,2]);
+
+	## matrix where they go
+	cov.errors = matrix(rep(0,length(cov.seq)*3),ncol = 3);
+
+	## do the calculations
+	for (i in 1:length(cov.seq))
+	{
+		if ( i > 1)
+		{	this.score = which((cov[,3] <= cov.seq[i])&(cov[,3]>cov.seq[i-1]))	}
+		else
+		{	this.score = which(cov[,3] <= cov.seq[i]);		}
+
+		this.score.positions = cov[this.score,2];
+
+		cov.pos = intersect(pos.non.seg,this.score.positions);
+
+		cov.errors[i,1] = sum(mendels[which(positions[,1] %in% cov.pos),]);
+		cov.errors[i,2] = length(which(positions[,1] %in% cov.pos));
+	}
+
+	## let them go
+
+	return(cov.errors);
+}
+
+calc.binom.stats = function(progeny,parents)
+{
+	## calculate segregating sites
+	seg.sites = which(parents[,1] != parents[,2]);
+
+	## number of samples
+	num.samples = dim(progeny)[2];
+
+	## output vector
+	counts = seq(0,num.samples,by = 1);
+
+	## calculate binomial sites
+	table.out = table(rowSums(progeny[seg.sites,]==parents[seg.sites,2]));
+	counts[as.numeric(names(table.out))+1] = as.vector(table.out);
+
+	return(counts);
+}
+
+calc.site.stats = function(parents,progeny)
+{
+	## calculate number of unfixed sites
+
+	num.unfixed = dim(progeny)[1];
+
+	total = cbind(progeny,parents);
+
+	row.sums = rowSums(total);
+
+	num.ind = dim(total)[2];
+
+	num.constant = length(which((row.sums==0)|(row.sums==num.ind)));
+	num.variable = length(which((row.sums!=0)&(row.sums!=num.ind)));
+
+	return(matrix(c(num.unfixed,num.constant,num.variable),ncol=3));
+
+}
+
+plot.figures = function(out.path, figure.path)
+{
+
+	## UNIQUENESS
+	## path in
+	uniq.out.path = paste(out.path,"/uniq.tab",sep="");
+	uniqs = read.table(uniq.out.path,header = TRUE,sep = "&");
+
+	## path out to figures
+	uniq.fig.path = paste(figure.path,"/uniq.ps",sep="");
+	postscript(uniq.fig.path, paper = "special", width = 7, height = 7,horizontal = FALSE);
+	##plot
+	plot(as.numeric(rownames(uniqs)), uniqs[,3],col="blue",type ="h",lwd = 2, xlab = "Nonuniqueness score",ylab ="Mendelian error rate", ylim = c(0,0.012));
+	dev.off();
+
+	## COVERAGE
+	## path in
+	cov.out.path = paste(out.path,"/cov.tab",sep="");
+	cov = read.table(file = cov.out.path, header = TRUE, sep = "&");
+
+	## path out to figures
+	cov.fig.path = paste(figure.path,"/coverage.ps",sep="");
+	postscript(cov.fig.path, paper = "special", width = 7, height = 7,horizontal = FALSE);
+	##plot
+	plot(as.numeric(rownames(cov)), cov[,3],col="blue",type ="h",lwd = 2, xlab = "Coverage percentile",ylab ="Mendelian error rate", ylim = c(0,0.025));
+	dev.off();
+
+	## BINOMIAL 
+
+	## path in
+	binom.out.path = paste(out.path,"/binom.tab",sep="");
+	binom = read.table(file = binom.out.path, header = FALSE, sep = "&");
+	## path out to figures
+	binom.fig.path = paste(figure.path,"/binom.ps",sep="");
+	postscript(binom.fig.path, paper = "special", width = 7, height = 7,horizontal = FALSE);
+
+	## plot 
+	z = as.numeric(unlist(binom[1,])); 
+	y = as.numeric(unlist(binom[2,]));
+	y.s = y/sum(y);
+	max.z = max(z);
+	dense = dbinom(z,max.z,0.5)
+	plot(seq(0,max.z,1),dense,type="l",col="black",xlab="Counts", ylab="Density");
+	polygon(x = c(seq(0,max.z,by=1),seq(max.z,0,by=-1)),y = c(dense,rep(0,length(dense))), col=grey(0.5));
+	points(z, y.s,col="red",type ="h",lwd = 2, xlab = "Counts",ylab ="Mendelian error rate", ylim = c(0,0.025));
+	dev.off();
+
+}
+
+write.summary.stats = function(data.path, static.path, out.path, figures.path)
+{
+	## output matrices
+	errors = matrix(rep(0,6),ncol = 3);
+	colnames(errors) =c("Errors","Sites","Rate");
+	rownames(errors) =c("Mendelian","Errant");
+
+	coding = matrix(rep(0,6),ncol = 3);
+	colnames(coding) =c("Errors","Sites","Rate");
+	rownames(coding) =c("Coding","Noncoding");
+
+	uniqs  = matrix(rep(0,14*3),ncol = 3);
+	colnames(uniqs) =c("Errors","Sites","Rate");
+	rownames(uniqs) = as.character(seq(18, 44, by=2));
+
+	covs  = matrix(rep(0,50*3),ncol = 3);
+	colnames(covs) =c("Errors","Sites","Rate");
+	rownames(covs) = as.character(seq(1,100, by=2));
+
+	core  = matrix(rep(0,2*3),ncol = 3);
+	colnames(core) =c("Errors","Sites","Rate");
+	rownames(core) =c("Core","Telo");
+
+	counts = matrix(rep(0,3),ncol = 3)
+	colnames(counts) = c("Num.unfixed", "Num.constant", "Num.variable");
+
+	## coverage quantile is same for all chromosomes
+	quant.path = paste(static.path,"cov.quant",sep="/");
+	quants     = read.table(quant.path,header = FALSE, sep="\t");
+
+	spatial.path = paste(static.path,"telomeric_boundaries.tab",sep="/");
+	space = read.table(spatial.path,header = FALSE, sep="\t");
+
+
+	for (i in 1:3)
+	{
+
+		## read in the chromosome specific static data
+		## assumes data.path is path.to/
+		## coding file is path.to/cnc.MAL1.tab
+		coding.path = paste(static.path,"Coding",sep="/");
+		coding.path = paste(coding.path,"cnc.MAL",sep="/");
+		coding.path = paste(coding.path,i,sep="");
+		coding.path = paste(coding.path,".tab",sep="");
+
+		cncs = read.table(coding.path,header = FALSE,sep="\t");
+
+		uniq.path = paste(static.path,"Uniq",sep="/");
+		uniq.path = paste(uniq.path,"uniq.data.MAL",sep="/");
+		uniq.path = paste(uniq.path,i,sep="");
+
+		uniq = read.table(uniq.path,header = FALSE,sep="\t");
+
+		cov.path = paste(static.path,"Cov",sep="/");
+		cov.path = paste(cov.path,"coverage.MAL",sep="/");
+		cov.path = paste(cov.path,i,sep="");
+
+		cov  = read.table(cov.path, header= TRUE, sep = "\t")
+
+		## data file paths 
+		mendel.path = paste(data.path,"mendels.MAL",sep ="/");
+		mendel.path = paste(mendel.path,i,sep="");
+		mendel.path = paste(mendel.path,".txt",sep="");
+
+		errant.path = paste(data.path,"errant.MAL",sep="/");
+		errant.path = paste(errant.path,i,sep="");
+		errant.path = paste(errant.path,"txt",sep=".");
+
+		positions.path = paste(data.path,"positions.MAL",sep="/");
+		positions.path = paste(positions.path,i,sep="");
+
+		parents.path   = paste(data.path,"parents.MAL",sep="/");
+		parents.path   = paste(parents.path,i,sep="");
+
+		progeny.path   = paste(data.path,"progeny.MAL",sep="/");
+		progeny.path   = paste(progeny.path,i,sep="");
+
+		## read in all the basic data
+		mendels   = read.table(mendel.path,header= FALSE,sep="\t");
+		errants   = read.table(errant.path,header= FALSE,sep="\t");
+		positions = read.table(positions.path,header= FALSE,sep="\t");
+		parents   = read.table(parents.path,header= FALSE,sep=",");
+		progeny   = read.table(progeny.path,header =FALSE,sep=",");
+
+		## small exeception: binom out vector here because it needs the number of samples
+		if (i == 1)
+		{
+			num.samples = dim(progeny)[2];
+			binom  = matrix(rep(0,num.samples+1),ncol = (num.samples+1));
+			colnames(binom) =as.character(seq(0,num.samples, by=1));
+			rownames(binom) = c("Counts");
+		}
+
+		## do the calculations
+		errors = errors + calc.basic.stats(mendels,errants,parents);
+		coding = coding + calc.coding.stats(mendels,parents,positions,cncs);
+		uniqs  = uniqs  + calc.uniq.stats(mendels,parents,positions,uniq);
+		covs   = covs   + calc.cov.stats(mendels,parents,positions,cov,quants);
+		binom  = binom  + calc.binom.stats(progeny,parents);
+		counts = counts + calc.site.stats(progeny,parents);
+		core   = core   + calc.spatial.stats(mendels,errants,parents,positions, space[i,2], space[i,3])
+	}
+
+	num.samples = dim(mendels)[2];
+
+	errors[1,3] = errors[1,1]/(num.samples*errors[1,2]);
+	errors[2,3] = errors[2,1]/(num.samples*errors[2,2]);
+
+	coding[1,3] = coding[1,1]/(num.samples*coding[1,2]);
+	coding[2,3] = coding[2,1]/(num.samples*coding[2,2]);
+
+	core[1,3] = core[1,1]/(num.samples*core[1,2]);
+	core[2,3] = core[2,1]/(num.samples*core[2,2]);
+
+	num.uniq = dim(uniqs)[1];
+
+	for (i in 1:num.uniq)
+	{
+		uniqs[i,3] = uniqs[i,1]/(num.samples*uniqs[i,2]);
+	}
+
+	num.covs = dim(covs)[1];
+
+	for (i in 1:num.covs)
+	{
+		covs[i,3] = covs[i,1]/(num.samples*covs[i,2]);
+	}
+
+
+	## output the calculations in tables
+	counts.out.path = paste(out.path,"/counts.tab",sep="");
+	write.table(counts,file = counts.out.path, row.names = FALSE, col.names = TRUE, quote = FALSE, sep = " & ");
+
+	error.out.path  = paste(out.path,"/errors.tab",sep="");
+	write.table(errors,file = error.out.path, row.names= TRUE, col.names = TRUE, quote = FALSE, sep=" & ");
+
+	spatial.out.path  = paste(out.path,"/space.tab",sep="");
+	write.table(core,file = spatial.out.path, row.names= TRUE, col.names = TRUE, quote = FALSE, sep=" & ");
+
+
+	coding.out.path = paste(out.path,"/coding.tab",sep="");
+	write.table(coding,file = coding.out.path, row.names = TRUE, col.names = TRUE, quote = FALSE, sep = " & ");
+
+	uniq.out.path = paste(out.path,"/uniq.tab",sep="");
+	write.table(uniqs,file = uniq.out.path, row.names = TRUE, col.names = TRUE, quote = FALSE, sep = " & ");
+
+	cov.out.path = paste(out.path,"/cov.tab",sep="");
+	write.table(covs,file = cov.out.path, row.names = TRUE, col.names = TRUE, quote = FALSE, sep = " & ");
+
+	binom.out.path = paste(out.path,"/binom.tab",sep="");
+	write.table(binom,file = binom.out.path, row.names = FALSE, col.names = TRUE, quote = FALSE, sep = " & ");
+
+	plot.figures(out.path,figures.path);
+}
+
+################# Ivocation #################
+
+#write.summary.stats(opt$data,opt$static,opt$output,opt$figs);
+

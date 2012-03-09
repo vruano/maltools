@@ -1,0 +1,45 @@
+digraph G {
+  
+  subgraph cluster_Install {
+    label = "just once";
+    labelloc = "t";
+    labeljust = "l";
+    install [ label ="Install Software"];
+  }
+  
+  subgraph cluster_Session {
+    label = "per session";
+    labelloc = "t";
+    labeljust = "r";
+    setup [ label = "environment\nset-up" ];
+  }
+  
+
+  subgraph cluster_Perpipeline {
+    label = "per pipeline";
+    labelloc = "t";
+    labeljust = "r";
+    
+    manifest [ label = "compose\nmanifest" ];
+    create;
+    subgraph cluster_Analysis {
+      label = "                      per run";
+      labelloc = "t";
+      labeljust = "r";
+      run;
+      validate;
+      end;
+    }
+  }
+
+
+  
+  install -> setup;
+  setup -> create [ constraint = false ];
+  setup -> run [ constraint = false ];
+  manifest -> create;
+  create -> run;
+  run -> validate;
+  validate -> run;
+  validate -> end;
+}

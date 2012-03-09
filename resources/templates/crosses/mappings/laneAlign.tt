@@ -1,0 +1,22 @@
+[%- FOREACH sample IN cross.samples.all.keys -%]
+[% IF cross.samples.all.$sample.missing -%]
+[%- ELSIF cross.samples.all.$sample.lanes.keys.size == 1 %]
+[% out_sample_dir _ '/' _ sample _ '.bam' %] :
+	pgv lane-align --lane-name '[% cross.samples.all.$sample.lanes.keys.0 %]' -o $@
+[% ELSE %]
+[% out_sample_dir _ '/' _ sample _ '.bam' %] : $(addprefix [% out_sample_dir %]/, $(addsuffix .bam, [% cross.samples.all.$sample.lanes.keys.join(' ') %]))
+	pgv merge-alignment  $^ -o $@
+
+[% FOREACH lane IN cross.samples.all.$sample.lanes.keys -%]
+[% out_sample_dir _ '/' _ lane _ '.bam' %] :
+	pgv lane-align --lane-name '[% lane %]' -o $@
+
+[%- END %]
+
+.INTERMEDIATE: $(addprefix [% out_sample_dir %]/, $(addsuffix .bam, [% cross.samples.all.$sample.lanes.keys.join(' ') %]))
+
+[% END %]
+[%- END -%]
+
+[% out_sample_dir _ '/%.bam' %] : [% out_sample_dir _ '/%.lane_list' %]
+	pgv lane-align --lane-name `cat $<` -o $@

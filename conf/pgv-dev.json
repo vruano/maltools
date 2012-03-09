@@ -1,0 +1,34 @@
+{
+   "variables" : {
+     "basedir" : "${homedir}",
+     "datadir" : "${basedir}/data"
+   },
+   "execution" : {
+     "scratch" : {
+       "areas" : [ "directory" , "/data/malariagen/scratch" ]
+     },
+     "defaultEngine" : "oxford"
+   },
+   "reference" : {
+     "sequences" : "${datadir}/reference/3D7_pm.fa",
+     "index" : "${datadir}/reference/3D7_pm.fa.fai",
+     "knownSnpsMask" : { 
+        "file" : "${datadir}/reference/possible_snps.bed",
+        "format" : "BED" 
+     },
+     "possibleSnps" : { 
+       "list" : "bwa.976K.2010-07-26.snps" 
+     }
+   },
+   "samtrak" : {
+     "db" : {
+       "host" : "127.0.0.1",
+       "port" : 13309,
+       "driver" : "mysql",
+       "username" : "valentin",
+       "password" : "valentin123",
+       "schema" : "solaris"
+     }
+   }
+}
+

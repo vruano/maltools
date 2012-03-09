@@ -1,0 +1,54 @@
+#!/usr/bin/env perl 
+
+use Getopt::Long qw(:config ignore_case);
+use File::Temp qw(tempfile);
+use File::Spec::Functions qw(catfile);
+use Cwd qw(cwd);
+use strict;
+use warnings;
+
+my $minBaseQ = undef;
+my $snpList = catfile($ENV{PGV_HOME},"data","reference","bwa.976K.2010-07-26.snps");
+my $reference = undef;
+my $input = undef;
+my $output = undef;
+
+GetOptions(
+   "minBaseQ|minq=i" => \$minBaseQ,
+   "snps=s" => \$snpList,
+   "R|ref|reference=s" => \$reference,
+   "input|i=s" => \$input,
+   "output|o=s" => \$output,
+);
+
+$output or die "you need to specify and output filename";
+$input or die "you need to specify and input alignment";
+-f $input or die "cannot access '$input' or it is not a regular file";
+$reference or die "you need to speficy a reference";
+-f $reference or die "cannot access '$reference' or is not a regular file"; 
+
+my ($b2so_fh,$bam2snps_output) = tempfile("bam2snpsXXXX", DIR => cwd()); 
+
+my $pileup_arguments = "-cf $reference $input";
+
+my $bam2snps_arguments = "";
+$bam2snps_arguments .= "--snplist=$snpList " if $snpList;
+$bam2snps_arguments .= "--minq=$minBaseQ " if $minBaseQ;
+
+my $bwa2som_arguments = "--bam=$input --ref=$reference --out=$output --snps=$bam2snps_output --fix";
+
+my $pileup_and_bam2snps = "samtools pileup $pileup_arguments 2> /dev/stderr | bam2snps $bam2snps_arguments 2> /dev/stderr > $bam2snps_output";
+print STDERR $pileup_and_bam2snps,"\n";
+`$pileup_and_bam2snps`;
+if ($?) {
+  die "did not succeed in creating a snps list from for bwa2som execution, output can be found in '$bam2snps_output'";
+}
+
+`bwa2som $bwa2som_arguments 2> /dev/stderr`;
+if ($?) {
+  die "failed in exectuing the bwa2som step";
+}
+
+unlink ($bam2snps_output);
+
+

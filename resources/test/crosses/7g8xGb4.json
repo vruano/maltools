@@ -1,0 +1,124 @@
+{
+  "type" : "cross",
+ 
+  "samples" : {
+    "all" : [ "PG0083-C", "PG0084-C", "PG0085-C", "PG0086-C", "PG0087-C", "PG0088-C", 
+              "PG0090-C", "PG0091-C", "PG0092-C", "PG0093-C", "PG0094-C", "PG0095-C",
+              "PG0096-C", "PG0097-C", "PG0098-C", "PG0099-C", "PG0100-C", "PG0101-C", 
+              "PG0102-C", "PG0103-C", "PG0104-C", "PG0105-C", "PG0106-C", "PG0107-C",
+              "PG0108-C", "PG0109-C", "PG0110-C", "PG0111-C", "PG0112-C", "PG0113-C" ],
+    "parents" : {
+        "7G8" : "PG0083-C",
+        "GB4" : "PG0084-C"
+    }
+  },
+
+  "sequences" : "nuclear",
+
+  "mappings" : {  
+         "initial" : {
+            "applies" : "laneAlign",
+            "analyses" : [ "baseCoverage", "baseQuality", "mapQuality" ]
+         },
+         "indels" : {     
+            "takes" : "initial",
+            "applies" : "indelRealignment", 
+            "analyses" : [ "baseCoverage", "baseQuality", "mapQuality" ]
+         },
+         "indels+recal" : {
+            "takes" : "indels",
+            "applies" : "baseQualityRecalibration",
+            "analyses" : [ "baseCoverage", "baseQuality", "mapQuality" ]
+         },
+         "indels+som" : {
+            "takes" : "indels",
+            "applies" : "bwa2Som",
+            "analyses" : [ "baseCoverage", "baseQuality", "mapQuality" ]
+         },
+         "indels+som+recal" : {
+            "takes" : "indels+som",
+            "applies" : "baseQualityRecalibration",
+            "analyses" : [ "baseCoverage", "baseQuality", "mapQuality" ]
+         },
+         "indels+dups" : {
+            "takes" : "indels",
+            "applies" : "markDuplicates",
+            "analyses" : [ "baseCoverage", "baseQuality", "mapQuality" ]
+         },
+         "indels+dups+som" : {
+            "takes" : "indels+dups",
+            "applies" : "bwa2Som",
+            "analyses" : [ "baseCoverage", "baseQuality", "mapQuality" ]
+         },
+         "indels+dups+recal" : {
+            "takes" : "indels+dups",
+            "applies" : "baseQualityRecalibration", 
+            "analyses" : [ "baseCoverage", "baseQuality", "mapQuality" ]
+         },
+         "indels+dups+som+recal" : {
+            "takes" : "indels+dups+som",
+            "applies" : "baseQualityRecalibration",
+            "analyses" : [ "baseCoverage", "baseQuality", "mapQuality" ]
+         },
+         "dups" : {
+            "takes" : "initial",
+            "applies" : "markDuplicates",
+            "analyses" : [ "baseCoverage", "baseQuality", "mapQuality" ]
+         },
+         "dups+som" : {
+            "takes" : "dups",
+            "applies" : "bwa2Som",
+            "analyses" : [ "baseCoverage", "baseQuality", "mapQuality" ]
+         },
+         "dups+recal" : {
+            "takes" : "dups",
+            "applies" : "baseQualityRecalibration",
+            "analyses" : [ "baseCoverage", "baseQuality", "mapQuality" ]
+         },
+         "dups+som+recal" : {
+            "takes" : "dups+som",
+            "applies" : "baseQualityRecalibration",
+            "analyses" : [ "baseCoverage", "baseQuality", "mapQuality" ]
+         },
+         "som" : {
+            "takes" : "initial",
+            "applies" : "bwa2Som",
+            "analyses" : [ "baseCoverage", "baseQuality", "mapQuality" ]
+         },
+         "som+recal" : {
+            "takes" : "som",
+            "applies" : "baseQualityRecalibration",
+            "analyses" : [ "baseCoverage", "baseQuality", "mapQuality" ]
+         },
+         "recal" : {
+            "takes" : "initial",
+            "applies" : "baseQualityRecalibration",
+            "analyses" : [ "baseCoverage", "baseQuality", "mapQuality" ]
+         }
+  },
+
+  "readCounts" : { "minBaseQ" : 27 },
+
+  "filters" : { 
+
+  },
+
+  
+  "resources" : { 
+    "samples" : "/nfs/team112/PGV_RD/data/samples",
+    "reference" : "/nfs/team112/PGV_RD/data/reference/3D7_pm.fa",
+    "annotation" : "/nfs/team112/PGV_RD/data/reference/3D7_pm.gff",
+    "possibleSNPs" : "/nfs/team112/PGV_RD/data/reference/possible_snps.bed",
+    "uniquenessScores" : "/nfs/team112/PGV_RD/data/reference/3D7_pm.uq",
+    "varfilter" : {
+        "annotation" : "/nfs/team112/PGV_RD/data/reference/3D7_pm.vf-gff",
+        "codingRegions" : "/nfs/team112/PGV_RD/data/reference/coding_regions.txt" ,
+        "literatureSNPs" : "/nfs/team112/PGV_RD/data/reference/known_snps.tsv" ,
+        "candidateSNPs": { 
+           "list" : "/nfs/team112/PGV_RD/data/reference/bwa.976K.2010-07-26.snps", 
+           "properties" : "/nfs/team112/PGV_RD/data/reference/bwa.976K.2010-07-26.snp-props"
+        }
+    }
+  }
+
+}

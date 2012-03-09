@@ -1,0 +1,94 @@
+#!/usr/bin/env perl
+
+use strict;
+use warnings;
+use Getopt::Long qw(:config no_ignore_case pass_through);
+use IO::File;
+use MalariaGEN::AGV::GffUtils::Iterator;
+
+my $diff_file = "-";
+my $gff_file = "-";
+
+GetOptions("diff=s"=>\$diff_file,"gff=s" => \$gff_file);
+
+die "diff and gff files cannot come from the same file or stdin" if $diff_file eq $gff_file;
+
+my $gff_it = $gff_file eq "-" ? MalariaGEN::AGV::GffUtils::Iterator->new(fh => \*STDIN) : MalariaGEN::AGV::GffUtils::Iterator->new(file => $gff_file);
+my $diff_in = $diff_file eq "-" ? \*STDIN : IO::File->new($diff_file,'r');
+my $diff_count = 0;
+my $diff_line = <$diff_in>;
+while (defined $diff_line) {
+  chomp $diff_line;
+  my $read_id = $diff_line;
+  my @differences = ();
+  while ($diff_line = <$diff_in>) {
+    last unless $diff_line =~ /^[<>]/;
+    chomp $diff_line;
+    push @differences, $diff_line;
+  }
+  my @left_differences = grep { $_ =~ /^</ } @differences;
+  my @right_differences = grep { $_ =~ /^>/ } @differences;
+  unless ($#left_differences == 0 && $#right_differences == 0) { 
+    print STDERR  "Unexpected number of left-right difference lines for read '$read_id' " . join("\t",$#left_differences + 1,$#right_differences + 1) . "\n";
+  }
+  else {
+    my (undef,$l_flags,$l_chr_pos,$l_cigar,$l_seq,$l_bqual,$l_mapq) = split(/\t/,$left_differences[0]);
+    my (undef,$r_flags,$r_chr_pos,$r_cigar,$r_seq,$r_bqual,$r_mapq) = split(/\t/,$right_differences[0]);
+    my ($l_chr,$l_pos) = split(/:/,$l_chr_pos);
+    my ($r_chr,$r_pos) = split(/:/,$r_chr_pos);
+    my $l_len = length($l_seq);
+    my $r_len = length($r_seq);
+    my $l_end = calculate_end_pos($l_pos,$l_len,$l_cigar);
+    my $r_end = calculate_end_pos($r_pos,$r_len,$r_cigar);
+    my $len = length($l_seq);
+    if ($l_seq ne $r_seq) {
+      print STDERR "Unexpected read sequence differences for read '$read_id'\n";
+    }
+    elsif ($l_bqual ne $r_bqual) {
+      print STDERR "Unexpected read base qual differences for read '$read_id'\n";
+    }
+    if ($l_chr ne $r_chr) {
+      print STDERR "Unexpected chromosome translocation for read '$read_id'\n";
+    }
+    print join("\t",$read_id,$l_chr,$l_pos,$l_end,$l_cigar,$r_pos,$r_end,$r_cigar),"\n";
+  }
+  $diff_count++;
+}
+$diff_in->close() unless $diff_file eq "-";
+
+print STDERR "Diff count $diff_count\n";
+
+
+sub calculate_end_pos {
+  my ($pos,$len,$cigar) = @_;
+  my $end = $pos + $len - 1;
+  while ($cigar =~ /(\d+)([a-z])/ig) {
+    my ($ol,$op) = ($1,uc($2));
+    if ($op eq "M" || $op eq "=") {
+      # do nothing match
+    }
+    elsif ($op eq "X") {
+      # do nothing mismatch
+    }
+    elsif ($op eq "S") {
+      $end -= $ol; # soft clipping 
+    }
+    elsif ($op eq "I") {
+      $end -= $ol; # insertion in read.
+    }
+    elsif ($op eq "D") {
+      $end += $ol; # deletion in read.
+    }
+    elsif ($op eq "H") {
+      # do nothing. hard-clipping
+    }
+    elsif ($op eq "P") {
+      # do nothing. padding
+    }
+    elsif ($op eq "N") {
+      $end += $ol; # ref. skipped
+    }
+  }
+  return $end;
+
+}

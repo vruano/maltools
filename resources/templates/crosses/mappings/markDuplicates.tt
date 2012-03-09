@@ -1,0 +1,8 @@
+[% out_sample_dir _ '/%.bam' %] : [% in_sample_dir _ '/%.bam' %] [% in_sample_dir _ '/%.bam.bai' %]
+	pgv mark-duplicates -i $< -o $@ --metrics [% out_sample_dir %]/$*.mdMetrics.txt --remove
+
+[% out_sample_dir _ '/%.mdMetrics.txt' %] : [% out_sample_dir _ '/%.bam' %]
+	test -e $@ || exit 1
+
+.PRECIOUS : [% out_sample_dir _ '/%.mdMetrics.txt' %]
+

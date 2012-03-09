@@ -1,0 +1,44 @@
+{
+    "name" : "pgv-a-vdisc",
+    "version" : "1.2",
+    "class" : "vdisc",
+    
+    "variables" : {
+        "datadir" : "/data/malariagen/PGV",
+    },
+    
+    "paths" : {
+        "reference" : "${datadir}/references/3D7_pm.fa",
+        "coverage" : "${outdir}/coverage",
+        "snpsdata" : "${outdir}/snpsdata",
+        "alignments" : "${outdir}/alignments",
+        "candidateSnps" : "${basedir}/candidate_snps.tsv",
+    },
+    
+    "samples": ["PG0004-CW", "PG0008-CW",
+                "PG0048-C", "PG0074-C", "PG0015-C", "PG0016-C", "PG0017-C",
+                "PG0018-C", "PG0019-C", "PG0020-C", "PG0021-C", "PG0022-C",
+                "PG0023-C", "PG0024-C", "PG0025-C", "PG0026-C", "PG0027-C",
+                "PG0028-C", "PG0029-C", "PG0030-C", "PG0031-C", "PG0032-C",
+                "PG0033-C", "PG0034-C", "PG0035-C", "PG0036-C", "PG0037-C",
+                "PG0038-C", "PG0039-C", "PG0040-C", "PG0041-C", "PG0042-C",
+                "PG0043-C", "PG0044-C", "PG0045-C", "PG0046-C", "PG0047-C"],                
+                
+    "parameters" : {
+	"redoCandidateSnps" : 1,
+        "minBaseQ" : 27,
+        "maxCandidateSNPDepth" : 100,
+        "mapQAdjustment" : 50,
+        "solaris" : {
+            "host" : "127.0.0.1",
+            "port" : 6603,
+            "user" : "solaris_ro",
+            "pass" : "test123",
+            "schema" : "solaris"
+        }
+    },
+    
+    "versions" : {
+        "data" : "${datadir}/freeze/2011-09-12.json.gz"
+    }
+}
