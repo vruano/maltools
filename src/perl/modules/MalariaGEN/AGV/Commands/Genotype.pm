@@ -6,7 +6,7 @@ use strict;
 use warnings;
 
 use MalariaGEN::AGV::Config qw(data_config 
-       sanger_config reference_config jobs_config);
+       sanger_config jobs_config);
 use MalariaGEN::AGV::Tool;
 use Getopt::Long;
 use IO::File;
@@ -76,6 +76,7 @@ sub execute {
   my ($self,$site,$params) = @_;
   local @ARGV;
   @ARGV = @{$params->{arguments}};
+  my $config = MalariaGEN::AGV::Config->new();
   my $output = "-"; my $errput = "-";
   my @regions = ();
   my $fragments = 1;
@@ -84,6 +85,7 @@ sub execute {
   my $baq_bq_output = undef;
   my $rbsq_output = undef;
   my $rmq_output = undef;
+  my $reference = undef;
   my $max_depth = 100;
   my @files = ();
   my %options = ();
@@ -93,19 +95,19 @@ sub execute {
     "t=i" => \$fragments, 
     "o=s" => \$output,
     "e=s" => \$errput, 
-    "r=s@" => \@regions,
+    "l=s@" => \@regions,
+    "reference|ref|r=s" => \$reference,
     'option|opt=s%' => \%options);
   exists($genotypers{$genotyper}) or return $self->error_return("unsupported genotyper '$genotyper' ");
   
   $output ne "-" or return $self->error_return("you need to specify and output file name");
-  my $rc = reference_config();
-  my $ref = $rc->file_name;
+  $reference ||= $config->get_reference()->sequence_file;
 
   if ($genotyper eq 'Samtools') {
-    return $self->samtools_genotyping(files => \@files, output => $output, reference => $ref, max_depth => $max_depth);
+    return $self->samtools_genotyping(files => \@files, output => $output, reference => $reference, max_depth => $max_depth);
   }
   elsif ($genotyper eq 'SamtoolsLegacy') {
-    return $self->samtools_legacy(files => \@files, output => $output, reference => $ref);
+    return $self->samtools_legacy(files => \@files, output => $output, reference => $reference);
   }
   my $dc = data_config();
   $genotyper = $genotypers{$genotyper};
@@ -114,7 +116,7 @@ sub execute {
   $genotyper_options{$_} = $options{$_} foreach  (keys %options);
   my $job = $tool->job(
       inputs => { 
-          reference => $ref,
+          reference => $reference,
           genotyper => $genotyper->{genotyper},
           annotations => $genotyper->{annotations},
           rods => $genotyper->{rods},

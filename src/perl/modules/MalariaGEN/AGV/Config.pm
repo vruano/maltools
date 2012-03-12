@@ -127,7 +127,7 @@ sub data_config {
 }
 
 sub scratch_config {
-  return ScratchConf->new({areas => $config->get('scratch/areas')});
+  return ScratchConf->new(data => $config->get('execution/scratch'));
 }
 
 sub reference_config {
@@ -233,11 +233,12 @@ sub genotyping_out_dir {
 package ScratchConf;
 use Moose;
 
-has 'areas' => (is => 'ro', isa => 'ArrayRef[Str]', default => sub { [] });
+has 'data' => (is => 'ro', isa => 'HashRef', default => sub { {} });
 
 sub scratch_instance {
   my $self = shift;
-  my $areas = $self->areas;
+  my $data = $self->data;
+  my $areas = $data->{areas};
   my @areas = ();
   for (my $i = 0; $i <= $#$areas; $i += 2) {
      my $type = $$areas[$i];
@@ -248,16 +249,11 @@ sub scratch_instance {
          die "could not resolve scratch area type '$type'";
      push @areas, $class->new(root => $root);
   }
-  if ($#areas == 0) {
-    return $areas[0];
-  }
-  else {
-    require MalariaGEN::AGV::Engines::Scratch::Array
+  require MalariaGEN::AGV::Engines::Scratch::Array
       or die "could not resolve scratch 'array' type";
-    return MalariaGEN::AGV::Engines::Scratch::Array->new(areas => \@areas);
-  }
-
+  return MalariaGEN::AGV::Engines::Scratch::Array->new(areas => \@areas, exists($data->{exclusions}) ? ( exclusions => $data->{exclusions}) : ());
 }
+
 1;
 }
 

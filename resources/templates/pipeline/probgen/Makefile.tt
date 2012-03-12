@@ -2,7 +2,7 @@ OUTDIR=.
 ALIGNMENTS_PATH=[% manifest.get_path('alignments') %]
 SNPSDATA_PATH=[% manifest.get_path('snpsdata') %]
 COVERAGE_PATH=[% manifest.get_path('coverage') %]
-TMP_DIR=[% manifest.get_path('temp') || manifest.get_basedir() _ '/tmp' %]
+TMP_DIR=[% manifest.get_path('temp') || './tmp' %]
 
 PGV=[% program %]
 CANDIDATE_SNPS_LIST=[% manifest.get_parameter('candidateSnps') == 'all' ? 'all' : manifest.get_parameter('candidateSnpList')  %]
@@ -27,12 +27,13 @@ all: variation
 variation: $(OUTDIR)/all.vcf
 
 $(OUTDIR)/all.vcf:
-	$(PGV) genotype -g $(GENOTYPER) $(addprefix -i ,$(ALL_ALIGNMENTS)) -o $@ 
+	$(PGV) genotype -g $(GENOTYPER) -r $(REFERENCE) $(addprefix -i ,$(ALL_ALIGNMENTS)) -o $@ 
 
 alignments: init $(ALL_ALIGNMENTS)
 
 init:
 	@echo "Starting processing...."
+	mkdir -p $(TMP_DIR)
 
 [% INCLUDE candidate_snps_rules | trim %]
 

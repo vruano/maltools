@@ -17,6 +17,7 @@
   },
 
   "paths" : {
+    "reference" : "/data/haldane/malariagen/pfalciparum/reference/3D7_pm.fa",
     "alignments" : "/data/haldane/malariagen/pfalciparum/crosses/3d7xHb3/initial", 
     "coverage" : "${basedir}/coverage",
     "snpsdata" : "${basedir}/snps"

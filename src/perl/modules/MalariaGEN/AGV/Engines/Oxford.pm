@@ -112,12 +112,12 @@ sub qsub_command {
   my $procs = $options{procs} || 1;
   my %job_args = (
      J => \$job, T => \$tool, E => \$self, D => $cwd,
-     S => \$sfn_simple,  MAKE => "lsmake" , SH => "tcsh", P => $procs); 
+     S => \$sfn_simple,  MAKE => "lsmake" , SH => "bash", P => $procs); 
 ##
   my $cmd = $job->command(%job_args);
   # translate standard progrma place-holders.
   $cmd =~ s/^\$MAKE/make/;
-  $cmd =~ s/^\$SHELL/tcsh/;
+  $cmd =~ s/^\$SHELL/bash/;
 
   my @management_arguments = $self->_qsub_management_arguments($job,$uses_standard_io);
   my @memory_arguments = $self->_qsub_command_memory_arguments($job);
@@ -153,7 +153,9 @@ sub qsub_command {
 sub _qsub_command_memory_arguments {
   my ($self,$job) = @_;
   my $memory = $self->running_options()->{memory} || $job->memory;
-  return ("-l mem_free=${memory}");
+  my $hv_mem = int(1 + $memory / $job->cpu_count) * 2;
+  my $sv_mem = int(1 + 1.1 * $memory / $job->cpu_count);
+  return ("-l h_vmem=${hv_mem}M");
 }
 
 sub _qsub_command_temp_arguments {
@@ -172,7 +174,7 @@ sub _qsub_command_cpu_arguments {
   return () unless $cpu_count > 1;
   # Multi-threaded jobs that cannot run across hosts:
   $job->cpu_count($cpu_count);
-  return ("-pe smp $cpu_count");
+  return ("-pe simple_pe $cpu_count");
 }
 
 # Wall time thresholds in seconds.
@@ -191,15 +193,28 @@ sub _qsub_management_arguments {
   $cpu_count++ if $cpu_count == 0 || $cpu_ratio - $cpu_count >= 0.5;
   my $mem = $job->memory;
   my $wall_time = $job->wall_time;
-  if ($mem > $MEMORY_THR) {
-    return('-q','hugemem.q');
+  return ('-l','h_rt=' . _format_resource_time($job->wall_time * 2));
+
+}
+
+sub _format_resource_time {
+  my $seconds = abs(shift);
+  my $minutes = $seconds / 60;
+  my $hours = $minutes / 60;
+  my $days = $hours / 24;
+
+  print STDERR "SECONDS Are $seconds\n";
+  $minutes = int( 1 + $minutes - $hours * 60);
+  $hours = int($hours - $days * 24);
+  if ($minutes >= 60) {
+    $minutes = $minutes % 60;
+    $hours++;
   }
-  elsif ($wall_time <= $NORMAL_THR) { 
-    return ('-q','normal.q');
+  if ($hours >= 24) {
+    $hours = $hours % 24;
+    $days++;
   }
-  else {
-    return ('-q','long.q');
-  }
+  return sprintf("%02d:%02d:%02d",$days,$hours,$minutes);
 }
 
 sub tempdir {

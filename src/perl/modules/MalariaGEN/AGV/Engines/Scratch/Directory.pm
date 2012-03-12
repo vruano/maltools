@@ -19,7 +19,14 @@ with 'MalariaGEN::AGV::Engines::Scratch';
 has 'temp_root' => ( is => 'ro' , isa => 'Str' , lazy => 1, default => sub {my $res = catfile($_[0]->root,"tmp"); 
               File::Path::make_path($res); return $res; });
 has '_rsync' => (is => 'ro', lazy => 1, default => sub { File::Rsync->new({archive => 1, compress => 0}) });
-has 'root' => (is => 'ro', isa => 'Str', required => 1 );
+has 'root' => (is => 'ro', isa => 'Str', required => 1, writer => '_set_root' );
+
+sub BUILD {
+  my $self = shift;
+  my $root = $self->root;
+  my $real_root = realpath($root);
+  $self->_set_root($real_root) if $root ne $real_root;
+}
 
 sub tempdir {
   my ($self,%args) = @_;

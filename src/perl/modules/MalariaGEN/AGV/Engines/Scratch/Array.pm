@@ -2,7 +2,8 @@ package MalariaGEN::AGV::Engines::Scratch::Array;
 
 use strict;
 use warnings;
-
+use Cwd qw(realpath);
+use Carp;
 use Moose;
 
 with 'MalariaGEN::AGV::Engines::Scratch';
@@ -11,6 +12,7 @@ with 'MalariaGEN::AGV::Engines::Scratch';
 has _last_best_time => (is => 'rw', default => 0);
 has _last_best_area => (is => 'rw', default => undef);
 has areas => (is => 'ro', isa => 'ArrayRef[MalariaGEN::AGV::Engines::Scratch]', default => sub { [] });
+has exclusions => (is => 'ro', isa => 'ArrayRef[Str]', default => sub { [] });
 
 # Indicate what is the best scratch are to use for a given set of parameters:
 # 1. checks whether the file or directory involved directly points to an area.
@@ -73,14 +75,34 @@ sub tempfile {
 
 sub to_scratch {
   my ($self,%args) = @_;
+  my $file_or_dir = $args{file_or_dir} || $args{file} || $args{dir};
+  defined $file_or_dir or confess "must provide a file or directory name";
+  -e $file_or_dir || $args{make_path} or confess "must provide an existing file or directory name '$file_or_dir'";
+  if ($self->is_excluded(%args)) {
+    return realpath($args{file_or_dir} || $args{file} || $args{dir});
+  }
   my $best = $self->_best_area(%args);
   return $best->to_scratch(%args);
 }
 
+sub is_excluded {
+  my ($self,%args) = @_;
+  my $file_or_dir = $args{file_or_dir} || $args{file} || $args{dir};
+  $file_or_dir = realpath($file_or_dir) || $file_or_dir;
+  foreach my $excl (@{$self->exclusions}) {
+    return 1 if index($file_or_dir,realpath($excl)) != -1;
+  } 
+  return 0;
+}
+
 sub from_scratch {
   my ($self,%args) = @_;
+  if ($self->is_excluded(%args)) {
+    return realpath($args{file} || $args{dir});
+  }
   my $best = $self->_best_area(%args);
   return $best->from_scratch(%args);
 }
+
 
 1;

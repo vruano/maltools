@@ -1,11 +1,11 @@
 {
    "variables" : {
-     "basedir" : "${homedir}",
-     "datadir" : "${basedir}/data"
+     "datadir" : "/data/malariagen/"
    },
    "execution" : {
      "scratch" : {
-       "areas" : [ "directory" , "/data/malariagen/scratch" ]
+       "exclusions" : [ "/data/haldane" ],
+       "areas" : [ "directory" , "/data/haldane/malariagen/.stagging" ]
      },
      "defaultEngine" : "oxford"
    },
