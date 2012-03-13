@@ -5,7 +5,7 @@
    "execution" : {
      "scratch" : {
        "exclusions" : [ "/data/haldane" ],
-       "areas" : [ "directory" , "/data/haldane/malariagen/.stagging" ]
+       "areas" : [ "directory" , "/data/haldane/malariagen/.staging" ]
      },
      "defaultEngine" : "oxford"
    },

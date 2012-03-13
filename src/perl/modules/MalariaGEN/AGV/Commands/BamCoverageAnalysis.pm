@@ -12,6 +12,7 @@ use File::Basename qw(fileparse);
 use File::Spec::Functions qw(catfile);
 use File::Path qw(remove_tree make_path);
 use File::Copy qw(copy move);
+
 extends 'MalariaGEN::AGV::Command';
 
 sub help_summary {

@@ -15,6 +15,7 @@ ALL_INDEXES=$(addprefix $(ALIGNMENTS_PATH)/,$(addsuffix .bam.bai,$(ALL_SAMPLE_NA
 ALL_ALIGNMENT_AND_INDEXES=$(join $(ALL_ALIGNMENTS), $(ALL_INDEXES))
 GENOTYPER=MetaGenotyper
 INTERVALS=[% manifest.get_intervals.values.join(' ') %]
+INTERVALS_AT=$(subst :,@,$(INTERVALS))
 
 $(shell mkdir -p $(ALIGNMENTS_PATH) $(SNPSDATA_PATH) $(COVERAGE_PATH) $(TMP_DIR))
 
@@ -26,8 +27,13 @@ all: variation
 
 variation: $(OUTDIR)/all.vcf
 
-$(OUTDIR)/all.vcf:
-	$(PGV) genotype -g $(GENOTYPER) -r $(REFERENCE) $(addprefix -i ,$(ALL_ALIGNMENTS)) -o $@ 
+$(OUTDIR)/all.vcf: $(addprefix $(TMP_DIR)/all_,$(addsuffix .vcf,$(INTERVALS_AT)))
+	$(PGV) merge vcf $(addprefix -i , $^) -r $(REFERENCE) -o $@
+
+$(TMP_DIR)/all_%.vcf: alignments
+	$(PGV) genotype -g $(GENOTYPER) -r $(REFERENCE) $(addprefix -i ,$(ALL_ALIGNMENTS)) -l $(subst @,:,$*) -o $@ 
+
+
 
 alignments: init $(ALL_ALIGNMENTS)
 

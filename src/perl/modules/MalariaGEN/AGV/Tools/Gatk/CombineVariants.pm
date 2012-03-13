@@ -39,12 +39,12 @@ sub calculate_cpu_ratio {
 
 sub calculate_memory {
   my ($self,%args) = @_;
-  return 500;
+  return 1024;
 }
 
 sub calculate_cpu_time {
   my ($self,%args) = @_;
-  return 5 * 60;
+  return 60 * 60;
 }
 
 sub interpreter {
@@ -59,5 +59,5 @@ __DATA__
   $idx = 0;
   $input_arguments = join(" ",map {"-B:input" . $idx++ . ",VCF $_"} @{$J->input("in")});
   $out = $J->output("out");
-  $ref = $J->input("ref"); '' };
-gatk --memory {$J->memory} -T CombineVariants -R {$ref} {$input_arguments} -o {$out} -setKey null
+  $ref = $J->input("ref"); ''
+}gatk --memory {$J->memory} -T CombineVariants -R {$ref} {$input_arguments} -o {$out} -setKey null

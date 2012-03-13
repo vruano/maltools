@@ -21,6 +21,9 @@ use IO::File;
 
 has freeze => (is => 'rw', isa => 'Maybe[MalariaGEN::AGV::DataFreeze]', default => undef);
 
+sub hidden {
+  return 1;
+}
 
 sub help_summary {
    return "manages and execute testbeds to evaluate pipelines";

@@ -34,6 +34,7 @@ sub command_summary_line {
   warn $@ if $@;
   $@ and return undef;
   $command->isa('MalariaGEN::AGV::Command') or return undef;
+  $command->hidden and return undef;
   return $command->name .  (" " x (22 - length($command->name))) . "\t" . $command->help_summary;
 }
 
@@ -63,7 +64,7 @@ sub execute {
     next unless $cmd_name =~ /\S/;
     my $cmd = MalariaGEN::AGV::Command->instance($cmd_name);
     if (defined $cmd) {
-      print STDOUT  $cmd->help_text; 
+      print STDOUT $cmd->help_text();
       return $self->ok_return();
     }
     else {

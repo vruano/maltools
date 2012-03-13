@@ -7,7 +7,7 @@ use IO::File;
 with 'MooseX::Cloneable';
 
 use overload
-   fallback => undef,
+   fallback => 1,
    '""' => sub { $_[0]->sequence_file };
 
 has 'sequence_file' => (is => 'ro', isa => 'Str', required => 1);
@@ -51,6 +51,10 @@ around BUILDARGS => sub {
    return $class->$orig(%args);
 };
 
+sub exists {
+  my $self = shift;
+  return -e $self->sequence_file;
+}
 
 sub _annotation_file_builder {
    my $self = shift;

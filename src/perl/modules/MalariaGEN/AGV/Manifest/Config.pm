@@ -8,7 +8,10 @@ extends 'MalariaGEN::AGV::Manifest';
 sub get_reference {
   my $self = shift;
   my $ref_spec = $self->get('reference',@_);
-  if (ref($ref_spec) eq "HASH") {
+  unless (ref($ref_spec)) {
+    return undef;
+  }
+  elsif (ref($ref_spec) eq "HASH") {
     $ref_spec = $self->_json2perl_key_translate($ref_spec);
   }
   elsif (ref($ref_spec) eq "ARRAY") {

@@ -66,6 +66,7 @@ sub run_job {
   my $code = 0;
   $| = 1;
   do {
+    print STDERR "Tries left: " . ($retries + 1) . "\n"   if ($code != 0);
     my $qsub_output;
     $qsub_output = IO::Pipe->new();
     my $redirect = $uses_standard_io ? "" : "2>&1";
@@ -155,6 +156,7 @@ sub _qsub_command_memory_arguments {
   my $memory = $self->running_options()->{memory} || $job->memory;
   my $hv_mem = int(1 + $memory / $job->cpu_count) * 2;
   my $sv_mem = int(1 + 1.1 * $memory / $job->cpu_count);
+  #return ();
   return ("-l h_vmem=${hv_mem}M");
 }
 
@@ -199,22 +201,12 @@ sub _qsub_management_arguments {
 
 sub _format_resource_time {
   my $seconds = abs(shift);
-  my $minutes = $seconds / 60;
-  my $hours = $minutes / 60;
-  my $days = $hours / 24;
+  my $minutes = int($seconds / 60);
+  my $hours = int($minutes / 60);
 
-  print STDERR "SECONDS Are $seconds\n";
-  $minutes = int( 1 + $minutes - $hours * 60);
-  $hours = int($hours - $days * 24);
-  if ($minutes >= 60) {
-    $minutes = $minutes % 60;
-    $hours++;
-  }
-  if ($hours >= 24) {
-    $hours = $hours % 24;
-    $days++;
-  }
-  return sprintf("%02d:%02d:%02d",$days,$hours,$minutes);
+  $seconds = $seconds - $minutes * 60;
+  $minutes = $minutes - $hours * 60;
+  return sprintf("%02d:%02d:%02d",$hours,$minutes,$seconds);
 }
 
 sub tempdir {
@@ -322,7 +314,7 @@ sub _export_outputs {
     }
     else {
       $error_count++;
-      print STDERR "-e $sfile: " . (-e $sfile) . " stats: " . `stat $sfile`, "\n";
+      #print STDERR "-e $sfile: " . (-e $sfile) . " stats: " . `stat $sfile`, "\n";
       print STDERR "\t$ofile <-X- $sfile !!!! MISSING !!!!\n";
     }
   }

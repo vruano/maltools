@@ -10,6 +10,10 @@ use MalariaGEN::AGV::Engines::Sanger;
 use Getopt::Long qw(:config pass_through no_getopt_compat no_ignore_case);
 extends 'MalariaGEN::AGV::Command';
 
+sub hidden {
+  return 1;
+}
+
 sub help_summary {
    return 'combines diverse variant VCF files into one';
 }

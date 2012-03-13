@@ -19,6 +19,10 @@ sub resolve_engine {
   return $result;
 }
 
+sub hidden {
+  return 0;
+}
+
 sub cl_name {
   return basename($0);
 }
