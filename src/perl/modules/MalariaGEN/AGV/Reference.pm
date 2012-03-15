@@ -68,6 +68,7 @@ sub _annotation_file_builder {
 sub _index_file_builder {
    my $self = shift;
    my $result = $self->sequence_file . ".fai";
+   die "unreachable reference index file '$result' or not a file" unless -f $result;
    return $result if -f $result;
    return undef;
 }
