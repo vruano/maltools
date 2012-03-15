@@ -1,44 +1,94 @@
 package MalariaGEN::AGV::Commands::Setup;
 
-use base 'MalariaGEN::AGV::Command';
+use Moose;
+
+extends 'MalariaGEN::AGV::Command';
 
 use strict;
 use warnings;
 
-use MalariaGEN::AGV::Config qw(sanger_config reference_config jobs_config);
+use MalariaGEN::AGV::Config;
 use MalariaGEN::AGV::Tool;
 use Getopt::Long;
 use IO::File;
 
+sub hidden { return 1; }
+
 sub help_summary {
-   return 'setup the AGV pipeline initializing reference and database entries if not existent';
+   return 'setups the environemnt for ' . $_[0]->cl_name . '';
 }
 
 sub help_text {
-   return "setup:\n\t" .
-          $_[0]->help_summary . "\n" .
-          "Syntaxis:\n" .
-          $_[0]->cl_name . " setup\n";
+   my $prog = $_[0]->cl_name;
+   my $summary = $_[0]->help_summary;
+   return <<EOM
+Command: 
+     
+ $prog - $summary
+
+Synopsis:
+
+ $prog setup 
+
+Description:
+
+ Perform all autoamatable set-up tasks so that $prog components can work propery.
+
+EOM
+;
 }
 
 sub execute {
   my ($self,$site,$params) = @_;
-  my $rc = reference_config();
-  my $bwa_index = $rc->file_name(extension => ".fa.sa");
-  -e $bwa_index or $self->_bwa_index($rc);
+  print STDERR "checking c libraries...\n";
+  return $self->error_return("missing libraries!") unless $self->setup_libraries;
+  print STDERR "checking perl libraries...\n";
+  return $self->error_return("missing perl modules!") unless $self->setup_perl;
+  print STDERR "done!\n";
   return $self->ok_return;
 }
 
+sub setup_perl {
+  my $self = shift;
+#  my $config = MalariaGEN::AGV::Config->new();
+  my $config = $self->config();
+  my $perl_deps_list_file = $config->get_resource('setup','perl-deps.list');
+  defined $perl_deps_list_file or return $self->error_return('configuration does not define a perl dependency list');
+  -f $perl_deps_list_file or return $self->error_return("could not find perl dependency list '$perl_deps_list_file'");
+  open my $file , $perl_deps_list_file or return $self->error_return('could not open perl dependency list');
+  my @missing_packages = ();
+  while (my $package = <$file>) {
+     chomp $package;
+     next unless $package =~ /\S/;
+     eval "require $package";
+     $@ or next; # already there.
+     push @missing_packages, $package;
+  }
+  my $package_list = join(" ",@missing_packages);
+  return 1 unless @missing_packages;
+  print STDERR <<EOT
+Need to install the following missing perl packages " 
 
-sub _bwa_index {
-  my ($self,$rc) = @_;
-  my $job = MalariaGEN::AGV::Tool->tool_by_name("bwa-index")->job(inputs => {
-         in => $rc->file_name(extension => ".fa")});
-  my $engine = jobs_config()->engine;
-  $engine->run_job(job => $job);
-  return $self->ok_return;
+ $package_list.
+
+Calling 'sudo cpan'...
+
+EOT
+;               
+  system ("sudo cpan $package_list");
+  $? and print STDERR "could not install or update perl packages required, sorry!\n", return 0;
+  system ("Done installing perl dependencies!\n");
+  return 1;
 }
 
+
+sub setup_libraries {
+  my $self = shift;
+  `locate libxml2.so`;
+  return 1 unless $?;
+  print STDERR "Missing libxml2, please install it\n";
+  return 0;
+}
 
 
 1;

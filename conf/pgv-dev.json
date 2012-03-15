@@ -2,6 +2,10 @@
    "variables" : {
      "datadir" : "/data/malariagen/"
    },
+   "paths" : {
+     "data" : "${datadir}",
+     "resources" : "${softdir}/resources"
+   },
    "execution" : {
      "scratch" : {
        "exclusions" : [ "/data/haldane" ],

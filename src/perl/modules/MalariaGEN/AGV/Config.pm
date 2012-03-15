@@ -64,7 +64,7 @@ use Cwd qw(realpath getcwd);
 use File::Basename qw(basename dirname);
 use MalariaGEN::AGV::Manifest::Config;
 
-our @EXPORT = qw(scratch_config sanger_config reference_config jobs_config data_config config_reader config);
+our @EXPORT_OK = qw(scratch_config sanger_config reference_config jobs_config data_config config_reader config);
 
 our $VERSION = '0.01';
 
@@ -75,19 +75,9 @@ sub template_dir {
   return catfile($AGV_HOME,"resources","templates",@others); 
 }
 
-
-
 our $config = resolve_config();
 
 sub new {
-   my $class = shift;
-   my %args = @_;
-   if ($args{file}) {
-       my $result = MalariaGEN::AGV::Manifest::Config->new();
-       $result->set_variable(program => $args{program} || basename($0), softdir => $ENV{PGV_HOME} || ".");
-       $result->load(file => $args{file});
-       return $result;
-   }
    return $config;
 }
 
@@ -108,8 +98,9 @@ sub resolve_config {
 
   my $conf_file = undef;
 
+  my $softdir = $ENV{PGV_HOME} || ".";
   my $result = MalariaGEN::AGV::Manifest::Config->new();
-  $result->set_variable(program => $program, homedir => $home);
+  $result->set_variable(program => $program, softdir => $softdir);
   
   foreach my $f (@files) {
     next unless -f $f;

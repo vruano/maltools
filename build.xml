@@ -64,6 +64,15 @@
  </sequential>
 </macrodef>
 
+<macrodef name="cpan">
+  <element name="packages" optional="false"/>
+  <sequential>
+    <exec executable="${cpan.exec}" failonerror="true">
+      <packages/>
+    </exec>
+  </sequential>
+</macrodef>
+
 <!-- main targets -->
 
 <target name="hello">
@@ -78,6 +87,7 @@
     ${user.name}@${basedir}$ ant install
   </echo>
 </target>
+
 
 <target name="eclipse.setup">
   <get src="http://mirror.lividpenguin.com/pub/apache//commons/math/source/commons-math-2.2-src.zip" dest="${3rdparty.dir}/commons-math-2.2-src.zip" />

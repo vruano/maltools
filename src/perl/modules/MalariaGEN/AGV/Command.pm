@@ -5,12 +5,16 @@ use warnings;
 use Scalar::Util qw(blessed);
 use Moose;
 use MalariaGEN::AGV::Engine;
+use MalariaGEN::AGV::Manifest::Config;
+use MalariaGEN::AGV::Config;
 use File::Basename qw(basename);
 
 has 'engine_name' => ( is => 'rw', isa => 'Str',  lazy => 1, default => 'auto' );
 has 'procs' => (is => 'rw', isa => 'Num', lazy => 1, default => 1 );
 has 'running_options' => (is => 'rw', isa => 'HashRef', default => sub { {} });
 has 'samtrak' => (is => 'rw');
+has 'config' => (is => 'ro', isa => 'MalariaGEN::AGV::Manifest::Config', lazy => 1, builder => '_build_config' );
+
 
 sub resolve_engine {
   my ($self) = @_;
@@ -103,6 +107,11 @@ sub error_return {
   print STDERR "Error occurred with message: $error\n";
   print STDERR "Details follow:\n\t" . $details . "\n" if defined $details;
   return 1;
+}
+
+sub _build_config {
+  my $self = shift;
+  return MalariaGEN::AGV::Config->new();
 }
 
 1;

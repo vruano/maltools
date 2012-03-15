@@ -1,9 +1,11 @@
 package MalariaGEN::AGV::Manifest::Config;
 
 use Moose;
+extends 'MalariaGEN::AGV::Manifest';
+
+use File::Spec::Functions qw(catfile);
 use MalariaGEN::AGV::Reference;
 
-extends 'MalariaGEN::AGV::Manifest';
 
 sub get_reference {
   my $self = shift;
@@ -26,9 +28,20 @@ sub get_reference_sequences {
   return $ref->sequence_file;
 }
 
+sub get_softdir {
+  my $self = shift;
+  return $self->get('paths/softdir') || $ENV{PGV_HOME} || $ENV{AGV_HOME}; 
+}
+
+sub get_resource {
+  my $self = shift;
+  my $resources = $self->get('paths/resources') || catfile($self->get_softdir(),'resources');
+  return catfile($resources,@_);
+}
+
 sub get_datadir {
   my $self = shift;
-  return $self->get('data') || $self->get('variables/datadir');
+  return $self->get('paths/data') || $self->get_resource('data');
 }
 
 sub get_default_execution_engine {
