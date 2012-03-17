@@ -154,8 +154,8 @@ sub qsub_command {
 sub _qsub_command_memory_arguments {
   my ($self,$job) = @_;
   my $memory = $self->running_options()->{memory} || $job->memory;
+  $job->memory($memory);
   my $hv_mem = int(1 + $memory / $job->cpu_count) * 2;
-  my $sv_mem = int(1 + 1.1 * $memory / $job->cpu_count);
   #return ();
   return ("-l h_vmem=${hv_mem}M");
 }
@@ -188,7 +188,7 @@ our $MEMORY_THR = 10000;
 sub _qsub_management_arguments {
   my ($self,$job,$uses_standard_io) = @_;
   if ($self->running_options()->{queue}) {
-    return ('-q',$self->running_options()->{queue});
+    return (); # return ('-q',$self->running_options()->{queue});
   }
   my $cpu_ratio = $job->cpu_ratio;
   my $cpu_count = floor($cpu_ratio);

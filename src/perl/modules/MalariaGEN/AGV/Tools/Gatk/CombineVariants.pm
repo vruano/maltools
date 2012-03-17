@@ -49,7 +49,7 @@ sub calculate_cpu_time {
 
 sub interpreter {
    my ($self) = @_;
-   return '$SHELL';
+   return '/bin/bash';
 }
 
 1;
@@ -57,7 +57,12 @@ sub interpreter {
 __DATA__
 { 
   $idx = 0;
-  $input_arguments = join(" ",map {"-B:input" . $idx++ . ",VCF $_"} @{$J->input("in")});
+  @input_arguments = map {"-B:input" . $idx++ . ",VCF $_"} @{$J->input("in")};
   $out = $J->output("out");
+  $tmp = $J->tempfile('binds_XXXX');
+  open my $tmp_fh , $tmp;
+  print $tmp_fh $_,"\n" foreach (@input_arguments);
+  close $tmp_fh;
   $ref = $J->input("ref"); ''
-}gatk --memory {$J->memory} -T CombineVariants -R {$ref} {$input_arguments} -o {$out} -setKey null
+}
+gatk --memory {$J->memory} -T CombineVariants -R {$ref} {$input_arguments} -o {$out} -setKey null

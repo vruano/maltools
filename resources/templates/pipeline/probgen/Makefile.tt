@@ -30,8 +30,8 @@ variation: $(OUTDIR)/all.vcf
 $(OUTDIR)/all.vcf: $(addprefix $(TMP_DIR)/all_,$(addsuffix .vcf,$(INTERVALS_AT)))
 	$(PGV) merge vcf $(addprefix -i , $^) -r $(REFERENCE) -o $@
 
-$(TMP_DIR)/all_%.vcf: alignments
-	$(PGV) genotype -g $(GENOTYPER) -r $(REFERENCE) $(addprefix -i ,$(ALL_ALIGNMENTS)) -l $(subst @,:,$*) -o $@ 
+$(TMP_DIR)/all_%.vcf: $(ALL_ALIGNMENTS)
+	$(PGV) genotype -g $(GENOTYPER) -r $(REFERENCE) $(addprefix -i ,$(ALL_ALIGNMENTS)) -l $(subst @,:,$*) [% INCLUDE genotyper_options %] -o $@ 
 
 
 
@@ -82,3 +82,7 @@ $(CANDIDATE_SNPS_LIST) :
 	@exit 1
 [% END %]
 [% END %]
+
+[%- BLOCK genotyper_options -%]
+-option smodel=[% manifest.get_parameter('model') %]
+[%- END -%]

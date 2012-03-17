@@ -61,8 +61,9 @@ sub pipeline {
   my $self = shift;
   my $type = undef;
   my $dest_dir = undef;
+  my $threads = $self->running_options->{procs};
   my %vars = ();
-  GetOptionsFromArray(\@_,"basedir|d=s" => \$dest_dir);
+  GetOptionsFromArray(\@_,"basedir|b=s" => \$dest_dir,"threads|t=i" => \$threads);
 
   return $self->error_return('you must provide a base directory using option -b') unless $dest_dir;
   return $self->error_return("the basedir provided '$dest_dir' does not exists") unless -e $dest_dir;
@@ -83,7 +84,7 @@ sub pipeline {
         or return $self->error_return("unknown pipeline type '$type' indicated in the manifest");
 
   my $pipeline = $pipeline_class->new(manifest => $manifest_object); 
-  $pipeline->run(basedir => $dest_dir);
+  $pipeline->run(basedir => $dest_dir, cpus => $threads);
   return $self->ok_return();
 }
 

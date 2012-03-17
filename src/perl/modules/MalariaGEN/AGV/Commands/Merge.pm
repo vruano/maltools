@@ -18,8 +18,9 @@ sub help_summary {
 
 sub help_text {
    my $program = $_[0]->cl_name;
+   my $__or___ = '  or' . (' ' x (length($program) - 4));
    my $summary = $_[0]->help_summary;
-
+  
    return <<EOM
 Summary:
  
@@ -28,10 +29,14 @@ Summary:
 Synopsis:
 
   $program merge --bam input1.bam --bam input2.bam ... [-r reference.fa] -o output.bam
-      or   merge bam -i input1.bam -i input2.bam ... [-r reference.fa] -o output.bam
+  $__or___ merge bam -i input1.bam -i input2.bam ... [-r reference.fa] -o output.bam
+  $__or___ merge bam -f input-files.list ... [-r reference.fa] -o output.bam
+  $__or___ merge --bam-files inputs-files.list ... [-r reference.fa] -o output.bam 
 
   $program merge --vcf input1.vcf --vcf input2.vcf ... [-r reference.fa] -o output.vcf
-      or   merge vcf -i input1.vcf -i input2.vcf ... [-r reference.fa]  -o output.vcf
+  $__or___ merge vcf -i input1.vcf -i input2.vcf ... [-r reference.fa]  -o output.vcf
+  $__or___ merge vcf -f input-files.list ... [-r reference.fa] -o output.vcf
+  $__or___ merge --vcf-files inputs-files.list ... [-r reference.fa] -o output.vcf
 
 Description:
 
@@ -42,6 +47,48 @@ Description:
 
   If no reference is provided it will try to use the default reference based in
   the configuration. 
+
+Options:
+
+  <type> : (bam, vcf) 
+
+     indicates the type of the following input files that do not have a type 
+     explicitly stated
+
+  -i <file-name>
+   
+     input file without explicit type; this is determined by last <type> or
+     file name extension otherwise.
+
+  -o <file-name>
+
+     output file name.
+
+  -r <file-name>
+
+     reference file name.
+
+  --bam <file-name>
+
+     input bam alignment file.
+
+  --vcf <file-name>
+
+     input vcf variation call file.
+
+  --input-files <file-name>
+    
+     indicate a file that contains a list of inputs without specific type;
+     this is determined by last <type> or each individual file name extension.
+
+  --bam-files <file-name>
+
+     indicates a file that contains a list of input bam alignment files.
+
+  --vcf-files <file-name>
+
+     indicates a file that contains a list of input vcf variation call files.
+
 
 EOM
 ;
@@ -55,13 +102,21 @@ sub execute {
   my $output = undef;
   my $type = '';
   my $reference = undef;
+  my @input_lists = ();
   GetOptions(
      "<>" => sub { "$_[0]" },
      "input|i=s@" => sub { push @inputs, [ $type, $_[1] ] }, 
      "output|o=s" => \$output, 
      "bam=s" => sub { push @inputs, [ 'bam', $_[1] ] },
      "vcf=s" => sub { push @inputs, [ 'vcf', $_[1] ] },
-     "ref=s" => \$reference, );
+     "bam-files=s@" => sub { push @input_lists, [ 'bam', $_[1] ] },
+     "vcf-files=s@" => sub { push @input_lists, [ 'vcf', $_[1] ] },
+     "input-files|f=s@" => sub { push @input_lists, [ $type, $_[1] ] }, 
+     "ref|r=s" => \$reference, );
+  
+  $self->_process_input_lists(\@input_lists,\@inputs);
+  $@ and return $self->error_return($@);
+  
   @inputs = map {
     my ($type,$file) = @$_;
     unless ($type) {
@@ -94,7 +149,7 @@ sub execute {
   return $self->error_return("unknown input type '$bad_types[0]'") if @bad_types;
  
   my @unknown_type_files = map { $$_[1] } grep { ! $$_[0] } @inputs;
-  return $self->error_return("cannot determine type for files '" . join(", ", @unknown_type_files)."'") if @unknown_type_files;
+  return $self->error_return("cannot determine type for input files '" . join(", ", @unknown_type_files)."'") if @unknown_type_files;
 
   my @non_existent_files = grep { ! -e $_ } map { $$_[1] } @inputs;
   return $self->error_return("some input files cannot be reached or do not exists '" . join(", ", @non_existent_files) . "'") if @non_existent_files;
@@ -126,6 +181,27 @@ sub execute {
   $engine->run_job($job) 
 	or $self->error_return("error executing the align command with exit code : " . $job->return_code,$job->error_message );
   return $self->ok_return;
+}
+
+sub _process_input_lists {
+   my ($self,$lists,$inputs) = @_;
+
+   foreach my $l (@$lists) {
+      my ($type,$file_name) = @$l;
+      my $num = 0;
+      print STDERR "processing '$file_name' ...\n";
+      open my $fh , $file_name or return $@ = "could not open '$file_name' for reading";
+      while (my $i_file_name = <$fh>) {
+        chomp $i_file_name;
+        next unless $i_file_name =~ /\S/;
+        next if $i_file_name =~ /^#/;   
+        $num++;
+        push @$inputs , [ $type, $i_file_name ];
+        print STDERR "adding '$i_file_name' \n";
+      }
+      close $fh; 
+      print STDERR "warning! '$file_name' does not seem to contain any input file name!\n" unless $num;
+   }
 }
 
 sub merge_bam_job {

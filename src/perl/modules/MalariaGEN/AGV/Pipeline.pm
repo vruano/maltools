@@ -141,7 +141,7 @@ sub run {
   -d $basedir or die "the bese-directory does not seem to exists"; 
   my $cur_dir = getcwd();
   chdir $basedir;
-  eval { $self->_run(basedir => $basedir) };
+  eval { $self->_run(%args) };
   my $error = $@;
   chdir $cur_dir;
   if ($error) {
@@ -154,8 +154,9 @@ sub _run {
   my %args = @_;
   my $basedir = $args{basedir} || getcwd();
   my $threads = $args{cpus} || 200;
-  my $make_opts = $args{mkopts} || '-k -l 8.0';
+  my $make_opts = $args{mkopts} || '-k';
   my $target = $args{target} || 'all';
+  print STDERR "make -C $basedir -j $threads $make_opts $target\n";
   system("make -C $basedir -j $threads $make_opts $target");
   $? and die "Errors executing the pipeline (code=$?)";
 }

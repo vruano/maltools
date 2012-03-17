@@ -49,9 +49,7 @@ sub calculate_cpu_ratio {
 }
 
 sub calculate_memory {
-  my ($self,%args) = @_;
-  my $cpu_ratio = $args{cpu_ratio} || $self->calculate_cpu_ratio(%args);
-  return ceil(2000 * $cpu_ratio);
+  return 2000;
 }
 
 sub calculate_cpu_time {
