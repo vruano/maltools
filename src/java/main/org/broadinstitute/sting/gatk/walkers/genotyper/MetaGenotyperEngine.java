@@ -168,7 +168,8 @@ public class MetaGenotyperEngine extends UnifiedGenotyperEngine {
 		if (model == null) {
 			return (metaUAC.OutputMode == OUTPUT_MODE.EMIT_ALL_SITES
 					&& metaUAC.GenotypingMode == GenotypeLikelihoodsCalculationModel.GENOTYPING_MODE.GENOTYPE_GIVEN_ALLELES ? generateEmptyContext(
-					tracker, refContext, null, rawContext) : null);
+					tracker, refContext, null, rawContext) : generateEmptyContext(
+							tracker, refContext, null, rawContext));
 		}
 
 
@@ -179,13 +180,15 @@ public class MetaGenotyperEngine extends UnifiedGenotyperEngine {
 				|| gc.getAlleleCount() <= 1) {
 			return (metaUAC.OutputMode == OUTPUT_MODE.EMIT_ALL_SITES
 					&& metaUAC.GenotypingMode == GenotypeLikelihoodsCalculationModel.GENOTYPING_MODE.GENOTYPE_GIVEN_ALLELES ? generateEmptyContext(
-					tracker, refContext, stratifiedContext, rawContext) : null);
+					tracker, refContext, stratifiedContext, rawContext) : generateEmptyContext(
+							tracker, refContext, stratifiedContext, rawContext));
 		}
 
 		if (gc.getAlleleCount() <= 1) {
 			return (metaUAC.OutputMode == OUTPUT_MODE.EMIT_ALL_SITES
 					&& metaUAC.GenotypingMode == GenotypeLikelihoodsCalculationModel.GENOTYPING_MODE.GENOTYPE_GIVEN_ALLELES ? generateEmptyContext(
-					tracker, refContext, stratifiedContext, rawContext) : null);
+					tracker, refContext, stratifiedContext, rawContext) : generateEmptyContext(
+							tracker, refContext, stratifiedContext, rawContext));
 		}
 
 		GenotypingModel gmodel = getGenotypingModel();
@@ -418,7 +421,7 @@ public class MetaGenotyperEngine extends UnifiedGenotyperEngine {
 					.getSNPVCFromAllelesRod(tracker, ref, false, metaLogger);
 			if (vcInput == null)
 				return null;
-			vc = new VariantContext("UG_call", vcInput.getChr(),
+			vc = new VariantContext("MG_call", vcInput.getChr(),
 					vcInput.getStart(), vcInput.getEnd(), vcInput.getAlleles());
 		} else {
 			// deal with bad/non-standard reference bases
@@ -427,7 +430,7 @@ public class MetaGenotyperEngine extends UnifiedGenotyperEngine {
 
 			Set<Allele> alleles = new HashSet<Allele>();
 			alleles.add(Allele.create(ref.getBase(), true));
-			vc = new VariantContext("UG_call", ref.getLocus().getContig(), ref
+			vc = new VariantContext("MG_call", ref.getLocus().getContig(), ref
 					.getLocus().getStart(), ref.getLocus().getStart(), alleles);
 		}
 

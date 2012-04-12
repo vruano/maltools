@@ -39,7 +39,7 @@ sub _forward_fastq_file {
   my $id = $group->id;
   my $outdir = $self->_fastq_outdir;
   return catfile($outdir,$id . "_1.fastq") if -e catfile($outdir,$id . "_1.fastq");
-  return catfile($outdir, $group->plaform_unit . "_1.fastq") if $group->platform_unit;
+  return catfile($outdir, $group->platform_unit . "_1.fastq") if $group->platform_unit;
   
 }
 
@@ -49,7 +49,7 @@ sub _reverse_fastq_file {
   my $id = $group->id;
   my $outdir = $self->_fastq_outdir;
   return catfile($outdir,$id . "_2.fastq") if -e catfile($outdir,$id . "_2.fastq");
-  return catfile($outdir, $group->plaform_unit . "_2.fastq") if $group->platform_unit;
+  return catfile($outdir, $group->platform_unit . "_2.fastq") if $group->platform_unit;
   
 }
 
@@ -71,9 +71,11 @@ sub to_fastq {
        my $f2 = $pu . '_2.fastq';
        my $new_f1 = $f1;
        $new_f1 =~ s/$pu/$id/;
-       rename catfile($outdir,$f1), catfile($outdir,$new_f1) if -e catfile($outdir,$f1);
        my $new_f2 = $f2;
        $new_f2 =~ s/$pu/$id/;
+       $f1 =~ s/#/_/g;
+       $f2 =~ s/#/_/g;
+       rename catfile($outdir,$f1), catfile($outdir,$new_f1) if -e catfile($outdir,$f1);
        rename catfile($outdir,$f2), catfile($outdir,$new_f2) if -e catfile($outdir,$f2);
      }
    }

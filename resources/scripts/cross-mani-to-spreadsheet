@@ -1,3 +1,4 @@
+#!/usr/bin/env perl
 use strict;
 use warnings;
 
@@ -35,16 +36,16 @@ my $missing = $mani->{samples}->{missing};
 my $all = $mani->{samples}->{all};
 foreach my $s (keys %$missing) {
    my $ss = $sm->get_by_ox_code($s,with_objects => ['tag_values','tag_values.tag']);
-   $samples{$s} = [$s,$ss->id,join(",",@{$ss->attribute('ox_src_code')->get()}),other_similar($ss),0];
+   my @other_similar = other_similar($ss);
+   $samples{$s} = [$s,$ss->id,join(",",@{$ss->attribute('ox_src_code')->get()}),join(",",@other_similar),0];
 }
 
 foreach my $s (keys %$all) {
    my $lanes = $all->{$s}->{lanes};
    my $ss = $sm->get_by_ox_code($s,with_objects => ['tag_values','tag_values.tag']);
    my $ll = { map { lane_id_to_idobj($_) } keys (%$lanes) };
-   $samples{$s} = [$s,$ss->id, join(",",@{$ss->attribute('ox_src_code')->get()}),other_similar($ss),int(scalar(keys %$lanes)),map { lane_to_output($ll->{$_}) } sort keys (%$ll)];
-
-
+   my @other_similar = other_similar($ss);
+   $samples{$s} = [$s,$ss->id, join(",",@{$ss->attribute('ox_src_code')->get()}),join(",",@other_similar),int(scalar(keys %$lanes)),map { lane_to_output($ll->{$_}) } sort keys (%$ll)];
 }
 
 foreach my $s (sort keys %samples) {
@@ -70,7 +71,7 @@ sub other_similar {
   my $tvs = $tvm->get_tag_values(query => [ tag_id => $ox_code_tag->id, value => { like => $pattern } ]);
   my $tvs_codes = [ grep { $id ne $_ } map { $_->value } @$tvs];
   grep { $id eq $_ } map { $_->value } @$tvs or die "no self-found";
-  return join(",",@$tvs_codes);
+  return @$tvs_codes;
 }
 
 sub lane_to_output {

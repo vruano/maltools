@@ -97,6 +97,25 @@ public class BernoulliGenotypingModelTest extends WalkerTest {
 		executeTest("testCoverageCounting", spec);
 	}
 
+	@Test
+	public void testWalker3() throws IOException {
+		File reference = new File(getClass().getResource(
+				"/mockups/bernoulli-test/reference.fasta").getFile());
+		File sample = new File(getClass().getResource(
+				"/mockups/bernoulli-test/read2.bam").getFile());
+		File output = File.createTempFile("BernoulliTest", ".vcf");
+		Formatter formatter = new Formatter();
+		Formatter cmdSpec = formatter
+				.format("-R %s -o %s -baseq_do %s.bdo -T MetaGenotyper -I %s -mbq 30 -mmq 0 -out_mode EMIT_ALL_SITES",
+						reference, output, output, sample);
+		// No md5s for now.
+		List<String> md5s = Collections.emptyList();
+		WalkerTest.WalkerTestSpec spec = new WalkerTest.WalkerTestSpec(
+				cmdSpec.toString(), md5s);
+		executeTest("testCoverageCounting", spec);
+	}
+	
+	
 	// /home/valentin/src/GV/resources/test/Example3.bam
 
 	@Test
