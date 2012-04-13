@@ -30,6 +30,14 @@ public class SnpListReadFilter extends ReadFilter {
 	
 	private byte[][] refMask;
 	
+	public SnpListReadFilter() {
+	}
+	
+	public SnpListReadFilter(GenomeAnalysisEngine engine) {
+		this();
+		initialize(engine);
+	}
+	
 	@Override
 	public void initialize(GenomeAnalysisEngine engine) {
 		List<ReferenceOrderedDataSource> sources = engine.getRodDataSources();
@@ -87,6 +95,23 @@ public class SnpListReadFilter extends ReadFilter {
 	}
 
 	
+	public boolean filterOut(GenomeLoc gl) {
+		if (!cslProvided)
+			return false;
+		
+		int refIndex = gl.getContigIndex();
+	    byte[] mask = refMask[refIndex];
+	    int start = gl.getStart();
+	    int stop = gl.getStop();
+	    if (start == stop)
+	      return mask[start - 1] == 0;
+	    else {
+	      for (int i = start; i <= stop; i++) 
+	    	  if (mask[i - 1] != 0) return true;
+	      return false;
+	    }
+	}
+	
 	@Override
 	public boolean filterOut(SAMRecord read) {
 		if (!cslProvided)
@@ -98,7 +123,7 @@ public class SnpListReadFilter extends ReadFilter {
 		
 		byte[] bases = read.getReadBases();
 		for (AlignmentBlock ab : read.getAlignmentBlocks()) {
-			int refStart = ab.getReferenceStart();
+			int refStart = ab.getReferenceStart() - 1;
 			int abLen = ab.getLength();
 			int readIdx = ab.getReadStart();
 			for (int baseIdx = refStart; abLen > 0; abLen--) {

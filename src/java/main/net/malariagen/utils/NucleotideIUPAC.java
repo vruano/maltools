@@ -3,10 +3,10 @@ package net.malariagen.utils;
 import java.util.Arrays;
 
 /**
- * Enumeration IUPAC code for nucleotides. 
+ * Enumeration IUPAC code for nucleotides.
  * 
  * @author Valentin Ruano-Rubio &lt;valentin.ruano@gmail.com&gt;
- *
+ * 
  */
 public enum NucleotideIUPAC {
 
@@ -240,27 +240,48 @@ public enum NucleotideIUPAC {
 
 	/**
 	 * Returns the code that represents the union between this and the other
-	 * code provided.
-	 * <p/>
-	 * For sense no-gap code combination this would result in the most specific
-	 * code that is compatible with all possible nucleotides based in the input
 	 * codes.
+	 * <p/>
+	 * For a nucleotide and and a non-nucleotide combination this results in
+	 * {@link #NaC}. Thus for example,
+	 * <code> {@link #N}.union({@link #GAP}) == {@link #NaC} </code>.
+	 * <p/>
+	 * Any union involving {@link #NaC} results in {@link #NaC}.
+	 * <p/>
+	 * In the special case that the union is {@link #T}, thus {@link #U}, the
+	 * returned code, if at all different is the current one, so:
+	 * <code> {@link #T}.union({@link #U}) == {@link #T}.union({@link #T}) == {@link #T} != </code>
+	 * <code> {@link #U}.union({@link #U}) == {@link #U}.union({@link #T}) == {@link #U} </code>
 	 * 
 	 * @param o
 	 *            the other code to combine with
 	 * @return never {@code null} but {@link #NaC} when this or {@code o} is
-	 *         {@link #NaC} or they result in a combination of gap and base codes.
+	 *         {@link #NaC} or they result in a combination of gap and base
+	 *         codes.
 	 */
-	private NucleotideIUPAC union(NucleotideIUPAC o) {
+	public NucleotideIUPAC union(NucleotideIUPAC o) {
 		int unionMask = this.maskValue | o.maskValue;
+		if (unionMask == T.maskValue)
+			return this;
 		if (unionMask >= MASK_TO_CODE.length)
 			return NaC;
 		else
 			return MASK_TO_CODE[unionMask];
 	}
 
+	/**
+	 * In the special case that the intersection is equal to {@link #T}, thus
+	 * {@link #U}, it returns one or the other strictly depending on the value
+	 * given to {@code isDNA}. Notice that this is so even in the degenerated case where both codes are
+	 * equal to either of these two. For example:
+	 * <code> {@link #T}.intersection({@link #T},false) == {@link #U} </code>
+	 */
+	private NucleotideIUPAC intersection(NucleotideIUPAC o, boolean isDNA) {
+	  throw new RuntimeException("to be implemented");
+	}
+
 	public static boolean areEqual(byte b1, byte b2) {
-		return fromBase(b1).isEqualTo(fromBase(b2));
+		return fromBase(b1).equalTo(fromBase(b2));
 	}
 
 	/**
@@ -289,8 +310,71 @@ public enum NucleotideIUPAC {
 	 * @return {@code true} if this and {@code o} are equal to each other,
 	 *         {@code false} otherwise
 	 */
-	public boolean isEqualTo(NucleotideIUPAC o) {
-		return false;
+	public boolean equalTo(NucleotideIUPAC o) {
+		switch (o) {
+		case NaC:
+			return false;
+		case T:
+		case U:
+			return this == T || this == U;
+		default:
+			return this == o;
+		}
+	}
+
+	/**
+	 * Complementary code.
+	 * 
+	 * <p/>
+	 * 
+	 * The code that correspond to all nucleotides that are not included in this
+	 * code. For example for {@link #A} would be {@link #B} (i.e. {@link #C},
+	 * {@link #G} or {@link #T}).
+	 * 
+	 * <p/>
+	 * There are a few special cases worth considering:
+	 * 
+	 * <ol>
+	 * <li> <code> {@link #N}.complement() == {@link #NaC} </code></li>
+	 * <li> <code> {@link #GAP}.complement() == {@link #NaC} </code></li>
+	 * <li> <code> {@link #NaC}.complement() == {@link #NaC} </code></li>
+	 * </ol>
+	 * 
+	 * Due to (1) and (2) complement is not invertible on {@link #N} nor on
+	 * {@link #GAP}.
+	 * 
+	 * @param isDNA
+	 *            indicates that it should return {@link #T} over {@link #U} as
+	 *            a complement of {@code #V} ({@code true}) or <i>vice-versa</i>
+	 *            ({@code false})
+	 * 
+	 * @return never {@code null}, but possible {@code #NaC} to indicate
+	 *         non-sense complements.
+	 */
+	public NucleotideIUPAC complement(boolean isDNA) {
+		switch (this) {
+		case NaC:
+		case N:
+		case GAP:
+			return NaC;
+		case V:
+			return isDNA ? T : U;
+		default:
+			return MASK_TO_CODE[(~this.maskValue) & N.maskValue];
+		}
+	}
+
+	/**
+	 * Complementary code assuming you are working on DNA.
+	 * 
+	 * Equivalent to
+	 * <code> {@link #complement(boolean) complement(true)} </code>
+	 * 
+	 * @see #complement(boolean)
+	 */
+	public NucleotideIUPAC complement() {
+		return this.complement(true);
+
 	}
 
 	/**

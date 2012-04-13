@@ -28,13 +28,12 @@ public abstract class AbstractGenotypingModel implements GenotypingModel {
 	
 	public static final String ERROR_RATE_KEY = "ER";
 	public static final String GENOTYPE_CONFIDENCE_KEY = "GC";
-
+	
 	public static final VCFFormatHeaderLine ERROR_RATE_FORMAT_LINE = new VCFFormatHeaderLine(ERROR_RATE_KEY, 1, VCFHeaderLineType.Float, "Average base error/quality of considered calls (cap by read mapping quality and BAQ if applied)");
 	public static final VCFFormatHeaderLine GENOTYPE_CONFIDENCE_FORMAT_LINE = new VCFFormatHeaderLine(GENOTYPE_CONFIDENCE_KEY, 1, VCFHeaderLineType.Float, "Genotype call confidence: indicates how well the data evidence fits the model assumed");
     public static final VCFFormatHeaderLine GENOTYPE_POSTERIORS_FORMAT_LINE = new VCFFormatHeaderLine(VCFConstants.GENOTYPE_POSTERIORS_KEY, -1, VCFHeaderLineType.Float, "Each possible genotype posterior probability, #0, #1, #2 ... #N");
 	
-	
-	private static final Collection<? extends VCFHeaderLine> HEADER_LINES = Collections.unmodifiableCollection(
+	protected static final Collection<? extends VCFHeaderLine> HEADER_LINES = Collections.unmodifiableCollection(
 			Arrays.asList(ERROR_RATE_FORMAT_LINE,GENOTYPE_CONFIDENCE_FORMAT_LINE, GENOTYPE_POSTERIORS_FORMAT_LINE)); 
 	
 	@Override
@@ -109,20 +108,14 @@ public abstract class AbstractGenotypingModel implements GenotypingModel {
 						post, i), false);
 	}
 
-	public Map<String, ?> genotypeAttributes(AlignmentContext ac, VariantPosteriors post, int i) {
+	public Map<String, Object> genotypeAttributes(AlignmentContext ac, VariantPosteriors post, int i) {
 		Map<String, Object> result = new HashMap<String, Object>();
-		StringBuffer sb = new StringBuffer();
-		post.getPosteriorsString(i, sb);
+
 		result.put(VCFConstants.GENOTYPE_POSTERIORS_KEY, post.getGenotypePosteriors(i));
 		if (!Double.isNaN(post.getGenotypeConfidence(i)))
-				result.put("GC",String.format("%.2f",post.getGenotypeConfidence(i)));
+				result.put(GENOTYPE_CONFIDENCE_KEY,String.format("%.2f",post.getGenotypeConfidence(i)));
 		if (!Double.isNaN(post.getAvgErrRate(i)))
-			result.put("ER",String.format("%.2f",post.getAvgErrRate(i)));
-		//Double pf = (Double) post.getAttribute(i,"PF");
-		//if (pf != null)
-		//	result.put("PF", pf > 0.00005 ? "0" : String.format("%.2g",pf));
-		//Double sf = (Double) post.getAttribute(i,"SF");
-		//if (sf != null)  result.put("SF", sf < 0.00005 ? "0" : String.format("%.2g",sf));
+			result.put(ERROR_RATE_KEY,String.format("%.2f",post.getAvgErrRate(i)));
 		
 		String bf = (String) post.getAttribute(i,"BF");
 		if (bf != null) result.put("BF", bf);

@@ -8,8 +8,8 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 
 import net.malariagen.gatk.genotyper.VariantPosteriors;
 import net.malariagen.gatk.genotyper.GenotypingContext;
@@ -19,7 +19,6 @@ import org.apache.commons.math.util.MathUtils;
 import org.apache.log4j.Logger;
 import org.broadinstitute.sting.gatk.contexts.AlignmentContext;
 import org.broadinstitute.sting.gatk.walkers.genotyper.GenotypePriors;
-import org.broadinstitute.sting.utils.codecs.vcf.VCFConstants;
 import org.broadinstitute.sting.utils.codecs.vcf.VCFFormatHeaderLine;
 import org.broadinstitute.sting.utils.codecs.vcf.VCFHeaderLine;
 import org.broadinstitute.sting.utils.codecs.vcf.VCFHeaderLineType;
@@ -37,15 +36,54 @@ public class DiscreteMixtureGenotypingModel extends AbstractGenotypingModel {
 	@GParam(shortName = "err", fullName = "ErrorRate", description = "Rate of error calls", offset = 1, required = false)
 	protected double errorRate = 0;
 	
-	private int genotypeCount = 0;
+	public static final String PFREQ_AVERAGE_KEY = "PF";
+	public static final String PFREQ_SD_KEY = "SF";	
+    public static final String BAYES_FACTORS_KEY = "BF";
+    
+    private static final VCFFormatHeaderLine PFREQ_FORMAT_LINE = 
+    		new VCFFormatHeaderLine(PFREQ_AVERAGE_KEY, 1, VCFHeaderLineType.Float, "Average posterior alternative allele frequency [0..1]");
+    
+    private static final VCFFormatHeaderLine PFREQ_SD_FORMAT_LINE = 
+    		new VCFFormatHeaderLine(PFREQ_SD_KEY, 1, VCFHeaderLineType.Float, "Posterior alternaive allele frequency std. deviation.");
 	
-	private double[] priorProbs;
+	private static final VCFFormatHeaderLine BAYES_FACTORS_FORMAT_LINE = 
+			new VCFFormatHeaderLine(BAYES_FACTORS_KEY, -1, VCFHeaderLineType.Float, "Bayes factors for possible genotypes #0 vs #1, #0 vs #2 ... #0 vs #N, #1 vs #2 ... #N-1 vs #N");
 	
-	private double[] oneMinusPriorProbs;
 	
-	private double[] priorFreqs;
+	private static final Collection<? extends VCFHeaderLine> HEADER_LINES;
 	
-	private GenotypePriors genotypePriors;
+	static {
+	   int nextIdx = AbstractGenotypingModel.HEADER_LINES.size(); 
+	   VCFHeaderLine[] headerLines = new VCFFormatHeaderLine[nextIdx + 3];
+	   headerLines = AbstractGenotypingModel.HEADER_LINES.toArray(headerLines);
+	   headerLines[nextIdx++] = BAYES_FACTORS_FORMAT_LINE;
+	   headerLines[nextIdx++] = PFREQ_FORMAT_LINE;
+	   headerLines[nextIdx++] = PFREQ_SD_FORMAT_LINE;
+	   @SuppressWarnings("unchecked")
+	   Collection<? extends VCFHeaderLine> hl = Collections.unmodifiableCollection(Arrays.asList(headerLines));
+	   HEADER_LINES = hl;
+	}
+	
+	
+    
+    @Override
+    public Collection<? extends VCFHeaderLine> getHeaderLines() {
+        return HEADER_LINES;
+    }
+
+	
+	private int properGenotypeCount = 0;
+	
+	private int contextGenotypeCount = 0;
+	
+	private GenotypePriors properGenotypePriors;
+
+	private double[] discretePriorProbs;
+	
+	private double[] discreteOneMinusPriorProbs;
+	
+	private double[] discretePriorFreqs;
+	
 	
 	public DiscreteMixtureGenotypingModel() {
 		prior = null;
@@ -69,17 +107,22 @@ public class DiscreteMixtureGenotypingModel extends AbstractGenotypingModel {
 	void init() {
 		super.init();
 		loadPrior();
-		buildGenotypePriors();
 		GenotypingContext gc = this.getGenotypingContext();
+		if (gc.getAlleleCount() <= 1)
+			contextGenotypeCount = gc.getAlleleCount();
+		else
+			contextGenotypeCount = properGenotypeCount;
 		int alleleCount = gc.getAlleleCount();
-		
-		if (genotypeCount != (1 << alleleCount) - 1) {
-			throw new GenotypingModelException(String.format("mismatch between prior genotypes (%d) and number of alleles (%d)",genotypeCount,(1 << alleleCount) - 1));
+		if (contextGenotypeCount <= 1) {
+			// just reference if anything proceed regardless of mismatch.
+		}
+		else if (properGenotypeCount != (1 << alleleCount) - 1) {
+			throw new GenotypingModelException(String.format("mismatch between prior genotypes (%d) and number of alleles (%d)",properGenotypeCount,(1 << alleleCount) - 1));
 		}
 	}
 	
 	private void loadPrior() {
-		if (priorProbs != null)
+		if (discretePriorProbs != null)
 			return;
 		loadPriorFile();
 	}
@@ -101,19 +144,19 @@ public class DiscreteMixtureGenotypingModel extends AbstractGenotypingModel {
 			if (ph.alleleCount > 2)
 				throw new GenotypingModelException("more than two alleles not yet supported");
 			
-			genotypeCount = (1 << ph.alleleCount) - 1;
+			properGenotypeCount = (1 << ph.alleleCount) - 1;
 			
 			String line;
-			priorProbs = new double[ph.categoryCount];
-			priorFreqs = new double[ph.categoryCount];
-			oneMinusPriorProbs = new double[ph.categoryCount];
+			discretePriorProbs = new double[ph.categoryCount];
+			discretePriorFreqs = new double[ph.categoryCount];
+			discreteOneMinusPriorProbs = new double[ph.categoryCount];
 			Integer[] indexes = new Integer[ph.categoryCount];
 			double probTotal = 0;
 			int idx = 0;
 			while ((line = r.readLine()) != null) {
 				indexes[idx] = idx;
-				probTotal += ph.readLine(line,priorProbs,priorFreqs,oneMinusPriorProbs,idx);
-				double prob = priorProbs[idx];
+				probTotal += ph.readLine(line,discretePriorProbs,discretePriorFreqs,discreteOneMinusPriorProbs,idx);
+				double prob = discretePriorProbs[idx];
 				if (prob < 0)
 					throw new GenotypingModelException("illeal prior probability");
 				idx++;
@@ -125,9 +168,9 @@ public class DiscreteMixtureGenotypingModel extends AbstractGenotypingModel {
 
 				@Override
 				public int compare(Integer arg0, Integer arg1) {
-					if (priorFreqs[arg0] < priorFreqs[arg1])
+					if (discretePriorFreqs[arg0] < discretePriorFreqs[arg1])
 						return -1;
-					else if (priorFreqs[arg1] < priorFreqs[arg0])
+					else if (discretePriorFreqs[arg1] < discretePriorFreqs[arg0])
 						return 1;
 					else 
 						return arg0 < arg1 ? -1 : 1;
@@ -135,18 +178,19 @@ public class DiscreteMixtureGenotypingModel extends AbstractGenotypingModel {
 			double[] newPriorFreqs = new double[ph.categoryCount];
 			double[] newPriorProbs = new double[ph.categoryCount];
 			for (int i = 0; i < ph.categoryCount; i++) {
-				newPriorFreqs[i] = priorFreqs[indexes[i]];
-			    newPriorProbs[i] = priorProbs[indexes[i]];
-			    oneMinusPriorProbs[i] = oneMinusPriorProbs[indexes[i]];
+				newPriorFreqs[i] = discretePriorFreqs[indexes[i]];
+			    newPriorProbs[i] = discretePriorProbs[indexes[i]];
+			    discreteOneMinusPriorProbs[i] = discreteOneMinusPriorProbs[indexes[i]];
 			}
-			priorFreqs = newPriorFreqs;
-			priorProbs = newPriorProbs;
-			if (priorFreqs[0] != 0) {
+			discretePriorFreqs = newPriorFreqs;
+			discretePriorProbs = newPriorProbs;
+			if (discretePriorFreqs[0] != 0) {
 				Logger.getLogger(this.getClass()).warn("there is no category with frequency 0 in prior");
 			}
-			if (priorFreqs[priorFreqs.length - 1] != 1) {
+			if (discretePriorFreqs[discretePriorFreqs.length - 1] != 1) {
 				Logger.getLogger(this.getClass()).warn("there is no category with frequency 1 in prior");
 			}
+			buildGenotypePriors();
 			
 		} catch (IOException e) {
 			throw new GenotypingModelException(String.format("unexpected I/O exception encountered while loading prior file '%s':",prior.toString()),e);
@@ -155,23 +199,21 @@ public class DiscreteMixtureGenotypingModel extends AbstractGenotypingModel {
 
 	@Override
 	public int getGenotypeCount() {
-		return genotypeCount;
+		return properGenotypeCount;
 	}
 
 	@Override
 	public GenotypePriors getGenotypePriors() {
-		if (genotypePriors == null)
-			throw new IllegalStateException("prior requested before set-up");
-		return genotypePriors;
+		return properGenotypePriors;
 	}
 	
-	public void buildGenotypePriors() {
-		double[] priors = new double[this.getGenotypeCount()];
+	private void buildGenotypePriors() {
+		double[] priors = new double[properGenotypeCount];
 		if (priors.length == 1)
 			priors[0] = 0;
 		else if (priors.length == 3) {
-			priors[0] =  (priorFreqs[0] <= 0.0000001) ? priorProbs[0] : Double.POSITIVE_INFINITY; 
-			priors[1] =  (priorFreqs[priorFreqs.length - 1] >= 0.999999) ? priorProbs[priorProbs.length - 1] : Double.POSITIVE_INFINITY;
+			priors[0] =  (discretePriorFreqs[0] <= 0.0000001) ? discretePriorProbs[0] : Double.POSITIVE_INFINITY; 
+			priors[1] =  (discretePriorFreqs[discretePriorFreqs.length - 1] >= 0.999999) ? discretePriorProbs[discretePriorProbs.length - 1] : Double.POSITIVE_INFINITY;
 			priors[2] = (Double.isInfinite(priors[0]) && Double.isInfinite(priors[1])) ? 0 : 
 				C1P * Math.log1p(- (Double.isInfinite(priors[0]) ? 0 : Math.pow(10, - priors[0] *0.1)) - 
 					(Double.isInfinite(priors[1]) ? 0 : Math.pow(10, - priors[1] * 0.1)));
@@ -180,16 +222,16 @@ public class DiscreteMixtureGenotypingModel extends AbstractGenotypingModel {
 			throw new GenotypingModelException("allele count > 2 unsupported, but genotype count is neither 1 or 3");
 
 		double hetero = 0;
-		for (int i = 0; i < priorFreqs.length;i++) {
-			double p = Math.pow(10, - 0.1 * priorProbs[i]);
-			double h = 2 * priorFreqs[i] * ( 1 - priorFreqs[i]);
+		for (int i = 0; i < discretePriorFreqs.length;i++) {
+			double p = Math.pow(10, - 0.1 * discretePriorProbs[i]);
+			double h = 2 * discretePriorFreqs[i] * ( 1 - discretePriorFreqs[i]);
 		    hetero += p * h;
 		}
 		
 		for (int i = 0; i < priors.length; i++)
 			priors[i] = Math.pow(10, - 0.1 * priors[i]);
 		
-		this.genotypePriors = new net.malariagen.gatk.genotyper.models.GenotypePriors(priors,hetero);
+		this.properGenotypePriors = new net.malariagen.gatk.genotyper.models.GenotypePriors(priors,hetero);
 	}
 
 	@Override
@@ -215,16 +257,24 @@ public class DiscreteMixtureGenotypingModel extends AbstractGenotypingModel {
 			}
 			mask <<= 1;
 		}
+		for (int i = alleleCount; i < 2; i++) {
+			if ((genotype & mask) != 0) {
+				if (firstFound < 0)
+					firstFound = i;
+				resultAlleleCount++;
+			}
+			mask <<= 1;		  	
+		}
 		if (resultAlleleCount == 0)
 			throw new GenotypingModelException("Number of alleles cannot be 0");
 		// Quick solution for a single allele genotypes.
 		if (resultAlleleCount == 1)
-			return Collections.singletonList(gc.getAllele(firstFound));
+			return Collections.singletonList(firstFound < alleleCount ? gc.getAllele(firstFound) : Allele.create("N",false));
 		int idx = 0;
 		List<Allele> result = new ArrayList<Allele>(resultAlleleCount);
 		while (genotype != 0) {
 			if ((genotype & 1) != 0)
-				result.add(allAlleles.get(idx));
+				result.add(idx < alleleCount ? allAlleles.get(idx) : Allele.create("N",false) );
 			genotype >>= 1;
 			idx++;
 		}
@@ -233,19 +283,25 @@ public class DiscreteMixtureGenotypingModel extends AbstractGenotypingModel {
 
 	@Override
 	public int getGenotypeIndex(List<Allele> alleles) {
-		if (alleles.size() != 1)
+		if (alleles.size() == 0)
 			return -1;
-		Allele a = alleles.get(0);
-		byte b = a.getBases()[0];
+		if (alleles.size() == 1) {
+			Allele a = alleles.get(0);
+			byte b = a.getBases()[0];
+			GenotypingContext gc = getGenotypingContext();
+			return gc.getAlleleIndex(b);
+		}
+		if (alleles.size() > 2) 
+			return -1;
+		Allele a1 = alleles.get(0);
+		Allele a2 = alleles.get(1);
 		GenotypingContext gc = getGenotypingContext();
-		int aIdx = gc.getAlleleIndex(b);
-		if (aIdx != -1)
-			return aIdx;
-		NucleotideIUPAC n = NucleotideIUPAC.fromBases(gc.getReferenceAllele().getBases()[0],b);
-		if (n.byteValue() == b)
-			return gc.getAlleleCount();
-		else
+		int  i1 = gc.getAlleleIndex(a1.getBases()[0]);
+		int  i2 = gc.getAlleleIndex(a2.getBases()[0]);
+		if (i1 == i2)
 			return -1;
+		else
+			return gc.getAlleleCount();
 	}
 
 	@Override
@@ -269,15 +325,15 @@ public class DiscreteMixtureGenotypingModel extends AbstractGenotypingModel {
 		}
 		int totalCount = refCount + nefCount;
 		double errorAvgRate = errorRate > 0 ? errorRate : errorSum / totalCount; 
-		double[] log10Numerators =  new double[priorProbs.length];
+		double[] log10Numerators =  new double[discretePriorProbs.length];
 		double pbc = C1P * MathUtils.binomialCoefficientLog(totalCount,nefCount);
 		double minLogExp = Double.POSITIVE_INFINITY;
 		double maxLogExp = Double.NEGATIVE_INFINITY;
-		for (int i = 0; i < priorProbs.length; i++) { 
-		    double pNef = priorFreqs[i] + errorAvgRate - 2 * priorFreqs[i] * errorAvgRate;
+		for (int i = 0; i < discretePriorProbs.length; i++) { 
+		    double pNef = discretePriorFreqs[i] + errorAvgRate - 2 * discretePriorFreqs[i] * errorAvgRate;
 		    double phredNef = phredOf(pNef);
 		    double phredRef = phredOf1p(pNef);
-		    log10Numerators[i] = - 0.1 * (priorProbs[i] + pbc + refCount * phredRef + nefCount * phredNef);
+		    log10Numerators[i] = - 0.1 * (discretePriorProbs[i] + pbc + refCount * phredRef + nefCount * phredNef);
 		    if (log10Numerators[i] < minLogExp)
 		    	minLogExp = log10Numerators[i];
 		    if (log10Numerators[i] > maxLogExp) {
@@ -291,23 +347,23 @@ public class DiscreteMixtureGenotypingModel extends AbstractGenotypingModel {
 		int gt1NumeratorCount = 0, gt2NumeratorCount = 0, gt0NumeratorCount = 0;
 		double gt1Log10Sum = 0, gt2Log10Sum = 0, gt0Log10Sum = 0;
 		double[] linearNumeratorMinusC = log10Numerators; // alias, will overwrite.
-		for (int i = 0; i < priorProbs.length; i++) {
-			if (priorFreqs[i] < 0.000001) 
+		for (int i = 0; i < discretePriorProbs.length; i++) {
+			if (discretePriorFreqs[i] < 0.000001) 
 				gt0Log10Sum += log10Numerators[i];
-			else if (priorFreqs[i] > 0.999999) 
+			else if (discretePriorFreqs[i] > 0.999999) 
 				gt1Log10Sum += log10Numerators[i];
 			else
 				gt2Log10Sum += log10Numerators[i];
 			linearNumeratorMinusC[i] = Math.pow(10,log10Numerators[i] - c);			
-			double freq =  priorFreqs[i] * linearNumeratorMinusC[i];
+			double freq =  discretePriorFreqs[i] * linearNumeratorMinusC[i];
 			sumFreq += freq;
-			sqSumFreq += priorFreqs[i] * freq; 
+			sqSumFreq += discretePriorFreqs[i] * freq; 
 			allSumMC += linearNumeratorMinusC[i];
-			if (priorFreqs[i] < 0.000001) {
+			if (discretePriorFreqs[i] < 0.000001) {
 			    gt0SumMC += linearNumeratorMinusC[i];
 			    gt0NumeratorCount++;
 			}
-			else if (priorFreqs[i] > 0.999999) {
+			else if (discretePriorFreqs[i] > 0.999999) {
 			    gt1SumMC += linearNumeratorMinusC[i];
 			    gt1NumeratorCount++;
 			}
@@ -327,8 +383,8 @@ public class DiscreteMixtureGenotypingModel extends AbstractGenotypingModel {
 		dest.setSamplePosteriors(sample, gt0PrePostMC, gt1PrePostMC, gt2PrePostMC);
 		int genotype = setGenotypeQuality(dest, sample, gt0PrePostMC, gt1PrePostMC, gt2PrePostMC);
 	    dest.setAvgErrRate(sample, C1P * Math.log(errorAvgRate));
-		dest.setAttribute(sample,"PF",avgFreq);
-		dest.setAttribute(sample,"SF",sdFreq);
+		dest.setAttribute(sample,PFREQ_AVERAGE_KEY,avgFreq);
+		dest.setAttribute(sample,PFREQ_SD_KEY,sdFreq);
 		setBayesianPriors(dest, sample, genotype, gt0PrePostMC, gt1PrePostMC, gt2PrePostMC);
 		return 1;
 	}
@@ -360,7 +416,7 @@ public class DiscreteMixtureGenotypingModel extends AbstractGenotypingModel {
 	    	}
 	    sb.setLength(sb.length() - 1);
 //	    System.err.println(String.format("%.2f %.2f %.2f",priors[0],priors[1],priors[2]));
-	    dest.setAttribute(sample, "BF", sb.toString());
+	    dest.setAttribute(sample, BAYES_FACTORS_KEY, sb.toString());
 	    if (worstBfactor != Double.POSITIVE_INFINITY) dest.setGenotypeConfidence(sample, worstBfactor);
 	}
 
@@ -563,6 +619,15 @@ public class DiscreteMixtureGenotypingModel extends AbstractGenotypingModel {
 
 	}
 	
+	@Override
+	public Map<String, Object> genotypeAttributes(AlignmentContext ac, VariantPosteriors post, int i) {
+		Map<String, Object> result = super.genotypeAttributes(ac,post,i);
+
+		String bf = (String) post.getAttribute(i,BAYES_FACTORS_KEY);
+		if (bf != null) result.put(BAYES_FACTORS_KEY, bf);
+		return result;
+	}
+	
 	private enum PriorFormat {
 		PRIOR	
 	}
@@ -571,27 +636,4 @@ public class DiscreteMixtureGenotypingModel extends AbstractGenotypingModel {
 		LINEAR, LOG, LN, PHRED
 	}
 	
-	
-	public static final String PFREQ_AVERAGE_KEY = "PF";
-	public static final String PFREQ_SD_KEY = "SF";	
-    public static final String BAYES_FACTORS_KEY = "BF";
-    
-    private static final VCFFormatHeaderLine PFREQ_FORMAT_LINE = 
-    		new VCFFormatHeaderLine(PFREQ_AVERAGE_KEY, 1, VCFHeaderLineType.Float, "Average posterior alternative allele frequency [0..1]");
-    
-    private static final VCFFormatHeaderLine PFREQ_SD_FORMAT_LINE = 
-    		new VCFFormatHeaderLine(PFREQ_SD_KEY, 1, VCFHeaderLineType.Float, "Posterior alternaive allele frequency std. deviation.");
-	
-	private static final VCFFormatHeaderLine BAYES_FACTORS_FORMAT_LINE = 
-			new VCFFormatHeaderLine(BAYES_FACTORS_KEY, -1, VCFHeaderLineType.Float, "Bayes factors for possible genotypes #0 vs #1, #0 vs #2 ... #0 vs #N, #1 vs #2 ... #N-1 vs #N");
-    
-    @Override
-    public Collection<? extends VCFHeaderLine> getHeaderLines() {
-		List<VCFHeaderLine> list = new LinkedList<VCFHeaderLine>();
-		list.addAll(super.getHeaderLines());
-		list.add(PFREQ_FORMAT_LINE);
-		list.add(PFREQ_SD_FORMAT_LINE);
-		list.add(BAYES_FACTORS_FORMAT_LINE);
-		return Collections.unmodifiableList(list);
-    }
 }

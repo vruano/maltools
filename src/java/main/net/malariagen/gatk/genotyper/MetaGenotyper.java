@@ -153,7 +153,6 @@ public class MetaGenotyper extends
 		if (verboseWriter != null)
 			verboseWriter
 					.println("AFINFO\tLOC\tREF\tALT\tMAF\tF\tAFprior\tAFposterior\tNormalizedPosterior");
-
 		annotationEngine = new VariantAnnotatorEngine(getToolkit(),
 				Arrays.asList(annotationClassesToUse), annotationsToUse);
 		MG_engine = new MetaGenotyperEngine(getToolkit(), UAC, logger,

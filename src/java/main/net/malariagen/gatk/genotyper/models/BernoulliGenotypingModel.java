@@ -67,8 +67,7 @@ public class BernoulliGenotypingModel extends AbstractGenotypingModel {
 
 	@Override
 	public int getGenotypeCount() {
-		GenotypingContext gc = getGenotypingContext();
-		return gc.getAlleleCount() >= 2 ? 2 : 1;
+		return 2;
 	}
 
 	@Override
@@ -77,8 +76,8 @@ public class BernoulliGenotypingModel extends AbstractGenotypingModel {
 			return Collections.singletonList(getGenotypingContext()
 					.getReferenceAllele());
 		} else if (genotype == 1) {
-			return Collections.singletonList(getGenotypingContext()
-					.getAllele(1));
+			return Collections.singletonList(getGenotypingContext().getAlleleCount() >= 2 ? getGenotypingContext()
+					.getAllele(1) : Allele.create("N",false));
 		} else {
 			return Collections.singletonList(Allele.NO_CALL);
 		}
@@ -187,14 +186,14 @@ public class BernoulliGenotypingModel extends AbstractGenotypingModel {
 			double qual = (postRefLogProb < postNefLogProb ? postNefLogProb
 					- postRefLogProb : postRefLogProb - postNefLogProb);
 			dest.setGenotypeQuality(sample, qual);
-			if (Double.isNaN(logPvalue)){
-				StringBuffer sb = new StringBuffer();
-				dest.getPosteriorsString(sample, sb);
-				System.err.println(" " + ac.getLocation().getStart() + " " + sample + " " + nefCount + " " + refCount + " " + x  + " " + " " + errorRate + " " + errorRateAvg + " "
-						+ refLogProb + " " + nefLogProb + " " + sb.toString()
-						+ " " + refLogPrior + " " + nefLogPrior + " "
-						+ postRefLogProb + " " + postNefLogProb + " " + qual + " " + logPvalue);
-			}
+//			if (Double.isNaN(logPvalue)){
+//				StringBuffer sb = new StringBuffer();
+//				dest.getPosteriorsString(sample, sb);
+//				System.err.println(" " + ac.getLocation().getStart() + " " + sample + " " + nefCount + " " + refCount + " " + x  + " " + " " + errorRate + " " + errorRateAvg + " "
+//						+ refLogProb + " " + nefLogProb + " " + sb.toString()
+//						+ " " + refLogPrior + " " + nefLogPrior + " "
+//						+ postRefLogProb + " " + postNefLogProb + " " + qual + " " + logPvalue);
+//			}
 			return 1;
 		} catch (Exception e1) {
 			throw new GenotypingModelException(e1);

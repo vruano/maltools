@@ -28,7 +28,7 @@ public class DepthPerAlleleByVariant implements InfoFieldAnnotation {
 			Map<String, AlignmentContext> stratifiedContexts, VariantContext vc) {
 		if (!vc.isSNP())
 			return null;
-		byte[] bases = new byte[vc.getNAlleles()];
+		byte[] bases = new byte[vc.getAlleles().size()];
 		if (bases.length == 0)
 			return null;
 		bases[0] = vc.getReference().getBases()[0];

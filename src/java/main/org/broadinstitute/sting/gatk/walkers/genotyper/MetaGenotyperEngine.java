@@ -14,6 +14,7 @@ import java.util.Set;
 
 
 import net.malariagen.gatk.csl.CSLFeature;
+import net.malariagen.gatk.filters.SnpListReadFilter;
 import net.malariagen.gatk.genotyper.GenotypeVariantFilterEmitMode;
 import net.malariagen.gatk.genotyper.GenotypingContext;
 import net.malariagen.gatk.genotyper.MetaArgumentCollection;
@@ -68,6 +69,8 @@ public class MetaGenotyperEngine extends UnifiedGenotyperEngine {
 	private ThreadLocal<GenotypingModel> genotypingModel = new ThreadLocal<GenotypingModel>();
 	
 	private int sampleCount;
+	
+	private SnpListReadFilter snpListReadFilter;
 	
 	public MetaGenotyperEngine(GenomeAnalysisEngine toolkit,
 			MetaArgumentCollection UAC, Logger logger,
@@ -168,28 +171,24 @@ public class MetaGenotyperEngine extends UnifiedGenotyperEngine {
 		if (model == null) {
 			return (metaUAC.OutputMode == OUTPUT_MODE.EMIT_ALL_SITES
 					&& metaUAC.GenotypingMode == GenotypeLikelihoodsCalculationModel.GENOTYPING_MODE.GENOTYPE_GIVEN_ALLELES ? generateEmptyContext(
-					tracker, refContext, null, rawContext) : generateEmptyContext(
-							tracker, refContext, null, rawContext));
+					tracker, refContext, null, rawContext) : null);
 		}
 
 
 		Map<String, AlignmentContext> stratifiedContext = getFilteredAndStratifiedContexts(
 				metaUAC, refContext, rawContext,
 				GenotypeLikelihoodsCalculationModel.Model.SNP);
-		if (stratifiedContext == null
-				|| gc.getAlleleCount() <= 1) {
+		if (stratifiedContext == null || rawContext.size() == 0) {
 			return (metaUAC.OutputMode == OUTPUT_MODE.EMIT_ALL_SITES
 					&& metaUAC.GenotypingMode == GenotypeLikelihoodsCalculationModel.GENOTYPING_MODE.GENOTYPE_GIVEN_ALLELES ? generateEmptyContext(
-					tracker, refContext, stratifiedContext, rawContext) : generateEmptyContext(
-							tracker, refContext, stratifiedContext, rawContext));
+					tracker, refContext, stratifiedContext, rawContext) : null);
 		}
 
-		if (gc.getAlleleCount() <= 1) {
-			return (metaUAC.OutputMode == OUTPUT_MODE.EMIT_ALL_SITES
-					&& metaUAC.GenotypingMode == GenotypeLikelihoodsCalculationModel.GENOTYPING_MODE.GENOTYPE_GIVEN_ALLELES ? generateEmptyContext(
-					tracker, refContext, stratifiedContext, rawContext) : generateEmptyContext(
-							tracker, refContext, stratifiedContext, rawContext));
-		}
+//		if (gc.getAlleleCount() <= 1) {
+//			return (metaUAC.OutputMode == OUTPUT_MODE.EMIT_ALL_SITES
+//					&& metaUAC.GenotypingMode == GenotypeLikelihoodsCalculationModel.GENOTYPING_MODE.GENOTYPE_GIVEN_ALLELES ? generateEmptyContext(
+//					tracker, refContext, stratifiedContext, rawContext) : null);
+//		}
 
 		GenotypingModel gmodel = getGenotypingModel();
 		if (gmodel == null)
