@@ -21,8 +21,8 @@ public class CSLCodec implements FeatureCodec<CSLFeature> {
 		int nextIndex = fields.length == 5 ? 1 : 0;
 		feature.setSequence(fields[nextIndex++]);
 		feature.setPosition(Integer.parseInt(fields[nextIndex++]));
-		feature.setReference(Byte.parseByte(fields[nextIndex++]));
-		feature.setAlternative(Byte.parseByte(fields[nextIndex++]));
+		feature.setReference((byte) fields[nextIndex++].charAt(0));
+		feature.setAlternative((byte) fields[nextIndex++].charAt(0));
 		return feature;
 	}
 

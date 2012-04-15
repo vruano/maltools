@@ -72,7 +72,7 @@ my $AGV_HOME = $ENV{AGV_HOME} || $ENV{PGV_HOME} || guess_home();
 
 sub template_dir {
   my ($class,@others) = @_;
-  return catfile($AGV_HOME,"resources","templates",@others); 
+  return resolve_config()->get_resource('templates',@others);
 }
 
 our $config = resolve_config();

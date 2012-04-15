@@ -124,7 +124,6 @@ sub _export_type {
      || $stat_sf->mtime > $stat_df->mtime) { 
    my $df_dir = dirname($sf);
    File::Path::make_path($df_dir);
-   #$self->add_copy_commands("lustre-copy file://$sf file://$rdf");
    $self->_rcopy($sf,$df);
   }
   return $df;
@@ -251,12 +250,14 @@ sub _scratch_file {
 sub _rcopy {
   my ($self,$source,$dest) = @_;
   $source .= '/' if (-d $source && $source !~ /\/$/);
+  return if ($source eq $dest);
   $self->_rsync()->exec({ src => $source, dest => $dest}) or warn "rsync from '$source' to '$dest' failed $? $! $@\n";
 }
 
 sub quota {
   my $self = shift;
   my $root = $self->root;
+  return 100000000;
   my @lines = `df -B 1024 $root`;
   $? and die "could not determine quota";
   

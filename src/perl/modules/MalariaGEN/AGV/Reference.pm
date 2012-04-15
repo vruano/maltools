@@ -56,6 +56,14 @@ sub exists {
   return -e $self->sequence_file;
 }
 
+sub location {
+  my $self = shift;
+  my $chr = shift;
+  my $pos = shift || 1;
+  require MalariaGEN::AGV::Reference::Location;
+  return MalariaGEN::AGV::Reference::Location->new(reference => $self, sequence => $chr, position => $pos);
+}
+
 sub _annotation_file_builder {
    my $self = shift;
    my $result = $self->sequence_file;

@@ -80,7 +80,7 @@ sub pipeline {
   return $self->error_return("manifest file '$manifest' is not a regular file") unless -f $manifest;
   return $self->error_return("manifest file '$manifest' cannot be read, wrong permissions") unless -r $manifest;
 
-  return $self->error_return('you must provide a destination directory using option -d') unless $dest_dir;
+  return $self->error_return('you must provide a destination directory using option -b') unless $dest_dir;
   return $self->error_return("destination directory '$dest_dir' is in fact not a directory") if -e $dest_dir && ! -d $dest_dir;
  
   my $pipeline_class; 
@@ -90,7 +90,7 @@ sub pipeline {
   }
 
   my $manifest_object = MalariaGEN::AGV::Manifest::Pipeline->new(file => $manifest,
-                       variables => { softdir => $ENV{PGV_HOME}, outdir => '.', basedir => $dest_dir, prog => basename($0)} )
+                       variables => { %vars, softdir => $ENV{PGV_HOME}, outdir => '.', basedir => $dest_dir, prog => basename($0)} )
     or return $self->error_return("could not load manifest '$manifest'");
 
   unless($type) {

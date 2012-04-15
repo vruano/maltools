@@ -65,6 +65,7 @@ sub run_job {
   my $retries = $self->running_options->{retries};
   my $code = 0;
   $| = 1;
+  local $ENV{TMPDIR} = $job->wd;
   do {
     print STDERR "Tries left: " . ($retries + 1) . "\n"   if ($code != 0);
     my $qsub_output;
@@ -94,7 +95,7 @@ sub run_job {
     $job->error_message($@);
   }
   else {
-    #eval { remove_tree($job->wd); };
+    eval {}; # remove_tree($job->wd); };
   }
   return $return;
 }
@@ -153,11 +154,10 @@ sub qsub_command {
 
 sub _qsub_command_memory_arguments {
   my ($self,$job) = @_;
-  my $memory = $self->running_options()->{memory} || $job->memory;
+  my $memory = $self->running_options()->{memory} || 2000;
   $job->memory($memory);
-  my $hv_mem = int(1 + $memory / $job->cpu_count) * 2;
-  #return ();
-  return ("-l h_vmem=${hv_mem}M");
+  my $h_vmem = $memory;
+  return ("-l h_vmem=${h_vmem}M");
 }
 
 sub _qsub_command_temp_arguments {
@@ -306,6 +306,10 @@ sub _export_outputs {
   foreach my $sfile (keys %$mvs) {
     my $ofile = $mvs->{$sfile}; 
     print STDERR "Copying outputs back from Scratch area ...\n" unless $message_shown++;
+    if ((! -e $sfile) && ($job->return_code == 0)) { # give it a chance to sync remote files
+       system("sync");
+       sleep(10);
+    }
     if (-e $sfile) {
       if ($sfile ne $ofile) {
         print STDERR "\t$ofile <<<< $sfile\n";

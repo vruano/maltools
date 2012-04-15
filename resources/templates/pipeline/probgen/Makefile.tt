@@ -2,10 +2,11 @@ OUTDIR=.
 ALIGNMENTS_PATH=[% manifest.get_path('alignments') %]
 SNPSDATA_PATH=[% manifest.get_path('snpsdata') %]
 COVERAGE_PATH=[% manifest.get_path('coverage') %]
-TMP_DIR=[% manifest.get_path('temp') || './tmp' %]
+TMPDIR=[% manifest.get_path('temp') || './tmp' %]
 
 PGV=[% program %]
-CANDIDATE_SNPS_LIST=[% manifest.get_parameter('candidateSnps') == 'all' ? 'all' : manifest.get_parameter('candidateSnpList')  %]
+[% candidateList = manifest.get_parameter('candidateSnpList') || 'all' %]
+CANDIDATE_SNPS_LIST=[% candidateList %]
 REFERENCE=[% manifest.get_reference %]
 MAX_RANDOM_SLEEP=60
 
@@ -13,11 +14,18 @@ ALL_SAMPLE_NAMES=[% manifest.get_sample_ids.join(' ') %]
 ALL_ALIGNMENTS=$(addprefix $(ALIGNMENTS_PATH)/,$(addsuffix .bam,$(ALL_SAMPLE_NAMES)))
 ALL_INDEXES=$(addprefix $(ALIGNMENTS_PATH)/,$(addsuffix .bam.bai,$(ALL_SAMPLE_NAMES)))
 ALL_ALIGNMENT_AND_INDEXES=$(join $(ALL_ALIGNMENTS), $(ALL_INDEXES))
-GENOTYPER=MetaGenotyper
-INTERVALS=[% manifest.get_intervals.values.join(' ') %]
-INTERVALS_AT=$(subst :,@,$(INTERVALS))
 
-$(shell mkdir -p $(ALIGNMENTS_PATH) $(SNPSDATA_PATH) $(COVERAGE_PATH) $(TMP_DIR))
+GENOTYPER=MetaGenotyper
+
+GENOTYPER_OPTIONS=\
+[% INCLUDE genotyper_options %]
+
+
+INTERVALS=$(shell cat ./interval.list)
+INTERVALS_AT=$(subst :,@,$(INTERVALS))
+INTERVAL_VCFS=$(addprefix $(TMPDIR)/all_,$(addsuffix .vcf,$(INTERVALS_AT)))
+
+$(shell mkdir -p $(ALIGNMENTS_PATH) $(SNPSDATA_PATH) $(COVERAGE_PATH) $(TMPDIR))
 
 .DELETE_ON_ERROR:
 
@@ -25,23 +33,27 @@ $(shell mkdir -p $(ALIGNMENTS_PATH) $(SNPSDATA_PATH) $(COVERAGE_PATH) $(TMP_DIR)
 
 all: variation
 
-variation: $(OUTDIR)/all.vcf
+variation: $(OUTDIR)/all.vcf.gz
 
-$(OUTDIR)/all.vcf: $(addprefix $(TMP_DIR)/all_,$(addsuffix .vcf,$(INTERVALS_AT)))
-	$(PGV) merge vcf $(addprefix -i , $^) -r $(REFERENCE) -o $@
+$(TMPDIR)/interval-vcf.list: ./interval.list
+	cat $< | grep -v ^$$ | tr ":" "@" | awk '{ print "$(TMPDIR)/all_"$$0".vcf" }' > $@
 
-$(TMP_DIR)/all_%.vcf: $(ALL_ALIGNMENTS)
-	$(PGV) genotype -g $(GENOTYPER) -r $(REFERENCE) $(addprefix -i ,$(ALL_ALIGNMENTS)) -l $(subst @,:,$*) [% INCLUDE genotyper_options %] -o $@ 
+$(OUTDIR)/all.vcf.gz: $(TMPDIR)/interval-vcf.list $(INTERVAL_VCFS)
+	$(PGV) concat --vcf-files $< -r $(REFERENCE) -o $@.tmp
+	gzip < $@.tmp > $@
+	rm $@.tmp
 
+.SECONDARY: $(INTERVAL_VCFS)
+.PRECIOUS: $(INTERVALS_VCFS)
 
+$(TMPDIR)/all_%.vcf: $(ALL_ALIGNMENTS) [% IF candidateList != 'all' %]$(CANDIDATE_SNPS_LIST)[% END %]
+	$(PGV) genotype -g $(GENOTYPER) -r $(REFERENCE) $(addprefix -i ,$(ALL_ALIGNMENTS)) -l $(subst @,:,$*) $(GENOTYPER_OPTIONS) -o $@ 
 
 alignments: init $(ALL_ALIGNMENTS)
 
 init:
 	@echo "Starting processing...."
-	mkdir -p $(TMP_DIR)
-
-[% INCLUDE candidate_snps_rules | trim %]
+	mkdir -p $(TMPDIR)
 
 [% FOREACH sample_id IN manifest.get_sample_ids %]
 [% INCLUDE sampleRules.inc sample_id = sample_id  | trim %]
@@ -52,37 +64,21 @@ init:
 
 .SECONDARY : %.bam.bai
 
-$(TMP_DIR)/%.som : $(ALIGNMENTS_PATH)/%.bam [% IF manifest.get_parameters('candidateSnps') != 'all' %]$(CANDIDATE_SNPS_LIST)[% END %]
-	$(PGV) som-filter -i $< -o $@ --snpList=$(CANDIDATE_SNPS_LIST)
-
-.SECONDARY: $(TMP_DIR)/%.som
-
-.PHONY: %.random-sleep
-
-%.stat-sleep :
-	test -e $* || random-sleep $(MAX_RANDOM_SLEEP)
-
-[%###################################%]
-[% BLOCK candidate_snps_rules %]
-[% candidateSnps = manifest.get_parameter('candidateSnps') %]
-[% IF candidateSnps == 'calculate' %] 
-
-$(TMP_DIR)/%.samtools-vcf : $(ALIGNMENTS_PATH)/%.bam 
-	$(PGV) genotype -g Samtools -i $< -o $@
-
-.SECONDARY: $(TMP_DIR)/%.samtools-vcf
-
-$(CANDIDATE_SNPS_LIST) : $(addprefix $(TMP_DIR)/, $(addsuffix .samtools-vcf, $(ALL_SAMPLE_NAMES)))
-	$(PGV) candidate-snps create -r $(REFERENCE) $(addprefix -i ,$^) -o $@ 
-
-.PRECIOUS: $(CANDIDATE_SNPS_LIST)
-[% ELSIF ! candidateSnps == 'provided' %]
-$(CANDIDATE_SNPS_LIST) :
-	@echo "Candidate SNPs list missing, please provide one at $(CANDIDATE_SNPS_LIST)"
-	@exit 1
-[% END %]
-[% END %]
-
 [%- BLOCK genotyper_options -%]
--option smodel=[% manifest.get_parameter('model') %]
+[%- IF candidateList != 'all' -%]
+	--rod csl,CSL=$(CANDIDATE_SNPS_LIST)\
+
 [%- END -%]
+[%- options = manifest.get_parameter('genotyper','options') -%]
+[%- FOREACH k IN options.keys -%]
+ [%- v = options.$k -%]
+ [%- IF v.size == 1 -%]
+ 	--option '[% k %]=[% v %]'\
+
+ [%- ELSE -%]
+	--option '[% k %]=[% v.join(',') %]'\
+
+ [%- END -%]
+[%- END -%]
+[%- END -%]
+

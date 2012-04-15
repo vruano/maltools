@@ -30,9 +30,7 @@ my %genotypers = (
            mbq => 20,
            smodel => 'Bernoulli/0.0001/',
            mgc => -200000,
-           out_mode => qw(EMIT_ALL_SITES),
            mgq => 0,
-           gem => qw(EMIT_ALL),
          },
          rods => {
             uniqueness => { type => 'UQN', extension => '.uq'},
@@ -89,6 +87,7 @@ sub execute {
   my $max_depth = 100;
   my @files = ();
   my %options = ();
+  my %rods = ();
   GetOptions(
     "input|i=s@" => \@files,
     "genotyper|G=s" => \$genotyper, 
@@ -97,6 +96,7 @@ sub execute {
     "e=s" => \$errput, 
     "l=s@" => \@regions,
     "reference|ref|r=s" => \$reference,
+    "rod=s" => \%rods,
     'option|opt=s%' => \%options);
   exists($genotypers{$genotyper}) or return $self->error_return("unsupported genotyper '$genotyper' ");
   
@@ -114,11 +114,29 @@ sub execute {
   my $tool = MalariaGEN::AGV::Tool->tool_by_name($genotyper->{tool});
   my %genotyper_options = %{$genotyper->{options}};
   $genotyper_options{$_} = $options{$_} foreach  (keys %options);
+  my $rods = $genotyper->{rods};
+  if (keys %rods) {
+     foreach my $k (keys %rods) {
+        my $file = $rods{$k};
+        my $type = "";
+        $type = $1 if $k =~ s/,(\S+)$//;
+        $rods->{$k} = { type => $type, file => $file };
+     }
+  }
+  my $annotations = $genotyper->{annotations};
+  if (exists($options{annotations}) || exists($options{annotation}) || exists($options{A})) {
+    my @anno = ();
+    push @anno, ( split(/\s*,\s*/,delete($options{annotation}) ) ) if  exists($options{annotation});
+    push @anno, ( split(/\s*,\s*/,delete($options{annotations}) ) ) if  exists($options{annotations});
+    push @anno, ( split(/\s*,\s*/,delete($options{A}) ) ) if  exists($options{A});
+    $annotations = [ @anno ];
+  }
+
   my $job = $tool->job(
       inputs => { 
           reference => $reference,
           genotyper => $genotyper->{genotyper},
-          annotations => $genotyper->{annotations},
+          annotations => $annotations,
           rods => $genotyper->{rods},
           options => \%options,
           samples => [@files] , 

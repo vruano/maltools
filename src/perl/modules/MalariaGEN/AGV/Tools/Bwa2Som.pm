@@ -48,7 +48,8 @@ __DATA__
   $snps = $J->input('snps');
   $ref  = $J->input('ref');
   $in   = $J->input('in');
-  $out  = $J->output('out'); '' }
+  $out  = $J->output('out');
+  $tmpdir = $J->tempdir(); '' }
 
 use Getopt::Long qw(:config ignore_case);
 use File::Temp qw(tempfile);
@@ -61,8 +62,9 @@ my $snpList = "{ $snps || 'all' }";
 my $reference = "{ $ref }";
 my $input = "{ $in }";
 my $output = "{ $out }";
+my $tmpdir = "{ $tmpdir }";
 
-my $bwa2som_arguments = "--bam=$input --ref=$reference --indels=all --out=$output --snps=$snpList --fix";
+my $bwa2som_arguments = "--tmpdir=$tmpdir --bam=$input --ref=$reference --indels=all --out=$output --snps=$snpList";
 
 `bwa2som $bwa2som_arguments 2> /dev/stderr`;
 if ($?) \{

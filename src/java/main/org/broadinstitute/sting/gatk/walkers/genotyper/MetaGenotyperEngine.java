@@ -218,6 +218,10 @@ public class MetaGenotyperEngine extends UnifiedGenotyperEngine {
 				.calculateVariantPhredQuality(stratifiedContext,newVc.getGenotypes()) / 10.0;
 		if (negLog10VarQual > 99999.99) negLog10VarQual = 99999.99;
 		Set<String> filters;
+                if (!Double.isNaN(negLog10VarQual) &&
+                                   metaUAC.STANDARD_CONFIDENCE_FOR_EMITTING >negLog10VarQual * 10) {
+                   return null;
+                }
 		if (!Double.isNaN(negLog10VarQual)
 				&& metaUAC.STANDARD_CONFIDENCE_FOR_CALLING > negLog10VarQual * 10) {
 			filters = Collections.singleton(LOW_QUAL_FILTER_NAME);

@@ -35,7 +35,7 @@ sub _best_area {
     return $close_areas[0] if $#close_areas >= 0;
   }
   if (defined $file_or_dir) {
-    my @file_areas = grep { $_->exists($file_or_dir) } @areas;
+    my @file_areas = grep { $_->in_scratch($file_or_dir) } @areas;
     return $file_areas[0] if $#file_areas >= 0;
   }
   if (time() - $self->_last_best_time < 10) {

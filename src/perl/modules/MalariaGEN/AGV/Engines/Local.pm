@@ -50,7 +50,11 @@ sub run_job {
   else {
     $cmd =~ s/^\$SHELL/tcsh/;
   }
-  eval { print STDERR $cmd,"\n...";system($cmd) };
+  eval {
+    local $ENV{TMPDIR} = $self->temp_root;  
+    print STDERR $cmd,"\n...";
+    system($cmd) 
+  };
   print STDERR "\n";
   my $code = $?;
   my $error = $@;

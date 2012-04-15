@@ -153,11 +153,13 @@ sub _run {
   my $self = shift;
   my %args = @_;
   my $basedir = $args{basedir} || getcwd();
+  my $out_file = catfile($basedir,'output.txt');
+  my $err_file = catfile($basedir,'error.txt');
   my $threads = $args{cpus} || 200;
   my $make_opts = $args{mkopts} || '-k';
   my $target = $args{target} || 'all';
-  print STDERR "make -C $basedir -j $threads $make_opts $target\n";
-  system("make -C $basedir -j $threads $make_opts $target");
+  print STDERR "make -C $basedir -j $threads $make_opts $target 2> $err_file 1> $out_file\n";
+  system("make -C $basedir -j $threads $make_opts $target 2> $err_file 1> $out_file");
   $? and die "Errors executing the pipeline (code=$?)";
 }
 

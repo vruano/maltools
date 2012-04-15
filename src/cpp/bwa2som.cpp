@@ -1,7 +1,6 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include <string.h>
 #include <stdarg.h>
 #include <getopt.h>
 
@@ -13,6 +12,7 @@
 
 #include <iostream>
 #include <fstream>
+#include <cstring>
 #include <string>
 #include <vector>
 #include <map>
@@ -366,11 +366,15 @@ void TBAMreader::read_bam_file ( int mode ) {
 	
 //	if ( width * 50 < tmp.end - tmp.beg ) o_arrows = false ;
 
-	
+        cerr << "opening file....";
+        cerr <<  bam_file_name;	
+        cerr << "\n";
 	if ( bam_out_file == NULL ) {
 		bam_out_file = bam_open ( bam_file_name.c_str() , "wh" ) ;
+                cerr << "done\n";
 		bam_header_write ( bam_out_file , tmp.in->header ) ;
 	}
+        cerr << "continue\n";
 	
 	if ( bam_aligner.draw ) draw->set_range () ;
 	total_snps = 0 ;
@@ -579,7 +583,7 @@ int die_usage () {
 	cout << "-R --region  REGION   Region [optional]" << endl ;
 	cout << "-f --fix              Fix single-read flag (doubles runtime, for LookSeq etc.) [optional]" << endl ;
 	cout << "-i --iv      INT      InDel position variance [optional]" << endl ;
-	return 0 ;
+	return 1 ;
 }
 
 void run_regions ( string region , string ref_file , int mode ) {
@@ -613,11 +617,13 @@ int main(int argc, char **argv) {
 
 	string view = "indel" ;
 	string bam_file , ref_file , region , bam_file_name ;
+        string tmp_dir = "";
 	string snp_list , indel_list ;
 	int indel_variance = 0 ;
 	int mapq = 0 ;
 	bool fixbam = false ;
 	static struct option long_options[] = {
+                { "tmpdir" , optional_argument, 0, 't' },
 		{ "bam" , optional_argument , 0 , 'b' } ,
 		{ "ref" , optional_argument , 0 , 'r' } ,
 		{ "region" , optional_argument , 0 , 'R' } ,
@@ -641,6 +647,7 @@ int main(int argc, char **argv) {
 			case 'o' : bam_file_name = optarg ; break ;
 			case 'f' : fixbam = true ; break ;
 			case 'm' : mapq = atoi ( optarg ) ; break ;
+                        case 't' : tmp_dir = optarg; break;
 			case 'i' : indel_variance = atoi ( optarg ) ; break ;
 		}
 	}
@@ -658,16 +665,19 @@ int main(int argc, char **argv) {
 
 	if ( bam_aligner.fix_single_reads ) {
 		if ( 1 ) { // Use /tmp directory
-			char t[] = "/tmp/bwa2somXXXXXX";
+			string templt = (tmp_dir.empty()) ? "bwa2somXXXXXX" : tmp_dir + "/bwa2somXXXXXX";
+  			char *t = new char[templt.size() + 1];
+			strcpy(t,templt.c_str());
 			int fd;
 			fd = mkstemp(t);
 			close ( fd ) ;
 			bam_aligner.bam_file_name = t ;
+                        delete[] t;
 		} else {
 			bam_aligner.bam_file_name = bam_file_name + ".tmp" ;
 		}
 
-		cout << "Using temp file " << bam_aligner.bam_file_name << endl ;
+		cerr << "Using temp file " << bam_aligner.bam_file_name << endl ;
 	} else bam_aligner.bam_file_name = bam_file_name ;
 
 
@@ -679,7 +689,7 @@ int main(int argc, char **argv) {
 	run_regions ( region , ref_file , 0 ) ;
 	
 	if ( bam_aligner.fix_single_reads ) {
-		cout << "Fixing BAM file ..." << endl ;
+		cerr << "Fixing BAM file ..." << endl ;
 		bam_file = bam_aligner.bam_file_name ;
 		
 		bam_aligner = TBAMreader () ;

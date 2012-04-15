@@ -71,7 +71,8 @@ sub script_template {
      . ' { join(" ",map {"-L $_"} @{$J->input("intervals")} ); } ' 
      . ' { join(" ",map {"-$_ " . $J->input("options")->{$_} } keys %{$J->input("options")}); } '
      . '{ $ref_base = $J->input("reference"); $ref_base =~ s/\.fa(sta)?$//; "" }'
-     . ' { join(" ",map {"-B:$_," . $J->input("rods")->{$_}->{type} . " " . $ref_base . $J->input("rods")->{$_}->{extension} } keys %{$J->input("rods")} )}'
+     . ' { join(" ",map {"-B:$_," . $J->input("rods")->{$_}->{type} . " " . $ref_base . $J->input("rods")->{$_}->{extension} } grep { exists($J->input("rods")->{$_}->{extension}) } keys %{$J->input("rods")} )}'
+     . ' { join(" ",map {"-B:$_," . $J->input("rods")->{$_}->{type} . " " . $J->input("rods")->{$_}->{file} } grep { exists($J->input("rods")->{$_}->{file}) } keys %{$J->input("rods")} )}'
      . ' -o {$J->output("out")}' . "\n" );
 }
 

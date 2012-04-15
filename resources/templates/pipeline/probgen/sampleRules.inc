@@ -19,16 +19,6 @@ $(TMP_DIR)/[% source.file_basename %]: $(TMP_DIR)/[% source.file_basename %].pre
 
 .SECONDARY: $(TMP_DIR)/[% source.file_basename %].pre
 
-  [%- IF source.url.match('^irods:') -%]
-$(TMP_DIR)/[% source.file_basename %].pre:	| $(TMP_DIR)/[% source.file_basename %].stat-sleep
-	irsync -N 0 i:[% source.full_filename %] $@
-  
-  [%- ELSE -%]
-$(TMP_DIR)/[% source.file_basename %].pre: [% source.full_filename %]
-	ln [% source.full_filename %] $@ || rsync [% source.full_filename %] $@
-  
-  [%- END -%]
-
 [%- END ~%]
 
 

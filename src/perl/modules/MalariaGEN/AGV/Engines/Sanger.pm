@@ -60,6 +60,7 @@ sub run_job {
   my $retries = $self->running_options->{retries};
   my $code = 0;
   my $uses_standard_io = $job->uses_standard_io;
+  local $ENV{TMPDIR} = $job->wd;
   do {
     my $bsub_output;
     $bsub_output = IO::Pipe->new();

@@ -39,8 +39,7 @@ override '_set_variable_hash' => sub {
 
 sub get_parameter {
   my $self = shift;
-  my $parameters = $self->get('parameters') || {};
-  return map { $parameters->{$_}} @_;
+  return $self->get('parameters',@_) || undef;
 }
 
 sub get_sample_ids {
@@ -121,9 +120,9 @@ sub _set_samples {
 sub auto_complete {
     my $self = shift;
     my %options = @_;
-    my $freeze = $options{freeze};
+    my $freeze = $options{freeze} || $self->get_variable('freeze');
     $freeze = MalariaGEN::AGV::DataFreeze->new(file => $freeze) if $freeze && ref($freeze) eq "";
-    my $samtrak = $options{samtrak};
+    my $samtrak = $options{samtrak} || $self->get_variable('samtrak');
     if ($freeze) {
         $self->_auto_complete_from_freeze($freeze);
     }
