@@ -13,6 +13,11 @@ sub help_summary {
    return 'add variant information to a vcf file';
 }
 
+
+sub hidden {
+   return 1;
+}
+
 sub help_text {
    return "variant-info\n\t" .
           $_[0]->help_summary . "\n" .

@@ -15,6 +15,10 @@ sub help_summary {
    return 'compare two alignments';
 }
 
+sub hidden {
+   return 1;
+}
+
 sub help_text {
    return "genotype\n\t" .
           $_[0]->help_summary . "\n" .

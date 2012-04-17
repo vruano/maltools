@@ -17,6 +17,10 @@ sub help_summary {
    return 'realigns sample BAM files around indels';
 }
 
+sub hidden {
+  return 1;
+}
+
 sub help_text {
    return "indel-realign\n\t" .
           $_[0]->help_summary . "\n" .

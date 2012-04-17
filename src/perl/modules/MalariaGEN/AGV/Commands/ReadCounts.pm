@@ -11,6 +11,10 @@ use MalariaGEN::AGV::Tool;
 use Getopt::Long;
 use IO::File;
 
+sub hidden {
+  return 1;
+}
+
 sub help_summary {
    return 'genotypes a set of samples';
 }

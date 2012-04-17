@@ -13,6 +13,10 @@ sub help_summary {
    return 'mark duplicate read in a sam/bam file';
 }
 
+sub hidden {
+  return 1;
+}
+
 sub help_text {
    return "map\n\t" .
           $_[0]->help_summary . "\n" .

@@ -15,6 +15,11 @@ use IO::File;
 
 has '+engine_name' => ( default => 'local' );
 
+
+sub hidden {
+   return 1;
+}
+
 sub help_summary {
    return 'test command gives out the engine name';
 }

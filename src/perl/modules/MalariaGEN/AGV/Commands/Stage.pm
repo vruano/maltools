@@ -14,6 +14,10 @@ sub help_summary {
    return 'import-export files from data repository to Sanger\'s farm scratch area';
 }
 
+sub hidden {
+  return 1;
+}
+
 sub help_text {
    return "scratch:\n\t" .
           "import-exprot files from data repository to Sanger\'s farm scratch area\n" .

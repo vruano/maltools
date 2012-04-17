@@ -14,6 +14,10 @@ use MalariaGEN::AGV::Engines::Sanger;
 use Getopt::Long;
 extends 'MalariaGEN::AGV::Command';
 
+sub hidden {
+  return 1;
+}
+
 sub help_summary {
    return 'constructs cross accuracy report material from a set of cross matrices';
 }

@@ -17,6 +17,11 @@ sub help_summary {
    return 'filters an alignment reads using the Snp-o-Matic approach (Bwa2Som)';
 }
 
+
+sub hidden {
+   return 1;
+}
+
 sub help_text {
    return "snps-list\n\t" .
       $_[0]->help_summary . "\n" .

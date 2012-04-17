@@ -13,6 +13,11 @@ use MalariaGEN::AGV::Config qw(data_config
 use Getopt::Long;
 extends 'MalariaGEN::AGV::Command';
 
+
+sub hidden {
+  return 1;
+}
+
 sub help_summary {
    return 'constructs cross matrices directory from a given variants file (VCF)';
 }

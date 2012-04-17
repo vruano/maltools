@@ -12,9 +12,15 @@ use MalariaGEN::AGV::Engines::Sanger;
 use Getopt::Long qw(:config no_ignore_case);
 extends 'MalariaGEN::AGV::Command';
 
+sub hidden {
+  return 1;
+}
+
 sub help_summary {
    return 'Add cross and genotype and error calls to existing vcf';
 }
+
+
 
 sub help_text {
    return "cross-calls\n\t" .

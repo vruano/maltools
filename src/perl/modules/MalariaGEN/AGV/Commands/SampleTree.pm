@@ -15,6 +15,9 @@ has '+engine_name' => ( default => 'local' );
 sub help_summary {
    return 'create sample tree representations based on a set of distance matrices';
 }
+sub hidden {
+  return 1;
+}
 
 sub help_text {
    return "sample-distance\n\t" .

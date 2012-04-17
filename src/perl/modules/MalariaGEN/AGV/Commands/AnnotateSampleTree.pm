@@ -14,6 +14,11 @@ use URI::Escape;
 extends 'MalariaGEN::AGV::Command';
 
 
+
+sub hidden {
+  return 1;
+}
+
 has '+engine_name' => ( default => 'local' );
 
 sub help_summary {

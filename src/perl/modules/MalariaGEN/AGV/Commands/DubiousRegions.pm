@@ -18,6 +18,10 @@ sub help_summary {
    return 'genotypes a set of samples';
 }
 
+sub hidden {
+  return 1;
+}
+
 sub help_text {
    return "dubious-regions\n\t" .
           $_[0]->help_summary . "\n" .

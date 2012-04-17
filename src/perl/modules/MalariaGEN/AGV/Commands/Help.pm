@@ -1,10 +1,13 @@
 package MalariaGEN::AGV::Commands::Help;
 
-use warnings;
-use strict;
+use Getopt::Long qw(GetOptionsFromArray);
 
 use File::Spec::Functions qw(splitpath catpath);
-use base 'MalariaGEN::AGV::Command'; 
+use Moose;
+
+extends 'MalariaGEN::AGV::Command';
+
+has show_hidden_requested => (is => 'rw', isa => 'Bool', default => 0);
 
 sub help_summary {
   return 'shows extended information on available commands';
@@ -14,7 +17,7 @@ sub help_text {
   my ($self) = @_;
   my $prog = $self->cl_name;
   my $summary = $self->help_summary;
-  my $command_table = join("\n  ", sort grep { defined $_ } map { command_summary_line($_) } command_list());
+  my $command_table = join("\n  ", sort grep { defined $_ } map { $self->command_summary_line($_) } command_list());
   return <<EOM
 Program:
   
@@ -29,12 +32,12 @@ EOM
 }
 
 sub command_summary_line {
-  my ($command) = @_;  
+  my ($self,$command) = @_;  
   eval "require $command";
   warn $@ if $@;
   $@ and return undef;
   $command->isa('MalariaGEN::AGV::Command') or return undef;
-  $command->hidden and return undef;
+  (!$self->show_hidden_requested && $command->hidden) and return undef;
   return $command->name .  (" " x (22 - length($command->name))) . "\t" . $command->help_summary;
 }
 
@@ -56,6 +59,9 @@ sub command_list {
 sub execute {
   my ($self,$site,$params) = @_;
   my @args = @{$params->{arguments}};
+  my $show_hidden = 0;
+  GetOptionsFromArray(\@args,"show-hidden|X!" => \$show_hidden);
+  $self->show_hidden_requested($show_hidden);
   if (scalar(@args) == 0) {
     print $self->help_text();
     return $self->ok_return();

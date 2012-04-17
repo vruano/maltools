@@ -16,6 +16,11 @@ sub help_summary {
    return 'merge read alignments from several sam/bam files into one';
 }
 
+
+sub hidden {
+   return 1;
+}
+
 sub help_text {
    return "sort-alignment\n\t" .
           $_[0]->help_summary . "\n" .

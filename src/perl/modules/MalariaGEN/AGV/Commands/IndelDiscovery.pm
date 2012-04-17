@@ -17,6 +17,10 @@ sub help_summary {
    return 'list regions that might contain indels';
 }
 
+sub hidden {
+  return 1;
+}
+
 sub help_text {
    return "indel-discovery\n\t" .
           $_[0]->help_summary . "\n" .

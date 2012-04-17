@@ -13,6 +13,10 @@ sub help_summary {
    return 'create sample distance matrix ';
 }
 
+sub hidden {
+  return 1;
+}
+
 sub help_text {
    return "sample-distance\n\t" .
           $_[0]->help_summary . "\n" .

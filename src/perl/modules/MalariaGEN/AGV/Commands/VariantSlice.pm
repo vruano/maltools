@@ -14,6 +14,11 @@ sub help_summary {
    return 'slice out variants based on whether they passed filters or not';
 }
 
+
+sub hidden {
+   return 1;
+}
+
 sub help_text {
    return "variant-slice\n\t" .
           $_[0]->help_summary . "\n" .

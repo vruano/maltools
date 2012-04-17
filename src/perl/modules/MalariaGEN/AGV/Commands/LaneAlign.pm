@@ -11,6 +11,11 @@ use MalariaGEN::AGV::Tool;
 use Getopt::Long;
 use IO::File;
 
+
+sub hidden {
+  return 1;
+}
+
 sub help_summary {
    return 'aligns reads in a sam/bam input file with the reference';
 }

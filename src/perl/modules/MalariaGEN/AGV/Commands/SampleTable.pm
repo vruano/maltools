@@ -13,6 +13,9 @@ use IO::File;
 use File::Spec::Functions qw(catfile);
 use base 'MalariaGEN::AGV::Command';
 
+sub hidden {
+  return 1;
+}
 
 has 'data_config' => (is => 'ro', lazy => 1 , default => sub { MalariaGEN::AGV::Config::data_config() });
 

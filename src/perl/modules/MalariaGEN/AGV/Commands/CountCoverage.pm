@@ -14,6 +14,10 @@ sub help_summary {
    return 'analyses the read depth coverage an a set of samples';
 }
 
+sub hidden {
+   1
+}
+
 sub help_text {
    return "genotype\n\t" .
           $_[0]->help_summary . "\n" .

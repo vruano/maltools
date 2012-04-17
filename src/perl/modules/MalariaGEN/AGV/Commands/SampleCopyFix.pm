@@ -13,6 +13,10 @@ use MalariaGEN::AGV::Engines::Sanger;
 use Getopt::Long;
 extends 'MalariaGEN::AGV::Command';
 
+sub hidden {
+  return 1;
+}
+
 sub help_summary {
    return 'copy and alignment fixing existing issues with @PG headers';
 }

@@ -18,6 +18,11 @@ use Digest::MD5;
 use Scalar::Util qw(blessed);
 use Vcf;
 
+
+sub hidden {
+  return 1;
+}
+
 sub help_summary {
    return 'transform the results of th cross analysis into a VCF formated file';
 }

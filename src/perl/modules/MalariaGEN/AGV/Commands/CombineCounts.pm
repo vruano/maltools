@@ -14,6 +14,10 @@ sub help_summary {
    return 'combines diverse variant VCF files into one';
 }
 
+sub hidden {
+  return 1;
+}
+
 sub help_text {
    return "combine-counts\n\t" .
           $_[0]->help_summary . "\n" .

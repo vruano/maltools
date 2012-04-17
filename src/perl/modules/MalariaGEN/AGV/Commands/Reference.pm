@@ -15,6 +15,10 @@ has 'reference_index_file' => (is => 'rw', isa => 'Str', lazy => 1, builder => '
 has 'interval_list_file' => (is => 'rw', isa => 'Maybe[Str]', lazy => 1, builder => '_build_interval_list_file' );
 has 'sequences' => (is => 'rw', isa => 'Maybe[ArrayRef[Str]]', default => sub { undef });
 
+sub hidden {
+  return 1;
+}
+
 sub help_summary {
    return "perform operation and queries upon the reference";
 }

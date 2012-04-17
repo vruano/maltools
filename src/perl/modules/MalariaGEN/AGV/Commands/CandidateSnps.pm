@@ -16,6 +16,10 @@ sub help_summary {
    return 'from vcf files calculate the candidate snplist';
 }
 
+sub hidden {
+  return 1;
+}
+
 sub help_text {
    my $self = shift;
    my $program = $self->cl_name;

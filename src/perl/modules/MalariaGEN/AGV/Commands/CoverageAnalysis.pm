@@ -18,6 +18,10 @@ sub help_summary {
    return 'create counter group files to reflect coverage depth in variants';
 }
 
+sub hidden {
+  return 1;
+}
+
 sub help_text {
    return "coverage-analysis\n\t" .
           $_[0]->help_summary . "\n" .

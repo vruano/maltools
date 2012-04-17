@@ -12,6 +12,11 @@ use MalariaGEN::AGV::Engines::Sanger;
 use Getopt::Long qw(:config no_ignore_case);
 extends 'MalariaGEN::AGV::Command';
 
+
+sub hidden {
+  return 1;
+}
+
 sub help_summary {
    return 'perform the recalibration quality score analysis';
 }

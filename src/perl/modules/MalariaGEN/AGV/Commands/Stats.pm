@@ -16,6 +16,11 @@ sub help_summary {
    return 'show statistics on a data object';
 }
 
+
+sub hidden {
+   return 1;
+}
+
 sub help_text {
    my $self = shift;
    my $prog = $self->cl_name;

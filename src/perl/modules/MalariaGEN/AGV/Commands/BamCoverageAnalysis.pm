@@ -15,6 +15,13 @@ use File::Copy qw(copy move);
 
 extends 'MalariaGEN::AGV::Command';
 
+
+
+
+sub hidden {
+  return 1;
+}
+
 sub help_summary {
    return 'calculate coverage statistics on bam files';
 }

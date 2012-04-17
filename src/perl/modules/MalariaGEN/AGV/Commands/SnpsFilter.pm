@@ -18,6 +18,10 @@ sub help_summary {
    return 'from snps list produces VCF with the appropriate Variant filters';
 }
 
+sub hidden {
+   return 1;
+}
+
 sub help_text {
    return "snps-filter\n\t" .
       $_[0]->help_summary . "\n" .
