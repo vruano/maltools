@@ -8,7 +8,7 @@ use strict;
 use warnings;
 
 my $minBaseQ = undef;
-my $snpList = catfile($ENV{PGV_HOME},"data","reference","bwa.976K.2010-07-26.snps");
+my $snpList = catfile($ENV{MALTOOLS_HOME},"data","reference","bwa.976K.2010-07-26.snps");
 my $reference = undef;
 my $input = undef;
 my $output = undef;

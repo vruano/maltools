@@ -2,7 +2,7 @@
 
 use File::Basename qw(dirname);
 
-my $pgv_home = $ENV{PGV_HOME};
+my $pgv_home = $ENV{MALTOOLS_HOME};
 
 system("cd $pgv_home/resources/pgv_pipeline/variation_filtering2; perl ./wrapper.pl " . join(" ",@ARGV) );
 exit $? ? 0 : 1;

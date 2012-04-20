@@ -16,7 +16,7 @@ my $verbose = 0;
 my $main_class = 'org.broadinstitute.sting.gatk.CommandLineGATK';
 GetOptions("memory=i" => \$memory, "main=s" => \$main_class, "tmpdir=s" => \$tmp_dir, "verbose!" => \$verbose);
 
-my $pgv_home = $ENV{PGV_HOME};
+my $pgv_home = $ENV{MALTOOLS_HOME};
 $memory = int($memory * 0.5);
 my @VMARGV = $memory ? ("-Xmx${memory}m") : ();
 

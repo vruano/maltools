@@ -1,4 +1,4 @@
-<project name="PGV R+D" default="hello" basedir=".">
+<project name="maltools" default="hello" basedir=".">
 
 <property file="${basedir}/project.properties"/>
 <property file="${basedir}/build.properties"/>

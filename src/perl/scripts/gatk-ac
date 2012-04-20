@@ -11,7 +11,7 @@ use vars qw(%ENV);
 
 my $memory = 500;
 GetOptions("memory=i" => \$memory);
-my $home = $ENV{PGV_HOME};
+my $home = $ENV{MALTOOLS_HOME};
 my $jar_file = catfile($home,'lib','java','AnalyzeCovariates.jar');
 my $resources_dir = catfile($home,'resources','gatk','R');
 my $rscript = 'Rscript';

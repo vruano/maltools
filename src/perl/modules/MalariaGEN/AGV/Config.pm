@@ -68,7 +68,7 @@ our @EXPORT_OK = qw(scratch_config sanger_config reference_config jobs_config da
 
 our $VERSION = '0.01';
 
-my $AGV_HOME = $ENV{AGV_HOME} || $ENV{PGV_HOME} || guess_home(); 
+our $MALTOOLS_HOME = $ENV{MALTOOLS_HOME} || guess_home(); 
 
 sub template_dir {
   my ($class,@others) = @_;
@@ -85,7 +85,7 @@ sub new {
 sub resolve_config {
   my $program = basename($0);
   
-  my $home = $AGV_HOME || guess_home();
+  my $home = $MALTOOLS_HOME;
 
   my @files = (
     catfile(getcwd(),"CONFIG.json"),
@@ -98,7 +98,7 @@ sub resolve_config {
 
   my $conf_file = undef;
 
-  my $softdir = $ENV{PGV_HOME} || ".";
+  my $softdir = $MALTOOLS_HOME || ".";
   my $result = MalariaGEN::AGV::Manifest::Config->new();
   $result->set_variable(program => $program, softdir => $softdir);
   

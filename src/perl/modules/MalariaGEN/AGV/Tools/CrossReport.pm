@@ -39,7 +39,7 @@ sub calculate_cpu_time {
 
 sub scripts_dir {
    my ($self) = @_;
-   return realpath(catfile($ENV{PGV_HOME},'resources','cross_report','Scripts'));
+   return realpath(catfile($ENV{MALTOOLS_HOME},'resources','cross_report','Scripts'));
 }
 
 sub interpreter {

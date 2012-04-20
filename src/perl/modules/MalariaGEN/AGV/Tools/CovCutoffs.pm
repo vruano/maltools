@@ -176,7 +176,7 @@ $mfh->close();
 
 $manifest = realpath($manifest);
 
-my $pgv_home = $ENV\{PGV_HOME\};
+my $pgv_home = $ENV\{MALTOOLS_HOME\};
 my $vfwd = catfile($pgv_home,'resources','pgv_pipeline','variation_filtering2');
 
 

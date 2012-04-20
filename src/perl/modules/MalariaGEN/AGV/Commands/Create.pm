@@ -90,7 +90,7 @@ sub pipeline {
   }
 
   my $manifest_object = MalariaGEN::AGV::Manifest::Pipeline->new(file => $manifest,
-                       variables => { %vars, softdir => $ENV{PGV_HOME}, outdir => '.', basedir => $dest_dir, prog => basename($0)} )
+                       variables => { %vars, softdir => $ENV{MALTOOLS_HOME}, outdir => '.', basedir => $dest_dir, prog => basename($0)} )
     or return $self->error_return("could not load manifest '$manifest'");
 
   unless($type) {

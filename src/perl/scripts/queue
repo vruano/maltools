@@ -13,7 +13,7 @@ use vars qw(%ENV);
 
 my $memory = 1000;
 GetOptions("memory=i" => \$memory);
-my $agv_home = $ENV{PGV_HOME};
+my $agv_home = $ENV{MALTOOLS_HOME};
 #my $jar_file = catfile($agv_home,'libs','Sting','dist','Queue.jar');
 my $cp_dir = catfile($agv_home,'libs','Sting','dist','classes');
 @ARGV = map { $_ =~ /\s+/ ? '"'.$_.'"' : $_ } @ARGV;
