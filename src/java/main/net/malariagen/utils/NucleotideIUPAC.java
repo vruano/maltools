@@ -161,6 +161,51 @@ public enum NucleotideIUPAC {
 		return BYTE_TO_CODE[b];
 	}
 
+	
+	/**
+	 * Checks whether this code is specific, that is it is compatible with a single nucleotide xor a gap.
+	 * @return {@code true} if it is specific, {@code false} otherwise
+	 */
+	public boolean isUnambiguous() {
+		switch(this) {
+		case T:
+		case A:
+		case G:
+		case C:
+		case GAP:
+			return true;
+		default:
+			return false;
+		}
+	}
+	
+	public static boolean  isUnambiguous(byte b) {
+		return fromBase(b).isUnambiguous();
+	}
+	
+	/**
+	 * Checks whether this code is ambiougous, that is it is a nucleotide code and there is more than one nucleotide compatible.
+	 * 
+	 * @return {@code true} if it is ambigous, {@code false} otherwise.
+	 */
+	public boolean isAmbiguous() {
+		switch (this) {
+		case T:
+		case A:
+		case G:
+		case C:
+		case GAP:
+		case NaC:
+			return false;
+		default:
+			return true;
+		}
+	}
+
+	public static boolean  isAmbiguous(byte b) {
+		return fromBase(b).isAmbiguous();
+	}
+	
 	/**
 	 * Checks whether this code is compatible with a given base.
 	 * 

@@ -1,0 +1,12 @@
+#!/usr/bin/env perl 
+
+use strict;
+use warnings;
+
+use Cwd qw(realpath);
+use File::Basename qw(dirname);
+
+my $MALTOOLS_DEVEL_HOME = dirname(dirname(realpath($0)));
+-d $MALTOOLS_DEVEL_HOME or die "could not determine maltools development home";
+
+

@@ -25,6 +25,8 @@
 
 package net.malariagen.gatk.genotyper;
 
+import net.malariagen.gatk.filters.SnpListReadFilter;
+
 import org.broadinstitute.sting.utils.codecs.vcf.*;
 import org.broadinstitute.sting.gatk.contexts.*;
 import org.broadinstitute.sting.gatk.filters.DuplicateReadFilter;
@@ -53,7 +55,7 @@ import java.io.PrintStream;
  * several different incorporated calculation models.
  */
 @BAQMode(QualityMode = BAQ.QualityMode.ADD_TAG, ApplicationTime = BAQ.ApplicationTime.HANDLED_IN_WALKER)
-@ReadFilters({ DuplicateReadFilter.class, NotPrimaryAlignmentReadFilter.class, UnmappedReadFilter.class })
+@ReadFilters({ DuplicateReadFilter.class, NotPrimaryAlignmentReadFilter.class, UnmappedReadFilter.class, SnpListReadFilter.class })
 //@Reference(window = @Window(start = -10, stop = 10))
 @By(DataSource.REFERENCE)
 //@Downsample(by = DownsampleType.BY_SAMPLE, toCoverage = 250)
@@ -143,12 +145,12 @@ public class MetaGenotyper extends
 		// get all of the unique sample names
 		// if we're supposed to assume a single sample, do so
 		Set<String> samples = new TreeSet<String>();
+		getToolkit().getFilters();
 		if (UAC.ASSUME_SINGLE_SAMPLE != null)
 			samples.add(UAC.ASSUME_SINGLE_SAMPLE);
 		else
 			samples = SampleUtils.getSAMFileSamples(getToolkit()
 					.getSAMFileHeader());
-
 		// initialize the verbose writer
 		if (verboseWriter != null)
 			verboseWriter

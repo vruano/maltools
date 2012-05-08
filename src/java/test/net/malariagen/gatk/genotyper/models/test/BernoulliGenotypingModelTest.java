@@ -170,7 +170,7 @@ public class BernoulliGenotypingModelTest extends WalkerTest {
 		File output = File.createTempFile("BernoulliTest", ".vcf");
 		Formatter formatter = new Formatter();
 		Formatter cmdSpec = formatter
-				.format("-R %s -T MetaGenotyper -o %s -baseq_do %s.bdo -mbq 20 -mmq 20 -mgq 0 -mgc -200 -out_mode EMIT_ALL_SITES -gem EMIT_ALL -smodel Bernoulli/0.01/ -A AverageBaseQuality -A ReadDepthAndAllelicFractionBySample -A DepthPerAlleleByVariant -A UniquenessScore -A NumberSamplesWithData -B:uniqueness,UQN %s %s",
+				.format("-R %s -T MetaGenotyper -somFilter -o %s -baseq_do %s.bdo -mbq 20 -mmq 20 -mgq 0 -mgc -200 -out_mode EMIT_ALL_SITES -gem EMIT_ALL -smodel Bernoulli/0.01/ -A AverageBaseQuality -A ReadDepthAndAllelicFractionBySample -A DepthPerAlleleByVariant -A UniquenessScore -A NumberSamplesWithData -B:uniqueness,UQN %s %s",
 						reference, output, output, uniqness, sb.toString());
 		// No md5s for now.
 		List<String> md5s = Collections.emptyList();
