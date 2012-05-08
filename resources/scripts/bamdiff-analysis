@@ -4,7 +4,7 @@ use strict;
 use warnings;
 use Getopt::Long qw(:config no_ignore_case pass_through);
 use IO::File;
-use MalariaGEN::AGV::GffUtils::Iterator;
+use Maltools::GffUtils::Iterator;
 
 my $diff_file = "-";
 my $gff_file = "-";
@@ -13,7 +13,7 @@ GetOptions("diff=s"=>\$diff_file,"gff=s" => \$gff_file);
 
 die "diff and gff files cannot come from the same file or stdin" if $diff_file eq $gff_file;
 
-my $gff_it = $gff_file eq "-" ? MalariaGEN::AGV::GffUtils::Iterator->new(fh => \*STDIN) : MalariaGEN::AGV::GffUtils::Iterator->new(file => $gff_file);
+my $gff_it = $gff_file eq "-" ? Maltools::GffUtils::Iterator->new(fh => \*STDIN) : Maltools::GffUtils::Iterator->new(file => $gff_file);
 my $diff_in = $diff_file eq "-" ? \*STDIN : IO::File->new($diff_file,'r');
 my $diff_count = 0;
 my $diff_line = <$diff_in>;

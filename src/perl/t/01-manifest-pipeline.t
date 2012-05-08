@@ -3,7 +3,7 @@ use Test::More;
 use strict;
 use warnings;
 
-my $ManifestPipeline = 'MalariaGEN::AGV::Manifest::Pipeline';
+my $ManifestPipeline = 'Maltools::Manifest::Pipeline';
 
 goto FINISH unless use_ok $ManifestPipeline;
 goto FINISH unless my $man = new_ok $ManifestPipeline;

@@ -4,7 +4,7 @@ use strict;
 use warnings;
 use vars qw(@ARGV);
 
-use MalariaGEN::AGV::Command;
+use Maltools::Command;
 use Samtrak::Site;
 use Getopt::Long qw(:config pass_through);
 
@@ -36,5 +36,5 @@ sub syntax_and_exit {
 }
 
 sub cmd_to_class {
- return MalariaGEN::AGV::Command->command_class_by_name(@_);
+ return Maltools::Command->command_class_by_name(@_);
 }

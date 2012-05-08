@@ -4,9 +4,9 @@ use File::Spec::Functions qw(catfile);
 
 use Test::More;
 
-use MalariaGEN::AGV::Config;
+use Maltools::Config;
 
-my $config = MalariaGEN::AGV::Config->new(file => "$ENV{PGV_HOME}/conf/pgv-dev.json", program => 'pgv-dev');
+my $config = Maltools::Config->new(file => "$ENV{PGV_HOME}/conf/pgv-dev.json", program => 'pgv-dev');
 
 my $data_dir = $config->get_datadir();
 
@@ -15,7 +15,7 @@ unless ($data_dir && -d $data_dir) {
   goto FINISH;
 }
 
-my $ReferenceClass = 'MalariaGEN::AGV::Reference';
+my $ReferenceClass = 'Maltools::Reference';
 
 use_ok $ReferenceClass or goto FINISH;
 

@@ -5,7 +5,7 @@ use warnings;
 
 use IO::File;
 use Getopt::Long;
-use MalariaGEN::AGV::Reference;
+use Maltools::Reference;
 
 my $reference = undef;
 my @in_files = undef;
@@ -35,7 +35,7 @@ die "invalid input files (not found, regular nor readable):\n\t" . join("\n\t",@
 die "must indicate a reference" unless defined $reference;
 die "could not open to read or is not a regular file '$reference'" unless -f $reference && -r $reference; 
 
-$reference = MalariaGEN::AGV::Reference->new(sequence_file => $reference);
+$reference = Maltools::Reference->new(sequence_file => $reference);
 
 
 my %positions = map { ($_ => peek_position ($_)) } @in_files;
