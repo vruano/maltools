@@ -30,7 +30,7 @@ sub get_reference_sequences {
 
 sub get_softdir {
   my $self = shift;
-  return $self->get('paths/softdir') || $ENV{MALTOOLS}; 
+  return $self->get('paths/softdir') || $ENV{MALTOOLS_HOME}; 
 }
 
 sub get_resource {

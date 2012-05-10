@@ -6,7 +6,7 @@ use Test::More;
 
 use Maltools::Config;
 
-my $config = Maltools::Config->new(file => "$ENV{PGV_HOME}/conf/pgv-dev.json", program => 'pgv-dev');
+my $config = Maltools::Config->new(file => "$ENV{PGV_HOME}/conf/maltools-dev.json", program => 'maltools-dev');
 
 my $data_dir = $config->get_datadir();
 

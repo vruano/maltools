@@ -87,6 +87,7 @@ sub class {
 
 sub _manifest_class {
   my $class = shift;
+  print STDERR $class,"\n";
   my $manifest_attr = $class->meta->get_attribute('manifest');
   unless ($manifest_attr->has_type_constraint) {
     return 'Maltools::Manifest::Pileline';

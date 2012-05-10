@@ -4,23 +4,31 @@ use Moose;
 use POSIX;
 use IO::File;
 
+use File::Basename qw(basename);
+use File::Spec::Functions qw(catfile);
+
 with 'MooseX::Cloneable';
 
 use overload
    fallback => 1,
    '""' => sub { $_[0]->sequence_file };
 
-has 'sequence_file' => (is => 'ro', isa => 'Str', required => 1);
+has 'name' => (is => 'ro', isa => 'Str', required => 1, lazy => 1, builder => '_name_builder');
+has 'directory' => (is => 'ro', isa => 'Maybe[Str]', required => 0);
+
+has 'sequence_file' => (is => 'ro', isa => 'Str', required => 1, lazy => 1, builder => '_sequence_file_builder');
 has 'index_file' => (is => 'ro', isa => 'Str', lazy => 1, builder => '_index_file_builder');
 has 'dictionary_file' => (is => 'ro', isa => 'Str', lazy => 1, builder => '_dictionary_file_builder');
-has 'annotation_file' => (is => 'ro', isa => 'Str', lazy => 1, builder => '_annotation_file_builder');
+has '_annotation_file' => (is => 'ro', isa => 'Maybe[Str]', lazy => 1, builder => '_annotation_file_builder');
 has 'chromosomes' => (is => 'ro', isa => 'ArrayRef[Str]', lazy => 1, builder => '_build_chromosomes');
+has 'rods_file' => (is => 'ro', isa => 'Maybe[Str]', lazy => 1, builder => '_build_rods_file');
 has 'dictionary' => (is => 'ro', isa => 'ArrayRef', lazy => 1, builder => '_build_dictionary');
 has 'interval_file' => (is => 'ro', isa => 'Maybe[Str]', lazy => 1, builder => '_build_interval_file');
 has 'possible_snps_file' => (is => 'ro', isa => 'Str', lazy => 1, builder => '_build_possible_snps_file');
 has 'probable_snps_file' => (is => 'ro', isa => 'Str', lazy => 1, builder => '_build_probable_snps_file');
-has 'uniqueness_file' => (is => 'ro', isa => 'Str', lazy => 1, builder => '_build_uniqueness_file');
+has '_uniqueness_file' => (is => 'ro', isa => 'Maybe[Str]', lazy => 1, builder => '_build_uniqueness_file');
 
+has 'rods' => (is => 'ro', isa => 'Maltools::Reference::RODSet', lazy => 1, builder => '_build_rods');
 
 around BUILDARGS => sub {
    my $orig = shift;
@@ -64,6 +72,67 @@ sub location {
   return Maltools::Reference::Location->new(reference => $self, sequence => $chr, position => $pos);
 }
 
+sub _build_rods_file {
+   my $self = shift;
+   my $dir = $self->directory;
+   return undef unless $dir;
+   my $candidate = catfile($dir,'RODS.list');
+   return undef unless -e $candidate && -f $candidate;
+   return $candidate;
+}
+
+sub _sequence_file_builder {
+   my $self = shift;
+   my $directory = $self->directory;
+   if ($directory) {
+      -e $directory or die "could not find reference directory '$directory'";
+      -d $directory or die "the reference directory '$directory' is in fact not a directory";
+      return catfile($directory,'sequences.fa');
+   }
+   else {
+      die "you need to specify a sequence file name or a valid directory";
+   }
+}
+
+sub annotation_file {
+   my $self = shift;
+   my $rods = $self->rods;
+   my $rod = $rods->get('annotation');
+   return $rod->file if $rod;
+   return $self->_annotation_file;
+}
+
+
+sub uniqueness_file {
+   my $self = shift;
+   my $rods = $self->rods;
+   my $rod = $rods->get('uniqueness');
+   return $rod->file if $rod;
+   return $self->_uniqueness_file;
+}
+
+sub _build_rods {
+   my $self = shift;
+   my @args = ();
+   if ($self->directory) {
+      push @args, (search_path => $self->directory);
+      my $rod_list_file = catfile($self->directory,'ROD.list');
+      push @args, (list_file => $rod_list_file) if (-e $rod_list_file);
+   }
+   my $result = Maltools::Reference::RODSet->new(@args);
+   unless ($result->get('uniqueness')) {
+      if (-e $self->_uniqueness_file) {
+         $result->_add(uniqueness => Maltools::Reference::ROD->new(type => 'UQN', file => realpath($self->uniqueness_file)));
+      }
+   }
+   unless ($result->get('annotation')) {
+      if ($self->_annotation_file && -e $self->_annotation_file) {
+         $result->_add(annotation => Maltools::Reference::ROD->new(type => 'GFF', file => realpath($self->annotation_file)));
+      }
+   }
+   return $result;
+}
+
 sub _annotation_file_builder {
    my $self = shift;
    my $result = $self->sequence_file;
@@ -71,6 +140,14 @@ sub _annotation_file_builder {
    $result .= ".gff";
    return $result if -f $result;
    return undef;
+}
+
+sub _name_builder {
+   my $self = shift;
+   if ($self->directory) {
+      return basename($self->directory);
+   }
+   return "<ANNON>";
 }
 
 sub _index_file_builder {
