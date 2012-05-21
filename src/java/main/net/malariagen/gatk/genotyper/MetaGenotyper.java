@@ -26,8 +26,10 @@
 package net.malariagen.gatk.genotyper;
 
 import net.malariagen.gatk.filters.SnpListReadFilter;
+import net.sf.samtools.SAMReadGroupRecord;
 
 import org.broadinstitute.sting.utils.codecs.vcf.*;
+import org.broadinstitute.sting.gatk.GenomeAnalysisEngine;
 import org.broadinstitute.sting.gatk.contexts.*;
 import org.broadinstitute.sting.gatk.filters.DuplicateReadFilter;
 import org.broadinstitute.sting.gatk.filters.NotPrimaryAlignmentReadFilter;
@@ -40,11 +42,15 @@ import org.broadinstitute.sting.gatk.walkers.genotyper.GenotypeLikelihoodsCalcul
 import org.broadinstitute.sting.gatk.walkers.genotyper.MetaGenotyperEngine;
 import org.broadinstitute.sting.gatk.walkers.genotyper.UnifiedGenotyperEngine;
 import org.broadinstitute.sting.gatk.walkers.genotyper.VariantCallContext;
+import org.broadinstitute.sting.gatk.datasources.reads.SAMReaderID;
 import org.broadinstitute.sting.gatk.datasources.rmd.ReferenceOrderedDataSource;
 import org.broadinstitute.sting.utils.*;
 import org.broadinstitute.sting.utils.baq.BAQ;
 import org.broadinstitute.sting.commandline.*;
 import org.broadinstitute.sting.utils.codecs.vcf.VCFUtils;
+import org.broadinstitute.sting.utils.variantcontext.Allele;
+import org.broadinstitute.sting.utils.variantcontext.Genotype;
+import org.broadinstitute.sting.utils.variantcontext.VariantContext;
 
 import java.util.*;
 import java.io.PrintStream;
@@ -87,6 +93,8 @@ public class MetaGenotyper extends
 
 	// the annotation engine
 	private VariantAnnotatorEngine annotationEngine;
+
+	private List<String> parentSamples;
 
 	// enable deletions in the pileup
 	public boolean includeReadsWithDeletionAtLoci() {
@@ -159,10 +167,68 @@ public class MetaGenotyper extends
 				Arrays.asList(annotationClassesToUse), annotationsToUse);
 		MG_engine = new MetaGenotyperEngine(getToolkit(), UAC, logger,
 				verboseWriter, annotationEngine, samples);
+		parentSamples = resolveParentSamples(getToolkit());
 
 		// initialize the header
-		writer.writeHeader(new VCFHeader(getHeaderInfo(), samples));
+		VCFHeader header = new VCFHeader(getHeaderInfo(),samples);
+		for (String parent : parentSamples) {
+			header.addMetaDataLine(new VCFHeaderLine("PARENT", parent));
+		}
+		writer.writeHeader(header);
 	}
+	
+	private List<String> resolveParentSamples(GenomeAnalysisEngine toolkit) {
+
+		ArrayList<String> parentSamples = new ArrayList<String>();
+		String[] parentPerPosition = new String[2];
+		for (SAMReaderID rid : toolkit.getReadsDataSource().getReaderIDs()) {
+			List<String> tags = rid.getTags().getPositionalTags();
+			for (String tag : tags) {
+				if (!tag.toLowerCase().startsWith("parent"))
+					continue;
+				String parentNum = tag.substring("parent".length()).trim();
+				int num = -1;
+				if (!parentNum.isEmpty()) {
+					try {
+					  num = Integer.parseInt(parentNum);
+					}
+					catch (NumberFormatException e) {
+						throw new RuntimeException("not valid parent tag used '" + tag + "'");
+					}
+					if (num < 0)
+						throw new RuntimeException("no valid parent tag used '" + tag + "'");
+				}
+				if (num >= 0) {
+					if (parentPerPosition.length <= num)
+						parentPerPosition = Arrays.copyOf(parentPerPosition,num*2);
+					for (SAMReadGroupRecord rg : toolkit.getSAMFileHeader(rid).getReadGroups()) {
+						if (parentPerPosition[num] != null && !parentPerPosition.equals(rg.getSample()))
+							throw new RuntimeException("more than one sample with the same number " + num);
+						parentPerPosition[num] = rg.getSample();
+					}
+				}
+				else {
+					for (SAMReadGroupRecord rg : toolkit.getSAMFileHeader(rid).getReadGroups()) {
+						if (parentSamples.contains(rg.getSample())) 
+							continue;
+						parentSamples.add(rg.getSample());
+					}
+				}
+			}
+		}
+		for (int i = 0; i < parentPerPosition.length; i++) {
+			String parent = parentPerPosition[i];
+			if (parent == null)
+				continue;
+			if (parentSamples.contains(parent))
+				continue;
+			int pos = parentSamples.size() < i ? parentSamples.size() : i;
+			parentSamples.add(pos,parent);
+		}
+		return parentSamples;
+	}
+	
+	
 
 	private Set<VCFHeaderLine> getHeaderInfo() {
 		Set<VCFHeaderLine> headerInfo = new HashSet<VCFHeaderLine>();
@@ -225,6 +291,12 @@ public class MetaGenotyper extends
 		
 		headerInfo.addAll(MG_engine.getHeaderLines());
 
+		if (parentSamples.size() > 0) {
+			headerInfo.add(new VCFInfoHeaderLine("PGT",-1,VCFHeaderLineType.String,"Parent genotype calls"));
+			headerInfo.add(new VCFInfoHeaderLine("SEGREGATING",0,VCFHeaderLineType.Flag,"Indicates that the genotype is segregating considering parent calls"));
+		}
+
+		
 		return headerInfo;
 	}
 
@@ -239,11 +311,69 @@ public class MetaGenotyper extends
 	 *            contextual information around the locus
 	 * @return the VariantCallContext object
 	 */
+	
+	public String alleleString(Genotype gt, Iterable<Allele> vcAlleles) {
+		if (gt.isNoCall())
+			return ".";
+		List<Allele> alleles = gt.getAlleles();
+		if (alleles.size() == 0)
+			return ".";
+		StringBuffer sb = new StringBuffer(10);
+		for (int i = 0; i < alleles.size(); i++) {
+			int j = 0;
+			Allele a1 = alleles.get(i);
+			for (Allele a2 : vcAlleles) {
+				if (a2.equals(a1)) {
+					sb.append(j).append('/');
+					break;
+				}
+				j++;
+			}
+		}
+		if (sb.length() > 0) sb.setLength(sb.length() - 1);
+		return sb.toString();
+	}
+	
 	public VariantCallContext map(RefMetaDataTracker tracker,
 			ReferenceContext refContext, AlignmentContext rawContext) {
-		return MG_engine.calculateLikelihoodsAndGenotypes(tracker, refContext,
+		VariantCallContext vc = MG_engine.calculateLikelihoodsAndGenotypes(tracker, refContext,
 				rawContext);
+		if (vc == null || parentSamples.size() == 0) 
+			return vc;
+		
+		StringBuffer sb = new StringBuffer(10);
+		String previous = null;
+		boolean segregating = false;
+		Iterable<Allele> vcAlleles = vc.getAlleles();
+		for (String p : parentSamples) {
+			Genotype gt = vc.getGenotype(p);
+			if (gt == null)
+				break;
+			String curr = alleleString(gt,vcAlleles);
+			if (previous != null && !previous.equals(curr) && !gt.isNoCall())
+				segregating = true;
+			if (!gt.isNoCall())
+				previous = curr;
+			sb.append(curr).append(',');
+		}
+		if (sb.length() > 0)
+			sb.setLength(sb.length() -1);
+		if (sb.length() == 0)
+			return vc;
+		Map<String,Object> oldAttrs = vc.getAttributes();
+		HashMap<String,Object> attrs = new HashMap<String,Object>(oldAttrs.size()  + 2);
+		attrs.putAll(oldAttrs);
+		attrs.put("PGT", sb.toString());
+		if (segregating)
+			attrs.put("SEGREGATING",null);
+		VariantContext newVc = VariantContext.modifyAttributes(vc, attrs);
+		return MG_engine.newVariantCallContext(newVc,vc.refBase,confidentlyCalled(vc.getNegLog10PError()));
 	}
+	
+	protected boolean confidentlyCalled(double conf) {
+		return conf >= UAC.STANDARD_CONFIDENCE_FOR_CALLING;
+	}
+
 
 	public UGStatistics reduceInit() {
 		return new UGStatistics();

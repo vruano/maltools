@@ -21,6 +21,7 @@ import org.broadinstitute.sting.utils.variantcontext.Allele;
 import org.broadinstitute.sting.utils.variantcontext.Genotype;
 import org.broadinstitute.sting.utils.variantcontext.InferredGeneticContext;
 import org.broadinstitute.sting.utils.variantcontext.MutableGenotype;
+import org.broadinstitute.sting.utils.variantcontext.VariantContext;
 
 
 public abstract class AbstractGenotypingModel implements GenotypingModel {
@@ -121,7 +122,7 @@ public abstract class AbstractGenotypingModel implements GenotypingModel {
 		if (bf != null) result.put("BF", bf);
 		return result;
 	}
-
+	
 	public Set<String> genotypeFilters(AlignmentContext ac, VariantPosteriors post, int i) {
 		return null;
 	}

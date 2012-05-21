@@ -1,5 +1,7 @@
 package net.malariagen.gatk.genotyper;
 
+import net.sf.picard.cmdline.CommandLineParser;
+
 import org.broadinstitute.sting.commandline.Argument;
 import org.broadinstitute.sting.gatk.walkers.genotyper.UnifiedArgumentCollection;
 
@@ -20,5 +22,7 @@ public class MetaArgumentCollection extends UnifiedArgumentCollection {
     
     @Argument(fullName = "min_genotype_confidence", shortName = "mgc", doc = "Minimum genotype confidence to make a call", required = false)
     public double MIN_GENOTYPE_CONFIDENCE = -100;
+    
+    CommandLineParser s;
     
 }

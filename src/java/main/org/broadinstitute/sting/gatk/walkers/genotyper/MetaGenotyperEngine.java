@@ -4,6 +4,9 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.io.PrintWriter;
+import java.lang.reflect.Proxy;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -14,7 +17,6 @@ import java.util.Set;
 
 
 import net.malariagen.gatk.csl.CSLFeature;
-import net.malariagen.gatk.filters.SnpListReadFilter;
 import net.malariagen.gatk.genotyper.GenotypeVariantFilterEmitMode;
 import net.malariagen.gatk.genotyper.GenotypingContext;
 import net.malariagen.gatk.genotyper.MetaArgumentCollection;
@@ -22,6 +24,7 @@ import net.malariagen.gatk.genotyper.SnpGenotypingContext;
 import net.malariagen.gatk.genotyper.models.GenotypingModel;
 import net.malariagen.gatk.genotyper.models.GenotypingModelException;
 import net.malariagen.gatk.genotyper.models.GenotypingModelUtils;
+import net.sf.samtools.SAMReadGroupRecord;
 
 
 import org.apache.log4j.Logger;
@@ -29,6 +32,7 @@ import org.broadinstitute.sting.gatk.GenomeAnalysisEngine;
 import org.broadinstitute.sting.gatk.contexts.AlignmentContext;
 import org.broadinstitute.sting.gatk.contexts.AlignmentContextUtils;
 import org.broadinstitute.sting.gatk.contexts.ReferenceContext;
+import org.broadinstitute.sting.gatk.datasources.reads.SAMReaderID;
 import org.broadinstitute.sting.gatk.datasources.rmd.ReferenceOrderedDataSource;
 import org.broadinstitute.sting.gatk.refdata.RefMetaDataTracker;
 import org.broadinstitute.sting.gatk.refdata.utils.GATKFeature;
@@ -52,6 +56,58 @@ import org.broadinstitute.sting.utils.variantcontext.VariantContext;
 
 public class MetaGenotyperEngine extends UnifiedGenotyperEngine {
 
+	public class MyVariantContext extends VariantContext {
+
+		public MyVariantContext(String source, String contig, long start,
+				long stop, Collection<Allele> alleles,
+				Collection<Genotype> genotypes, double negLog10PError,
+				Set<String> filters, Map<String, ?> attributes) {
+			super(source, contig, start, stop, alleles, genotypes, negLog10PError, filters,
+					attributes);
+		}
+
+		public MyVariantContext(String source, String contig, long start,
+				long stop, Collection<Allele> alleles,
+				Collection<Genotype> genotypes) {
+			super(source, contig, start, stop, alleles, genotypes);
+		}
+
+		public MyVariantContext(String source, String contig, long start,
+				long stop, Collection<Allele> alleles, double negLog10PError,
+				Set<String> filters, Map<String, ?> attributes) {
+			super(source, contig, start, stop, alleles, negLog10PError, filters, attributes);
+		}
+
+		public MyVariantContext(String source, String contig, long start,
+				long stop, Collection<Allele> alleles,
+				Map<String, Genotype> genotypes, double negLog10PError,
+				Set<String> filters, Map<String, ?> attributes) {
+			super(source, contig, start, stop, alleles, genotypes, negLog10PError, filters,
+					attributes);
+		}
+
+		public MyVariantContext(String source, String contig, long start,
+				long stop, Collection<Allele> alleles) {
+			super(source, contig, start, stop, alleles);
+		}
+
+		public MyVariantContext(VariantContext other) {
+			super(other);
+		}
+		
+		@Override
+		public boolean isSNP() {
+			return true;
+		}
+		
+		@Override
+		public VariantContext.Type getType() {
+			return VariantContext.Type.SNP;
+		}
+
+	}
+
+
 	private static final String CANDIATE_SNP_LIST_ROD_NAME = "csl";
 
 	public static final String NO_VARIANT_GT_FILTER = "NoVarGT";
@@ -69,8 +125,7 @@ public class MetaGenotyperEngine extends UnifiedGenotyperEngine {
 	private ThreadLocal<GenotypingModel> genotypingModel = new ThreadLocal<GenotypingModel>();
 	
 	private int sampleCount;
-	
-	private SnpListReadFilter snpListReadFilter;
+
 	
 	public MetaGenotyperEngine(GenomeAnalysisEngine toolkit,
 			MetaArgumentCollection UAC, Logger logger,
@@ -83,6 +138,8 @@ public class MetaGenotyperEngine extends UnifiedGenotyperEngine {
 		metaAnnotationEngine = engine;
 		filterBySnpList = checkFilterBySnpList(toolkit);
 	}
+
+
 
 
 	private boolean checkFilterBySnpList(GenomeAnalysisEngine toolkit) {
@@ -155,13 +212,12 @@ public class MetaGenotyperEngine extends UnifiedGenotyperEngine {
 		if (!isCandidatePosition(tracker)) 
 			return null;
 		
-		
-		
-		final GenotypingContext gc = buildGenotypingContext(tracker, refContext, rawContext);
+		GenotypingContext gc = buildGenotypingContext(tracker, refContext, rawContext);
 		
 		PileupElementFilter pueFilter = buildPileupElementFilter(tracker,gc);
-		
 		rawContext = new AlignmentContext(rawContext.getLocation(), rawContext.getBasePileup().getFilteredPileup(pueFilter),rawContext.getSkippedBases(), rawContext.hasPileupBeenDownsampled());
+		gc = buildGenotypingContext(tracker, refContext, rawContext);
+		
 		if (metaUAC.COVERAGE_AT_WHICH_TO_ABORT > 0
 				&& rawContext.size() > metaUAC.COVERAGE_AT_WHICH_TO_ABORT)
 			return null;
@@ -184,12 +240,6 @@ public class MetaGenotyperEngine extends UnifiedGenotyperEngine {
 					tracker, refContext, stratifiedContext, rawContext) : null);
 		}
 
-//		if (gc.getAlleleCount() <= 1) {
-//			return (metaUAC.OutputMode == OUTPUT_MODE.EMIT_ALL_SITES
-//					&& metaUAC.GenotypingMode == GenotypeLikelihoodsCalculationModel.GENOTYPING_MODE.GENOTYPE_GIVEN_ALLELES ? generateEmptyContext(
-//					tracker, refContext, stratifiedContext, rawContext) : null);
-//		}
-
 		GenotypingModel gmodel = getGenotypingModel();
 		if (gmodel == null)
 			throw new GenotypingModelException(
@@ -206,9 +256,12 @@ public class MetaGenotyperEngine extends UnifiedGenotyperEngine {
 		Map<String, MutableGenotype> newGenotypes = gmodel
 				.calculateGenotypes(stratifiedContext);
 		GenomeLoc locus = refContext.getLocus();
-		VariantContext newVc = new VariantContext("MG_call", locus.getContig(), locus.getStart(),
+		VariantContext newVc = new MyVariantContext("MG_call", locus.getContig(), locus.getStart(),
 				locus.getStop(), gc.getAlleleList(),consolidateGenotypes(newGenotypes).values());
 
+		
+		
+		
 		newVc = metaAnnotationEngine
 				.annotateContext(tracker, refContext, stratifiedContext, newVc)
 				.iterator().next();
@@ -218,23 +271,26 @@ public class MetaGenotyperEngine extends UnifiedGenotyperEngine {
 				.calculateVariantPhredQuality(stratifiedContext,newVc.getGenotypes()) / 10.0;
 		if (negLog10VarQual > 99999.99) negLog10VarQual = 99999.99;
 		Set<String> filters;
-                if (!Double.isNaN(negLog10VarQual) &&
-                                   metaUAC.STANDARD_CONFIDENCE_FOR_EMITTING >negLog10VarQual * 10) {
+        if (!Double.isNaN(negLog10VarQual) && metaUAC.STANDARD_CONFIDENCE_FOR_EMITTING >negLog10VarQual * 10)
                    return null;
-                }
 		if (!Double.isNaN(negLog10VarQual)
-				&& metaUAC.STANDARD_CONFIDENCE_FOR_CALLING > negLog10VarQual * 10) {
+				&& metaUAC.STANDARD_CONFIDENCE_FOR_CALLING > negLog10VarQual * 10) 
 			filters = Collections.singleton(LOW_QUAL_FILTER_NAME);
-		} else {
+		else 
 			filters = Collections.emptySet();
-		}
 		
+		newVc = crossAnnotations(newVc);
 		newVc = VariantContext.modifyPErrorFiltersAndAttributes(newVc, negLog10VarQual, filters, newVc.getAttributes());
 		VariantCallContext result = new VariantCallContext(newVc,
 				confidentlyCalled(negLog10VarQual));
 		result.setRefBase(gc.getReferenceAllele().getBases()[0]);
 		dumpBaseqDistOut(stratifiedContext);
 		return result;
+	}
+
+
+	private VariantContext crossAnnotations(VariantContext vc) {
+		return vc;
 	}
 
 
@@ -251,7 +307,6 @@ public class MetaGenotyperEngine extends UnifiedGenotyperEngine {
 
 
 	private byte candidateSnpListAlternative(RefMetaDataTracker tracker) {
-		// TODO Auto-generated method stub
 		List<GATKFeature> tracks = tracker.getGATKFeatureMetaData(CANDIATE_SNP_LIST_ROD_NAME, true);
 		for (GATKFeature ft : tracks) {
 			Object o = ft.getUnderlyingObject();
@@ -365,8 +420,6 @@ public class MetaGenotyperEngine extends UnifiedGenotyperEngine {
 	protected boolean confidentlyCalled(double conf) {
 		return conf >= metaUAC.STANDARD_CONFIDENCE_FOR_CALLING;
 	}
-
-
 
 	private GenotypeLikelihoodsCalculationModel.Model getCurrentGLModel(
 			final RefMetaDataTracker tracker,
@@ -551,6 +604,16 @@ public class MetaGenotyperEngine extends UnifiedGenotyperEngine {
 
 	public Collection<? extends VCFHeaderLine> getHeaderLines() {
 		return this.getGenotypingModel().getHeaderLines();
+	}
+
+
+
+
+	public VariantCallContext newVariantCallContext(VariantContext newVc, byte ref,
+			boolean confidentlyCalled) {
+		VariantCallContext result = new VariantCallContext(newVc,confidentlyCalled);
+		result.setRefBase(ref);
+		return result;
 	}
 
 }
