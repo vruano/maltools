@@ -171,9 +171,8 @@ public class MetaGenotyper extends
 
 		// initialize the header
 		VCFHeader header = new VCFHeader(getHeaderInfo(),samples);
-		for (String parent : parentSamples) {
+		for (String parent : parentSamples) 
 			header.addMetaDataLine(new VCFHeaderLine("PARENT", parent));
-		}
 		writer.writeHeader(header);
 	}
 	
@@ -340,6 +339,7 @@ public class MetaGenotyper extends
 				rawContext);
 		if (vc == null || parentSamples.size() == 0) 
 			return vc;
+		
 		
 		StringBuffer sb = new StringBuffer(10);
 		String previous = null;

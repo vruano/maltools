@@ -19,6 +19,7 @@
 <property name="tools.dir" value="${basedir}/tools" />
 <property name="svn-get.exec" value="${tools.dir}/svn-get" />
 <property name="git-get.exec" value="${tools.dir}/git-get" />
+<property name="svn.exec" value="svn" />
 
 <macrodef name="git-get">
   <attribute name="url" default=""/>
@@ -36,6 +37,17 @@
       <arg value="@{url}" />
       <arg value="@{dir}" />
     </exec>   
+  </sequential>
+</macrodef>
+
+<macrodef name="svn-info">
+  <attribute name="output" default="/dev/stdout"/>
+  <attribute name="url" default="${basedir}"/>
+  <sequential>
+    <exec executable="${svn.exec}" failonerror="true" output="@{output}">
+      <arg value="info" />
+      <arg value="@{url}" />
+    </exec>
   </sequential>
 </macrodef>
 
@@ -285,6 +297,10 @@
   </antcall>
 </target>
 
+<target name="svn-info">
+  <svn-info output="myass"/>
+</target>
+
 <target name="dist.layout" depends="build,samtrak.init,vcftools.init,picard.init">
   <mkdir dir="${dist.layout.dir}/bin" />
   <mkdir dir="${dist.layout.dir}/lib/java" />
@@ -309,6 +325,7 @@
      </fileset>
      <fileset dir="${bwa.dir}" includes="**/bwa" />
   </copy>
+  <svn-info output="${dist.layout.dir}/svn-info.txt" />
 
   <move file="${dist.layout.dir}/bin/base" tofile="${dist.layout.dir}/bin/${install.name}" />
 
