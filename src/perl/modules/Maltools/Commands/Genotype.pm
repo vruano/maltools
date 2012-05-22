@@ -131,7 +131,8 @@ sub execute {
     push @anno, ( split(/\s*,\s*/,delete($options{A}) ) ) if  exists($options{A});
     $annotations = [ @anno ];
   }
-
+  
+  @ARGV = grep { $_ ne '--' } @ARGV;
   my $job = $tool->job(
       inputs => { 
           reference => $reference,
@@ -141,7 +142,8 @@ sub execute {
           options => \%options,
           samples => [@files] , 
           @regions ? (intervals => [@regions]) : (),
-          ($fragments > 1) ? ( threads => $fragments) : () }, 
+          ($fragments > 1) ? ( threads => $fragments) : (),
+          arguments => [@ARGV] }, 
       outputs => { 
           out => $output  });
 
@@ -177,7 +179,7 @@ sub samtools_genotyping {
   my $engine = $self->resolve_engine();
   my $tool = Maltools::Tool->tool_by_name('samtools-genotyper');
   my $job = $tool->job(
-        inputs => { in => $args{files}, max_depth => $args{max_depth} || 100, reference => $args{reference} },
+        inputs => { in => $args{files}, max_depth => $args{max_depth} || 100, reference => $args{reference}, arguments => $args{others} },
         outputs => { out =>  $args{output} });
   unless ($engine->run_job($job)) {
     return $self->error_return("error occurred (code " . $job->return_code . ") during genotping with message: " . $job->error_message);

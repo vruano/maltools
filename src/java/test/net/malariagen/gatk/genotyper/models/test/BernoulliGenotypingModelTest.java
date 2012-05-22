@@ -156,7 +156,9 @@ public class BernoulliGenotypingModelTest extends WalkerTest {
 		bamFiles[0] = _7g8;
 		bamFiles[1] = _Gb4;
 		StringBuffer sb = new StringBuffer(1000);
-		sb.append("-I:parent " +  _7g8 + " -I:parent " + _Gb4 + " ");
+//		sb.append("-I:parent " +  _7g8 + " -I:parent " + _Gb4 + " ");
+		sb.append("-I " +  _7g8 + " -I " + _Gb4 + " ");
+
 		for (int i = 2; i < bamFiles.length; i++) {
 			bamFiles[i] = new File(baseDir, progenyNames[i - 2] + ".bam");
 			sb.append("-I ").append(bamFiles[i].toString()).append(' ');
@@ -175,7 +177,8 @@ public class BernoulliGenotypingModelTest extends WalkerTest {
 		Formatter cmdSpec = formatter
 				.format("-R %s -T MetaGenotyper -o %s -baseq_do %s.bdo -mbq 20 -mmq 20 -mgq 0 -mgc -200 -stand_emit_conf 0 -out_mode EMIT_ALL_SITES -gem EMIT_ALL " 
 		               + "-smodel Bernoulli/0.01/ -A GenotypeConfidenceSum -A AlleleQuality -A AverageBaseQuality " 
-					   + "-A ReadDepthAndAllelicFractionBySample -A DepthPerAlleleByVariant -A UniquenessScore " + 
+					   + "-P PG0083-C -P PG0084-C "
+		               + "-A ReadDepthAndAllelicFractionBySample -A DepthPerAlleleByVariant -A UniquenessScore " + 
 		               "-A NumberSamplesWithData -B:uniqueness,UQN %s %s",
 						reference, output, output, uniqness, sb.toString());
 		// No md5s for now.

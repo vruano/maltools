@@ -44,6 +44,7 @@ import org.broadinstitute.sting.gatk.walkers.genotyper.UnifiedGenotyperEngine;
 import org.broadinstitute.sting.gatk.walkers.genotyper.VariantCallContext;
 import org.broadinstitute.sting.gatk.datasources.reads.SAMReaderID;
 import org.broadinstitute.sting.gatk.datasources.rmd.ReferenceOrderedDataSource;
+import org.broadinstitute.sting.gatk.datasources.sample.Sample;
 import org.broadinstitute.sting.utils.*;
 import org.broadinstitute.sting.utils.baq.BAQ;
 import org.broadinstitute.sting.commandline.*;
@@ -167,8 +168,12 @@ public class MetaGenotyper extends
 				Arrays.asList(annotationClassesToUse), annotationsToUse);
 		MG_engine = new MetaGenotyperEngine(getToolkit(), UAC, logger,
 				verboseWriter, annotationEngine, samples);
-		parentSamples = resolveParentSamples(getToolkit());
-
+		if (UAC.parents.size() == 0)
+			parentSamples = resolveParentSamplesFromTags(getToolkit());
+		else {
+			parentSamples = UAC.parents;
+			checkParentSamples(parentSamples);
+		}
 		// initialize the header
 		VCFHeader header = new VCFHeader(getHeaderInfo(),samples);
 		for (String parent : parentSamples) 
@@ -176,7 +181,22 @@ public class MetaGenotyper extends
 		writer.writeHeader(header);
 	}
 	
-	private List<String> resolveParentSamples(GenomeAnalysisEngine toolkit) {
+	private void checkParentSamples(List<String> parents) {
+		Collection<Sample> samples = getToolkit().getSamples();
+		Set<String> parentSoFar = new HashSet<String>(parents.size());
+		Set<String> sampleNames = new HashSet<String>(samples.size());
+		for (Sample sample : samples)
+			sampleNames.add(sample.getId());
+		for (String parent : parents) 
+			if (!sampleNames.contains(parent)) 
+				throw new RuntimeException("Missing parent sample " +  parent);
+			else if (parentSoFar.contains(parent))
+				throw new RuntimeException("Sample appears more than once in parent list " + parent);
+			else 
+				parentSoFar.add(parent);
+	}
+
+	private List<String> resolveParentSamplesFromTags(GenomeAnalysisEngine toolkit) {
 
 		ArrayList<String> parentSamples = new ArrayList<String>();
 		String[] parentPerPosition = new String[2];
@@ -312,7 +332,7 @@ public class MetaGenotyper extends
 	 */
 	
 	public String alleleString(Genotype gt, Iterable<Allele> vcAlleles) {
-		if (gt.isNoCall())
+		if (gt == null || gt.isNoCall())
 			return ".";
 		List<Allele> alleles = gt.getAlleles();
 		if (alleles.size() == 0)
@@ -347,12 +367,10 @@ public class MetaGenotyper extends
 		Iterable<Allele> vcAlleles = vc.getAlleles();
 		for (String p : parentSamples) {
 			Genotype gt = vc.getGenotype(p);
-			if (gt == null)
-				break;
 			String curr = alleleString(gt,vcAlleles);
-			if (previous != null && !previous.equals(curr) && !gt.isNoCall())
+			if (previous != null && !previous.equals(curr) && !curr.equals("."))
 				segregating = true;
-			if (!gt.isNoCall())
+			if (!curr.equals("."))
 				previous = curr;
 			sb.append(curr).append(',');
 		}

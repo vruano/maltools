@@ -15,6 +15,7 @@ our $INPUTS = {
     intervals => { type => 'string', multiple => 1, mandatory => 0, default => []},
     annotations => { type => 'string', multiple => 1, mandatory => 0, default => [],},
     options => { type => 'hash', mandatory => 0, default => {},},
+    arguments => { type => 'string', multiple => 1, default => []},
     rods => { type => 'hash', mandatory => 0, default => {},},
 };
 
@@ -73,7 +74,8 @@ sub script_template {
      . '{ $ref_base = $J->input("reference"); $ref_base =~ s/\.fa(sta)?$//; "" }'
      . ' { join(" ",map {"-B:$_," . $J->input("rods")->{$_}->{type} . " " . $ref_base . $J->input("rods")->{$_}->{extension} } grep { exists($J->input("rods")->{$_}->{extension}) } keys %{$J->input("rods")} )}'
      . ' { join(" ",map {"-B:$_," . $J->input("rods")->{$_}->{type} . " " . $J->input("rods")->{$_}->{file} } grep { exists($J->input("rods")->{$_}->{file}) } keys %{$J->input("rods")} )}'
-     . ' -o {$J->output("out")}' . "\n" );
+     . ' -o {$J->output("out")}'  
+     . ' {join(" ",@{$J->input("arguments")})}' . "\n" );
 }
 
 sub interpreter {
