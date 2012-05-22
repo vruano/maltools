@@ -1,31 +1,33 @@
 {
    "variables" : {
-     "basedir" : "${softdir}",
-     "datadir" : "${softdir}/data/${program}"
+     "datadir" : "/data/malariagen/"
    },
-   "data" : {
-     "root" : "${datadir}"
+   "paths" : {
+     "data" : "${datadir}",
+     "resources" : "/home/valentin/src/GV/resources"
    },
-   "scratch" : {
-     "areas" : [ "directory" , "/data/malariagen/scratch" ]
+   "execution" : {
+     "scratch" : {
+       "exclusions" : [ "/data/haldane" ],
+       "areas" : [ "directory" , "/data/haldane/malariagen/.staging" ]
+     },
+     "defaultEngine" : "oxford"
    },
    "reference" : {
      "sequences" : "${datadir}/reference/3D7_pm.fa",
-     "possibleSnps" : "${datadir}/reference/bwa.976K.2010-07-26.snps",
-     "probableSnps" : "${datadir}/reference/possible_snps.bed",
      "index" : "${datadir}/reference/3D7_pm.fa.fai",
-     "dictionary" : "${datadir}/reference/3D7_pm.dict",
-     "uniqueness" : "${datadir}/reference/3D7_pm.uq",
-     "annotation" : "${datadir}/reference/3D7_pm.gff"
-   },
-   "execution" : {
-     "defaultEngine" : "oxford",
-     "engines" :  { "oxford" : {}, "local" : {} }
+     "knownSnpsMask" : { 
+        "file" : "${datadir}/reference/possible_snps.bed",
+        "format" : "BED" 
+     },
+     "possibleSnps" : { 
+       "list" : "bwa.976K.2010-07-26.snps" 
+     }
    },
    "samtrak" : {
      "db" : {
        "host" : "127.0.0.1",
-       "port" : "6603",
+       "port" : 13309,
        "driver" : "mysql",
        "username" : "valentin",
        "password" : "valentin123",

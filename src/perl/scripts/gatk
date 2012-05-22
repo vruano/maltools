@@ -17,7 +17,7 @@ my $main_class = 'org.broadinstitute.sting.gatk.CommandLineGATK';
 GetOptions("memory=i" => \$memory, "main=s" => \$main_class, "tmpdir=s" => \$tmp_dir, "verbose!" => \$verbose);
 
 my $pgv_home = $ENV{MALTOOLS_HOME};
-$memory = int($memory * 0.5);
+$memory = int($memory * 0.4);
 my @VMARGV = $memory ? ("-Xmx${memory}m") : ();
 
 if ($tmp_dir) {
@@ -36,7 +36,7 @@ else {
 }
 my $java_cmd = join(" ",'java',@VMARGV,@ARGV);
 
-print STDERR $java_cmd,"\n" if $verbose;
+print STDERR $java_cmd,"\n"; # if $verbose;
 my ($efh,$efn) = tempfile();
 $efh->close();
 system($java_cmd . " 2> $efn");
