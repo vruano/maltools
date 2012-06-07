@@ -1,0 +1,52 @@
+#!/usr/bin/env perl
+
+use Getopt::Long qw(:config pass_through no_ignore_case);
+use File::Spec::Functions qw(catfile);
+use File::Temp qw(tempfile);
+use IO::File;
+use Cwd qw(getcwd);
+
+use warnings;
+use strict;
+use vars qw(%ENV);
+
+my $memory = 500;
+my $tmp_dir = undef; 
+my $verbose = 0;
+my $main_class = 'org.broadinstitute.sting.gatk.CommandLineGATK';
+GetOptions("memory=i" => \$memory, "main=s" => \$main_class, "tmpdir=s" => \$tmp_dir, "verbose!" => \$verbose);
+
+my $pgv_home = $ENV{MALTOOLS_HOME};
+$memory = int($memory * 0.4);
+my @VMARGV = $memory ? ("-Xmx${memory}m") : ();
+
+if ($tmp_dir) {
+  push @VMARGV, "-Djava.io.tmpdir=$tmp_dir"; 
+}
+
+if ($main_class eq 'org.broadinstitute.sting.gatk.CommandLineGATK') {
+  my $jar_file = catfile($pgv_home,'lib','java','GenomeAnalysisTK.jar');
+  push @VMARGV , '-jar',$jar_file,'-et','NO_ET';
+}
+else {
+  my $cp_dir = catfile($pgv_home,'lib','java');
+  opendir(CP_DIR,$cp_dir) or die "could not open java library directory '$cp_dir'";
+  my $cp_list = join(":", map { catfile($cp_dir,$_) } grep { $_ =~ /\.jar$/ } (readdir(CP_DIR)));
+  push @VMARGV, '-cp',$cp_list,$main_class;
+}
+my $java_cmd = join(" ",'java',@VMARGV,@ARGV);
+
+print STDERR $java_cmd,"\n"; # if $verbose;
+my ($efh,$efn) = tempfile();
+$efh->close();
+system($java_cmd . " 2> $efn");
+print STDERR "GATK Process finished\n" if $verbose;
+$efh = IO::File->new($efn);
+my $error_found = 0;
+while (my $line = <$efh>) {
+  $error_found = 1 if ($line =~ /^#*\s*ERROR/);
+  print STDERR $line;    
+}
+$efh->close();
+unlink $efn;
+exit $error_found ? 1 : 0;

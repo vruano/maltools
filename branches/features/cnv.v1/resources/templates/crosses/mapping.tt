@@ -1,0 +1,67 @@
+[%- applies_template = 'mappings/' _ mapping.applies _ ".tt" -%]
+[%- in_sample_dir = mapping.takes.defined ? mapping.takes : cross.resources.samples -%]
+[%- mapping_dir = mapping.name -%]
+[%- out_sample_dir = mapping_dir -%]
+[% INCLUDE  $applies_template  %]
+
+[% mapping_dir _ '/%.snps' %] : [% mapping_dir _ '/%.bam' %] [% mapping_dir _ '/%.bam.bai' %] 
+	pgv snps-list -i $< --minq $(RC_MINBQ) --snpList $(CANDIDATE_SNPS_LIST) --reference $(REFERENCE) -o $@ 
+
+[% mapping_dir _ '/%.coverage' %] : [% mapping_dir _ '/%.bam' %] [% mapping_dir _ '/%.bam.bai' %]
+	pgv coverage-table -i $< --reference $(REFERENCE) -o $@
+
+[% mapping_dir _ '/cross-coverage/DONE.ts' %] : $(addprefix [% mapping_dir %]/, $(addsuffix .coverage, $(ALL_SAMPLE_NAMES)))
+	mkdir -p [% mapping_dir _ '/cross-coverage' %]
+	pgv cross-coverage $(addprefix -i ,$^) -o [% mapping_dir _ '/cross-coverage' %]
+	date > $@
+
+[% mapping_dir _ '/cross-matrices-unfixed/DONE.ts' %] : [% mapping_dir _ '/cross-coverage/DONE.ts' %] [% mapping_dir _ '/vf-out/DONE.ts' %]
+	pgv cross-matrices -i [% mapping_dir _ '/vf-out/coding_and_regions.coverage.min_alt.biallelic.mono_allelic.het_uniq.vcf' %] -o [% mapping_dir _ '/cross-matrices-unfixed' %] -p "[% cross.samples.parents.values.join('" -p "') %]" --include PASS --excl-invs alleles
+	date > $@
+
+[% mapping_dir _ '/cross-report-unfixed/DONE.ts' %] : [% mapping_dir _ '/cross-matrices-unfixed/DONE.ts' %] [% mapping_dir _ '/cross-coverage/DONE.ts' %]
+	pgv cross-report-v2 -i [% mapping_dir _ '/cross-matrices-unfixed' %] -o [% mapping_dir _ '/cross-report-unfixed' %] -c [% mapping_dir _ '/cross-coverage' %] $(addprefix -p ,[% cross.samples.parents.keys.join(" ") %])
+	date > $@
+
+[% mapping_dir _ '/unfiltered-cross-matrices-unfixed/DONE.ts' %] : [% mapping_dir _ '/cross-coverage/DONE.ts' %] [% mapping_dir _ '/vf-out/DONE.ts' %]
+	pgv cross-matrices -i [% mapping_dir _ '/vf-out/unfiltered.vcf' %] -o [% mapping_dir _ '/unfiltered-cross-matrices-unfixed' %] -p "[% cross.samples.parents.values.join('" -p "') %]" --include ALL --excl-invs alleles
+	date > $@
+
+[% mapping_dir _ '/unfiltered-cross-report-unfixed/DONE.ts' %] : [% mapping_dir _ '/unfiltered-cross-matrices-unfixed/DONE.ts' %] [% mapping_dir _ '/cross-coverage/DONE.ts' %]
+	pgv cross-report-v2 -i [% mapping_dir _ '/unfiltered-cross-matrices-unfixed' %] -o [% mapping_dir _ '/unfiltered-cross-report-unfixed' %] -c [% mapping_dir _ '/cross-coverage' %] $(addprefix -p ,[% cross.samples.parents.keys.join(" ") %])
+	date > $@
+
+[% mapping_dir _ '/coverage_cutoffs.json' %] : $(addprefix [% mapping_dir %]/, $(addsuffix .coverage, $(ALL_SAMPLE_NAMES)))
+	pgv snps-filter --cutoffs --manifest [% mapping_dir _ '/vf-manifest.json' %]
+
+[% mapping_dir _ '/vf-out/DONE.ts' %] : [% mapping_dir _ '/coverage_cutoffs.json' %] $(addprefix [% mapping_dir %]/, $(addsuffix .snps, $(ALL_SAMPLE_NAMES))) $(CANDIDATE_SNPS_LIST)
+	mkdir -p [% mapping_dir _ '/vf-out' %]
+	pgv snps-filter --manifest [% mapping_dir _ '/vf-manifest.json' %] 
+	date > $@
+
+[% mapping_dir _ '/cross-matrices/DONE.ts' %] : [% mapping_dir _ '/vf-out/DONE.ts' %]
+	mkdir -p [% mapping_dir _ '/cross-matrices' %]
+	pgv cross-matrices -i [% mapping_dir _ '/vf-out/coding_and_regions.coverage.min_alt.biallelic.mono_allelic.het_uniq.vcf' %] -o [% mapping_dir _ '/cross-matrices' %] \
+		-p "[% cross.samples.parents.values.join('" -p "') %]"
+	date > $@
+
+[% mapping_dir _ '/cross-report/DONE.ts' %] : [% mapping_dir _ '/cross-matrices/DONE.ts' %]
+	mkdir -p [% mapping_dir _ '/cross-report' %]
+	pgv cross-report-V2 -i [% mapping_dir _ '/cross-matrices' %] -o [% mapping_dir _ '/cross-report' %] -c [% mapping_dir _ '/cross-coverage' %] $(addprefix -p ,[% cross.samples.parents.keys.join(" ") %]) 
+	date > $@
+
+[% mapping_dir _ '/unfiltered-cross-matrices/DONE.ts' %] : [% mapping_dir _ '/vf-out/DONE.ts' %]
+	mkdir -p [% mapping_dir _ '/unfiltered-cross-matrices' %]
+	pgv cross-matrices -i [% mapping_dir _ '/vf-out/coding_and_regions.coverage.min_alt.biallelic.mono_allelic.het_uniq.vcf' %] -o [% mapping_dir _ '/unfiltered-cross-matrices' %] \
+		-p "[% cross.samples.parents.values.join('" -p "') %]" --include ALL
+	date > $@
+
+[% mapping_dir _ '/unfiltered-cross-report/DONE.ts' %] : [% mapping_dir _ '/unfiltered-cross-matrices/DONE.ts' %]
+	mkdir -p [% mapping_dir _ '/unfiltered-cross-report' %]
+	pgv cross-report-V2 -i [% mapping_dir _ '/unfiltered-cross-matrices' %] -o [% mapping_dir _ '/unfiltered-cross-report' %] -c [% mapping_dir _ '/cross-coverage' %] $(addprefix -p ,[% cross.samples.parents.keys.join(" ") %])
+	date > $@
+
+[% mapping_dir _ '/DONE.ts' %] : [% mapping_dir _ '/cross-report-unfixed/DONE.ts' %] [% mapping_dir _ '/unfiltered-cross-report/DONE.ts' %] [% mapping_dir _ '/unfiltered-cross-matrices/DONE.ts' %] [% mapping_dir _ '/cross-report/DONE.ts' %] [% mapping_dir _ '/unfiltered-cross-report-unfixed/DONE.ts' %]
+	date > $@
+
+.PRECIOUS : [% mapping_dir _ '/%.snps' %] [% mapping_dir _ '/%.coverage' %] [% mapping_dir _ '/%.bam' %]

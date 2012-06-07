@@ -1,0 +1,32 @@
+{
+  "comments" : [
+    "Example manifest for a Genome Variation pipeline.",
+    "This demo only analyses 25 samples listed in the 'samples' elemen below"
+  ],
+
+  "name" : "Nat25",
+  "class" : "genvar",
+  "version" : "0.1",
+
+  "variables" : { 
+  },
+
+  "paths" : {
+    "alignments" : "${basedir}/alignments", 
+    "coverage" : "${basedir}/coverage",
+    "snpsdata" : "${basedir}/snps"
+  },
+
+  "parameters" : {
+    "candidateSnps" : "calculate",
+    "candidateSnpList" : "${basedir}/candidate-snps.list",
+    "minBaseQ" : 27
+  },
+
+  "samples" : [ "PM0133-C", "PM0136-C", "PM0138-C", "PM0139-C", "PK0055-C", 
+              "PK0056-C", "PK0059-C", "PK0060-C", "PK0061-C", "PK0062-C", 
+              "PK0063-C", "PC0019-C", "PC0020-C", "PC0023-C", "PC0026-C", 
+              "PC0030-C", "PC0031-C", "PC0032-C", "PD0029-C", "PD0030-C", 
+              "PD0034-C", "PD0037-C", "PD0038-C", "PD0041-C", "PD0042-C" ]
+
+}

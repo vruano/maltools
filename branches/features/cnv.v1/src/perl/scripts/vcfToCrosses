@@ -1,0 +1,199 @@
+#!/usr/bin/env perl
+=pod
+
+=head1 NAME
+
+vcfToCrosses
+
+=head2 SYNOPSIS
+
+vcfToCrosses -i genotypes.vcf -p parent1 -p parent2 -o output_directory [--include FILTER]* [--exclude FILTER]*
+
+=cut
+
+use strict;
+use warnings;
+
+use File::Spec::Functions qw(catfile);
+use Getopt::Long qw(:config no_ignore_case);
+
+my @parents = ();
+my $input = undef;
+my $out_dir = undef;
+my @includes = ();
+my @excludes = ();
+my $discard_invariants = 0;
+
+GetOptions(
+ "parent=s@" => \@parents,
+ "input|i=s" => \$input,
+ "out_dir|o=s" => \$out_dir,
+ "include|inc=s%" => \@includes,
+ "exclude-invariants|excl-invs:s" => \$discard_invariants,
+ "exclude|excl=s%" => \@excludes );
+
+$input or die "you must specify an input vcf file";
+-f $input or die "input vcf '$input' is not reachable or not a regular file";
+$out_dir or die "you must specify an output directory";
+-d $out_dir  || ! -e $out_dir or die "output directory '$out_dir' is not in fact a directory";
+$#parents >= 1 or die "you must at least specify two parents";
+
+# calculate the filters to apply
+
+my %filters = ( (map { uc($_) => 1 } @includes), ( map { uc($_) => 0 } @excludes));
+
+$filters{ALL} = $#excludes < 0 ? 0 : 1 unless exists($filters{ALL});
+$filters{CREDIBLE} = $#includes >= 0 ? 0 : 1 unless exists($filters{CREDIBLE});
+$filters{PASS} = $filters{CREDIBLE} unless exists($filters{PASS});
+$filters{TYPABLE} = $filters{CREDIBLE} unless exists($filters{TYPABLE});
+$filters{LIT} = $filters{CREDIBLE} unless exists($filters{LIT});
+
+mkdir($out_dir); # does nothing if it does exists already.
+
+$input = "gunzip -c < $input |" if ($input =~ /\.gz$/); 
+
+open(VCF,$input) or die "could not open '$input' for read-only access";
+
+my @parent_index = ();
+my $samples_offset = 0;
+my $filters_offset = 0;
+my $infos_offset = 0;
+my $format_offset = 0;
+my $line = undef;
+my $var_number = 0;
+
+while ($line = <VCF>) {
+  read_header();
+  die "could not find expected parents in header" if (grep { !defined $_ } @parent_index);
+  $var_number = 1;
+  while ($line) {
+    process_chromosome();
+  }
+}
+
+close(VCF);
+
+exit(0);
+
+### subrutines
+
+# Read sthe header and notes the column offset for samples and parents.
+sub read_header {
+  print STDERR "Reading header...";
+  while ($line) {
+     chomp $line;
+     if ($line =~ /^##/) {
+        # nothing to do here.
+     }
+     elsif ($line =~ /^#CHROM/) {
+        my @fields = split(/\t/,$line);
+        while ($fields[0] ne "FILTER") { shift(@fields); $filters_offset++ };
+        $infos_offset = $filters_offset;
+        while ($fields[0] ne "INFO") { shift(@fields); $infos_offset++ };
+        $samples_offset = $infos_offset;
+        while ($fields[0] ne "FORMAT") { shift(@fields); $samples_offset++ };
+        shift (@fields); # get rid of FORMAT.
+        $format_offset = $samples_offset++;
+        my @samples = @fields;
+        for (my $i = 0; $i <= $#samples; $i++) {
+           for (my $j = 0; $j <= $#parents; $j++) {
+              if ($samples[$i] eq $parents[$j]) {
+                $parent_index[$j] = $samples_offset + $i;
+                last;
+              }
+           }
+        } 
+     }
+     else {
+       last;
+     }
+     $line = <VCF>;
+  }
+  my @missing_parents = map { $parents[$_] } grep { ! defined $parent_index[$_] } (0..$#parents);
+  die "Did not found some parent samples amonst vcf samples: " . join(", ",@missing_parents) if $#missing_parents >= 0;
+  print STDERR "Done!\n";
+}
+
+sub process_chromosome {
+  
+  my ($chr) = split(/\t/,$line);
+  
+  open (PARENTS,">" . catfile ($out_dir,"parents.$chr"));
+  open (PROGENY,">" . catfile ($out_dir,"progeny.$chr"));
+  open (POSITIONS,">" . catfile ($out_dir,"positions.$chr"));
+
+  while ($line) {
+     chomp $line;
+     my @fields = split (/\t/,$line);
+     my $pos = $fields[1];
+     my $infos_string = $fields[$infos_offset];
+     my $filters_string = $fields[$filters_offset];
+     my $format_string = $fields[$format_offset];
+     my $ad_offset = 0;
+     if (++$var_number % 10000 == 0) { print STDERR "var# $var_number\n"; }
+     if ($discard_invariants) {
+       if ($infos_string =~ /AD=([^;]*)/) {
+         my @allele_counts = split(/,/,$1);
+         my $non_zero_count = grep { $_ > 0 } @allele_counts ;
+         if ($non_zero_count  <= 1) {
+            $line = <VCF>;
+            last unless defined $line;
+            last if (index($line,$chr . "\t") != 0);
+            next;
+         } 
+       }
+     }
+     my @formats = split(/:/,$format_string);
+     while ($#formats >= 0 && $formats[0] ne "AD") { shift(@formats); $ad_offset++ };
+      
+     my @var_filters = map { uc($_) } split(/\s*;\s*/,$filters_string);
+     my @var_infos = map { index($_,"=") < 0 ? uc($_) : substr(uc($_),0,index($_,"=")) } split(/\s*;\s*/,$infos_string);
+     my @var_all = grep { $_  } @var_filters, @var_infos;
+     my @to_exclude = grep { exists($filters{$_}) && $filters{$_} == 0 } @var_all;
+     my @to_include = grep { exists($filters{$_}) && $filters{$_} == 1 } @var_all;
+     push @to_include,'ALL' if $filters{ALL} && $#to_include < 0 && $#to_exclude < 0;
+     if ($#to_include >= 0) {
+       my @parent_genotypes = map { zeroOneCall($ad_offset,$_)  } @fields[@parent_index];
+       my @progeny_genotypes = map { zeroOneCall($ad_offset,$_) } @fields[$samples_offset .. $#fields];
+       foreach my $parent_index (sort { $b <=> $a } @parent_index) {
+            splice(@progeny_genotypes,$parent_index - $samples_offset,1);
+       }
+       if (index(lc($discard_invariants),"genotype") >= 0) {
+         my %genotype_counts = ();
+         my %read_counts = ();
+         foreach my $genotype (@progeny_genotypes,@parent_genotypes) {
+           $genotype_counts{$genotype}++;
+         }
+         unless (scalar(keys(%genotype_counts)) < 2) {
+           print POSITIONS $pos,"\n";
+           print PROGENY join(",",@progeny_genotypes),"\n";
+           print PARENTS join(",",@parent_genotypes),"\n";
+         }
+       }
+       else {
+         print POSITIONS $pos,"\n";
+         print PROGENY join(",",@progeny_genotypes),"\n";
+         print PARENTS join(",",@parent_genotypes),"\n";
+       }
+     }
+     $line = <VCF>;
+     last unless defined $line;
+     last if (index($line,$chr . "\t") != 0);
+  }  
+
+  close (POSITIONS);
+  close (PROGENY);
+  close (PARENTS);
+
+}
+
+sub zeroOneCall {
+  my ($ad_offset,$formatedCall) = @_;
+  my @genotypes = split(/:/,$formatedCall);
+  my $ad = $genotypes[$ad_offset];
+  my @counts = split(/,/,$ad);
+  my $refCount = shift(@counts);
+  my $nonRefCount = 0;
+  foreach my $c (@counts) { $nonRefCount += $c };
+  return $refCount >= $nonRefCount ? '0' : '1';
+}

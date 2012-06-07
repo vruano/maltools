@@ -1,0 +1,70 @@
+{
+  "type" : "cross",
+  "intervals" : 100, 
+  "samples" : {
+    "all" : [ "PM0133-C", "PM0136-C", "PM0138-C", "PM0139-C", "PK0055-C", 
+              "PK0056-C", "PK0059-C", "PK0060-C", "PK0061-C", "PK0062-C", 
+              "PK0063-C", "PC0019-C", "PC0020-C", "PC0023-C", "PC0026-C", 
+              "PC0030-C", "PC0031-C", "PC0032-C", "PD0029-C", "PD0030-C", 
+              "PD0034-C", "PD0037-C", "PD0038-C", "PD0041-C", "PD0042-C" ],
+    "all.bak" : [
+       "PD0003-C", "PD0004-03", "PD0004-C", "PD0005-01", "PD0005-C", 
+       "PD0006-01", "PD0007-01", "PD0008-02", "PD0009-01", "PF0004-C", 
+       "PF0007-C", "PF0009-C", "PF0010-C", "PF0011-C", "PF0016-C", "PF0021-C", "PF0022-C", "PC0001-C", 
+       "PC0002-C", "PC0003-01", "PC0003-02", "PC0004-01", "PC0004-02", "PC0007-C", "PC0008-01", "PC0008-02" 
+     ],
+    "comments" : [ "PG0059-C does not have any lane accesible currently" ],
+    "parents" : {
+        "3D7" : "PG0003-C",
+        "HB3" : "PD0006-01"
+    }
+  },
+
+  "sequences" : "nuclear",
+
+  "mappings" : {  
+         "initial" : {
+            "applies" : "laneAlign",
+            "analyses" : [ "baseCoverage", "baseQuality", "mapQuality" ]
+         },
+         "som" : {
+            "takes" : "initial",
+            "applies" : "bwa2Som",
+            "analyses" : [ "baseCoverage", "baseQuality", "mapQuality" ]
+         },
+         "som+recal" : {
+            "takes" : "som",
+            "applies" : "baseQualityRecalibration",
+            "analyses" : [ "baseCoverage", "baseQuality", "mapQuality" ]
+         },
+         "recal" : {
+            "takes" : "initial",
+            "applies" : "baseQualityRecalibration",
+            "analyses" : [ "baseCoverage", "baseQuality", "mapQuality" ]
+         }
+  },
+
+  "readCounts" : { "minBaseQ" : 27 },
+
+  "filters" : { 
+
+  },
+
+  
+  "resources" : { 
+    "reference" : "${home_dir}/data/pgv/reference/3D7_pm.fa",
+    "annotation" : "${home_dir}/data/pgv/reference/3D7_pm.gff",
+    "possibleSNPs" : "${home_dir}/data/pgv/reference/possible_snps.bed",
+    "uniquenessScores" : "${home_dir}/data/pgv/reference/3D7_pm.uq",
+    "varfilter" : {
+        "annotation" : "${home_dir}/data/pgv/reference/3D7_pm.vf-gff",
+        "codingRegions" : "${home_dir}/data/pgv/reference/coding_regions.txt" ,
+        "literatureSNPs" : "${home_dir}/data/pgv/reference/known_snps.tsv" ,
+        "candidateSNPs": { 
+           "list" : "${home_dir}/data/reference/pgv/bwa.976K.2010-07-26.snps", 
+           "properties" : "${home_dir}/data/reference/pgv/bwa.976K.2010-07-26.snp-props"
+        }
+    }
+  }
+
+}

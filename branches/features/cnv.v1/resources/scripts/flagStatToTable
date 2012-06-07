@@ -1,0 +1,67 @@
+#!/usr/bin/env perl
+
+use strict;
+use warnings;
+
+print join("\t",qw(mapping sample total qc_failure duplicates mapped_count mapped_pc read1 read2 properly_paired properly_paired_pc mate_diff_chr mate_diff_chr_q5)),"\n";
+while (my $line = <STDIN>) {
+   chomp $line;
+   my (undef,$mapping,$sample) = split(/[\/]/,$line);
+   $sample =~ s/.flagstat$//;
+   my $total_line = <STDIN>;
+   my $qc_filure_line = <STDIN>;
+   my $duplicates_line = <STDIN>;
+   my $mapped_line = <STDIN>;
+   my $paired_in_sequencing_line = <STDIN>;
+   my $read1_line = <STDIN>;
+   my $read2_line = <STDIN>;
+   my $properly_paired_line = <STDIN>;
+   my $with_itself_and_mate_mapped_line =<STDIN>;
+   my $singletons_line =<STDIN>;
+   my $with_mate_diff_chr_line = <STDIN>;
+   my $with_mate_diff_chr_line_mapQ5 = <STDIN>;
+   
+   $total_line =~ /^(\d+)/;
+   my $total = $1;
+   
+   $qc_filure_line =~ /^(\d+)/;
+   my $qc_failure = $1;
+
+   $duplicates_line =~ /^(\d+)/;
+   my $duplicates = $1;
+
+   $mapped_line =~ /^(\d+).*\((\S+)\%\)\s*$/;
+   my ($mapped_count,$mapped_pc) = ($1,$2);
+   $mapped_pc or warn $mapped_line;
+
+   $read1_line =~ /^(\d+)/;
+   my $read1 = $1;
+
+   $read2_line =~ /^(\d+)/;
+   my $read2 = $1;
+
+   $properly_paired_line =~ /^(\d+).*\((\S+)\%\)\s*$/;
+   my ($properly_paired,$properly_paired_pc) = ($1,$2);
+
+   $with_mate_diff_chr_line =~ /^(\d+)/;
+   my $mate_diff_chr = $1;
+   
+   $with_mate_diff_chr_line_mapQ5 =~ /^(\d+)/;
+   my $mate_diff_chr_q5 = $1;
+
+   print join("\t",$line,$mapping,$sample,$total,$qc_failure,$duplicates,$mapped_count,$mapped_pc,$read1,$read2,$properly_paired,$properly_paired_pc,$mate_diff_chr,$mate_diff_chr_q5),"\n";
+}
+
+__END__
+23418700 in total
+0 QC failure
+0 duplicates
+20823384 mapped (88.92%)
+23418700 paired in sequencing
+11709350 read1
+11709350 read2
+19470552 properly paired (83.14%)
+20162438 with itself and mate mapped
+660946 singletons (2.82%)
+	570117 with mate mapped to a different chr
+	492258 with mate mapped to a different chr (mapQ>=5)

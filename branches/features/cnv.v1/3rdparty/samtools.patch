@@ -1,0 +1,23 @@
+Index: samtools/sample.c
+===================================================================
+--- samtools/sample.c	(revision 927)
++++ samtools/sample.c	(working copy)
+@@ -58,6 +58,7 @@
+ 	memset(&buf, 0, sizeof(kstring_t));
+ 	while ((q = strstr(p, "@RG")) != 0) {
+ 		p = q + 3;
++                if ((q - 1)[0] != '\n') continue;
+ 		r = q = 0;
+ 		if ((q = strstr(p, "\tID:")) != 0) q += 4;
+ 		if ((r = strstr(p, "\tSM:")) != 0) r += 4;
+Index: samtools/Makefile
+===================================================================
+--- samtools/Makefile	(revision 927)
++++ samtools/Makefile	(working copy)
+@@ -1,5 +1,5 @@
+ CC=			gcc
+-CFLAGS=		-g -Wall -O2 #-m64 #-arch ppc
++CFLAGS=		-g -Wall -O2 -fPIC #-m64 #-arch ppc
+ DFLAGS=		-D_FILE_OFFSET_BITS=64 -D_LARGEFILE64_SOURCE -D_USE_KNETFILE -D_CURSES_LIB=1
+ KNETFILE_O=	knetfile.o
+ LOBJS=		bgzf.o kstring.o bam_aux.o bam.o bam_import.o sam.o bam_index.o	\

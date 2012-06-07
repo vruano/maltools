@@ -1,0 +1,122 @@
+{
+  "type" : "cross",
+  "intervals" : 100, 
+  "samples" : {
+    "all" : ["PG0051-C", "PG0052-C", "PG0061-C", "PG0062-C", "PG0063-C", "PG0064-C", "PG0065-C", "PG0066-C", "PG0067-C",
+             "PG0068-C", "PG0069-C", "PG0070-C", "PG0071-C", "PG0053-C", "PG0072-C", "PG0073-C", "PG0054-C",
+             "PG0055-C", "PG0056-C", "PG0057-C", "PG0058-C", "PG0060-C"],
+    "comments" : [ "PG0059-C does not have any lane accesible currently" ],
+    "parents" : {
+        "3D7" : "PG0051-C",
+        "HB3" : "PG0052-C"
+    }
+  },
+
+  "sequences" : "nuclear",
+
+  "mappings" : {  
+         "initial" : {
+            "applies" : "laneAlign",
+            "analyses" : [ "baseCoverage", "baseQuality", "mapQuality" ]
+         },
+         "indels" : {     
+            "takes" : "initial",
+            "applies" : "indelRealignment", 
+            "analyses" : [ "baseCoverage", "baseQuality", "mapQuality" ]
+         },
+         "indels+som" : {
+            "takes" : "indels",
+            "applies" : "bwa2Som",
+            "analyses" : [ "baseCoverage", "baseQuality", "mapQuality" ]
+         },
+         "indels+som+recal" : {
+            "takes" : "indels+som",
+            "applies" : "baseQualityRecalibration",
+            "analyses" : [ "baseCoverage", "baseQuality", "mapQuality" ]
+         },
+         "indels+recal" : {
+            "takes" : "indels",
+            "applies" : "baseQualityRecalibration",
+            "analyses" : [ "baseCoverage", "baseQuality", "mapQuality" ]
+         },
+         "indels+dups" : {
+            "takes" : "indels",
+            "applies" : "markDuplicates",
+            "analyses" : [ "baseCoverage", "baseQuality", "mapQuality" ]
+         },
+         "indels+dups+som" : {
+            "takes" : "indels+dups",
+            "applies" : "bwa2Som",
+            "analyses" : [ "baseCoverage", "baseQuality", "mapQuality" ]
+         },
+         "indels+dups+recal" : {
+            "takes" : "indels+dups",
+            "applies" : "baseQualityRecalibration", 
+            "analyses" : [ "baseCoverage", "baseQuality", "mapQuality" ]
+         },
+         "indels+dups+som+recal" : {
+            "takes" : "indels+dups+som",
+            "applies" : "baseQualityRecalibration",
+            "analyses" : [ "baseCoverage", "baseQuality", "mapQuality" ]
+         },
+         "dups" : {
+            "takes" : "initial",
+            "applies" : "markDuplicates",
+            "analyses" : [ "baseCoverage", "baseQuality", "mapQuality" ]
+         },
+         "dups+som" : {
+            "takes" : "dups",
+            "applies" : "bwa2Som",
+            "analyses" : [ "baseCoverage", "baseQuality", "mapQuality" ]
+         },
+         "dups+recal" : {
+            "takes" : "dups",
+            "applies" : "baseQualityRecalibration",
+            "analyses" : [ "baseCoverage", "baseQuality", "mapQuality" ]
+         },
+         "dups+som+recal" : {
+            "takes" : "dups+som",
+            "applies" : "baseQualityRecalibration",
+            "analyses" : [ "baseCoverage", "baseQuality", "mapQuality" ]
+         },
+         "som" : {
+            "takes" : "initial",
+            "applies" : "bwa2Som",
+            "analyses" : [ "baseCoverage", "baseQuality", "mapQuality" ]
+         },
+         "som+recal" : {
+            "takes" : "som",
+            "applies" : "baseQualityRecalibration",
+            "analyses" : [ "baseCoverage", "baseQuality", "mapQuality" ]
+         },
+         "recal" : {
+            "takes" : "initial",
+            "applies" : "baseQualityRecalibration",
+            "analyses" : [ "baseCoverage", "baseQuality", "mapQuality" ]
+         }
+  },
+
+  "readCounts" : { "minBaseQ" : 27 },
+
+  "filters" : { 
+
+  },
+
+  
+  "resources" : { 
+    "reference" : "${home_dir}/data/pgv/reference/3D7_pm.fa",
+    "annotation" : "${home_dir}/data/pgv/reference/3D7_pm.gff",
+    "possibleSNPs" : "${home_dir}/data/pgv/reference/possible_snps.bed",
+    "uniquenessScores" : "${home_dir}/data/pgv/reference/3D7_pm.uq",
+    "varfilter" : {
+        "annotation" : "${home_dir}/data/pgv/reference/3D7_pm.vf-gff",
+        "codingRegions" : "${home_dir}/data/pgv/reference/coding_regions.txt" ,
+        "literatureSNPs" : "${home_dir}/data/pgv/reference/known_snps.tsv" ,
+        "candidateSNPs": { 
+           "list" : "${home_dir}/data/reference/pgv/bwa.976K.2010-07-26.snps", 
+           "properties" : "${home_dir}/data/reference/pgv/bwa.976K.2010-07-26.snp-props"
+        }
+    }
+  }
+
+}

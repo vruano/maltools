@@ -1,0 +1,40 @@
+#!/usr/bin/env perl
+
+use strict;
+use warnings;
+use vars qw(@ARGV);
+
+use Maltools::Command;
+use Samtrak::Site;
+use Getopt::Long qw(:config pass_through);
+
+my $procs = 1;
+
+GetOptions('t=i' => \$procs);
+
+syntax_and_exit(0) if scalar(@ARGV)  < 1;
+
+my $cmd = shift @ARGV;
+my $cls = cmd_to_class($cmd) or die "There is not such command '$cmd'";
+my $obj = $cls->new();
+my $code = eval { $obj->run(Samtrak::Site->new,{procs => $procs, arguments => \@ARGV}) };
+exit $code if !$@ && $code == 0;
+print STDERR "Error executing command: $@\n" if $@;
+exit 1;
+
+### end of main script.
+
+### subrutines
+
+sub syntax_and_exit {
+ my $code = shift || 0;
+ print STDERR "Usage:\n";
+ print STDERR " agv cmd options arguments\n\n";
+ print STDERR "For a full list of available command use the 'help' command:\n";
+ print STDERR " agv help\n";
+ exit $code;
+}
+
+sub cmd_to_class {
+ return Maltools::Command->command_class_by_name(@_);
+}

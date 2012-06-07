@@ -1,0 +1,2 @@
+[% out_sample_dir _ '/%.bam' %] : [% in_sample_dir _ '/%.bam' %]
+	pgv sample-copy-fix -i $< -o $@

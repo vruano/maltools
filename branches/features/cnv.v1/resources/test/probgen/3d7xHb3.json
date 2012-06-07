@@ -1,0 +1,39 @@
+{
+  "comments" : [
+    "Example manifest for a Genome Variation pipeline.",
+    "This demo only analyses 25 samples listed in the 'samples' elemen below"
+  ],
+
+  "name" : "Nat25",
+  "class" : "probgen",
+  "version" : "0.1",
+
+  "intervals" : {
+    "maxSize" : 100000,
+    "minCount" : 1
+  },
+
+  "variables" : { 
+  },
+
+  "paths" : {
+    "reference" : "/data/haldane/malariagen/pfalciparum/reference/3D7_pm.fa",
+    "alignments" : "/data/haldane/malariagen/pfalciparum/crosses/3d7xHb3/initial", 
+    "coverage" : "${basedir}/coverage",
+    "snpsdata" : "${basedir}/snps"
+  },
+
+  "parameters" : {
+    "model" : "DiscreteMixture[prior=/data/haldane/malariagen/pfalciparum/priors/mixed.1pc]",
+    "candidateSnps" : "calculate",
+    "candidateSnpList" : "${basedir}/candidate-snps.list",
+    "minBaseQ" : 27
+  },
+
+  "samples" : [ "PG0051-C","PG0052-C","PG0053-C","PG0054-C","PG0055-C",
+                "PG0056-C","PG0057-C","PG0058-C","PG0060-C","PG0061-C",
+                "PG0062-C","PG0063-C","PG0064-C","PG0065-C","PG0066-C",
+                "PG0067-C","PG0068-C","PG0069-C","PG0070-C","PG0071-C",
+                "PG0072-C","PG0073-C" ]
+
+}
