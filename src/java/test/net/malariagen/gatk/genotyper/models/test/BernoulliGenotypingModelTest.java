@@ -44,9 +44,9 @@ public class BernoulliGenotypingModelTest extends WalkerTest {
 		} catch (RuntimeException e) {
 			fail();
 		}
-		
+
 	}
-	
+
 	public void xxxtestX05() {
 		assertEquals(2, TEST_MODEL_05.getGenotypeCount());
 		List<Allele> zeroGenotype = TEST_MODEL_05.getGenotypeAlleles(0);
@@ -113,8 +113,7 @@ public class BernoulliGenotypingModelTest extends WalkerTest {
 				cmdSpec.toString(), md5s);
 		executeTest("testCoverageCounting", spec);
 	}
-	
-	
+
 	// /home/valentin/src/GV/resources/test/Example3.bam
 
 	@Test
@@ -141,12 +140,15 @@ public class BernoulliGenotypingModelTest extends WalkerTest {
 
 	@Test
 	public void test7G8xGb4() throws IOException {
-	//	File baseDir = new File("/data/malariagen/PGV_RD/testbeds/7g8xGb4/som/");
-		File baseDir = new File("/data/haldane/malariagen/pfalciparum/crosses/7g8xGb4/som/");
+		// File baseDir = new
+		// File("/data/malariagen/PGV_RD/testbeds/7g8xGb4/som/");
+		File baseDir = new File(
+				"/data/haldane/malariagen/pfalciparum/crosses/bam-files/som/");
 		File _7g8 = new File(baseDir, "PG0084-C.bam");
 		File _Gb4 = new File(baseDir, "PG0083-C.bam");
-
-		String[] progenyNames = { "PG0100-C", "PG0101-C", "PG0092-C",
+		String[] progenyNames = {"PG0077-CW","PG0078-CW","PG0079-CW","PG0080-C","PG0081-CW","PG0082-C","PG0085-C","PG0086-CW","PG0087-C","PG0088-C","PG0090-CW","PG0091-C","PG0092-C","PG0093-C","PG0095-CW","PG0096-C","PG0097-C","PG0098-C","PG0099-C","PG0100-CW","PG0101-C","PG0102-CW","PG0103-CW","PG0104-CW","PG0105-CW","PG0106-C","PG0107-C","PG0109-C","PG0110-CW","PG0111-CW","PG0112-CW","PG0113-CW"
+		};
+				String[] progenyNames2 = { "PG0077-CW", "PG0100-C", "PG0101-C", "PG0092-C",
 				"PG0112-C", "PG0113-C", "PG0110-C", "PG0111-C", "PG0085-C",
 				"PG0095-C", "PG0103-C", "PG0094-C", "PG0087-C", "PG0104-C",
 				"PG0107-C", "PG0096-C", "PG0098-C", "PG0106-C", "PG0109-C",
@@ -156,17 +158,17 @@ public class BernoulliGenotypingModelTest extends WalkerTest {
 		bamFiles[0] = _7g8;
 		bamFiles[1] = _Gb4;
 		StringBuffer sb = new StringBuffer(1000);
-//		sb.append("-I:parent " +  _7g8 + " -I:parent " + _Gb4 + " ");
-		sb.append("-I " +  _7g8 + " -I " + _Gb4 + " ");
+		// sb.append("-I:parent " + _7g8 + " -I:parent " + _Gb4 + " ");
+		sb.append("-I " + _7g8 + " -I " + _Gb4 + " ");
 
 		for (int i = 2; i < bamFiles.length; i++) {
 			bamFiles[i] = new File(baseDir, progenyNames[i - 2] + ".bam");
 			sb.append("-I ").append(bamFiles[i].toString()).append(' ');
 		}
-		//StringBuffer sb = new StringBuffer(1000);
+		// StringBuffer sb = new StringBuffer(1000);
 
-		//for (File f : bamFiles)
-		//	sb.append("-I ").append(f.toString()).append(' ');
+		// for (File f : bamFiles)
+		// sb.append("-I ").append(f.toString()).append(' ');
 
 		File reference = new File(getClass().getResource(
 				"/mockups/bernoulli-test/reference/3D7_pm.fa").getFile());
@@ -175,12 +177,12 @@ public class BernoulliGenotypingModelTest extends WalkerTest {
 		File output = File.createTempFile("BernoulliTest", ".vcf");
 		Formatter formatter = new Formatter();
 		Formatter cmdSpec = formatter
-				.format("-R %s -T MetaGenotyper -o %s -baseq_do %s.bdo -mbq 20 -mmq 20 -mgq 0 -mgc -200 -stand_emit_conf 0 -out_mode EMIT_ALL_SITES -gem EMIT_ALL " 
-		               + "-smodel Bernoulli/0.01/ -A GenotypeConfidenceSum -A AlleleQuality -A AverageBaseQuality " 
-					   + "-P PG0083-C -P PG0084-C "
-		               + "-A ReadDepthAndAllelicFractionBySample -A DepthPerAlleleByVariant -A UniquenessScore " + 
-		               "-A NumberSamplesWithData -B:uniqueness,UQN %s %s",
-						reference, output, output, uniqness, sb.toString());
+				.format("-R %s -T MetaGenotyper -o %s -baseq_do %s.bdo -mbq 20 -mmq 20 -mgq 0 -mgc -200 -stand_emit_conf 0 -out_mode EMIT_ALL_SITES -gem EMIT_ALL "
+						+ "-smodel Bernoulli/0.01/ -A GenotypeConfidenceSum -A AlleleQuality -A AverageBaseQuality "
+						+ "-P PG0083-C -P PG0084-C "
+						+ "-A ReadDepthAndAllelicFractionBySample -A DepthPerAlleleByVariant -A UniquenessScore "
+						+ "-A NumberSamplesWithData -B:uniqueness,UQN %s %s -B:csl,CSL %s",
+						reference, output, output, uniqness, sb.toString(),"/data/haldane/malariagen/pfalciparum/reference/candidate_snps_v1.csl");
 		// No md5s for now.
 		List<String> md5s = Collections.emptyList();
 		WalkerTest.WalkerTestSpec spec = new WalkerTest.WalkerTestSpec(
