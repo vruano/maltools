@@ -1,0 +1,11 @@
+=head1 NAME
+
+maltools -- set of tools developed to manage and genotype malaria data.
+
+=head1 DESCRIPTION
+
+This codebase contains set of tools that I use to work with malaria next-generation sequencing data.
+
+=head1 AUTHOR
+
+Valentin Ruano <valentin.ruano@gmail.com>
