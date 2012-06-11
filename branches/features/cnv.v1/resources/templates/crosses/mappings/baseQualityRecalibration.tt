@@ -1,8 +1,0 @@
-[% out_sample_dir _ '/%.bam' %] : [% in_sample_dir _ '/%.bam' %] [% in_sample_dir _ '/%.bam.bai' %]
-	pgv recalibrate-alignment -i $< -o $@ -R [% out_sample_dir %]/$*.recalReport.tgz
-
-[% out_sample_dir _ '/%.recalReport.tgz' %] : [% out_sample_dir _ '/%.bam' %]
-	test -e $@ || exit 1
-
-.PRECIOUS : [% out_sample_dir _ '/%.recalReport.tgz' %]
-

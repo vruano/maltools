@@ -1,6 +1,0 @@
-[% out_sample_dir _ '/%.bam' %] : [% in_sample_dir _ '/%.bam' %]
-	cp $< $@
-
-[% out_sample_dir _ '/%.bam.bai' %] : [% in_sample_dir _ '/%.bam.bai' %]
-	cp $< $@
-

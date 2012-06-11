@@ -1,9 +1,0 @@
-#!/usr/bin/env perl
-
-$mess = <STDIN>;
-print STDERR $mess;
-while (<STDIN>) {
-  print $_;
-}
-
-close STDOUT;

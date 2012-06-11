@@ -1,5 +1,0 @@
-{
-  "reference" : {
-     "sequences" : [% manifest.get_reference %],
-  },
-}

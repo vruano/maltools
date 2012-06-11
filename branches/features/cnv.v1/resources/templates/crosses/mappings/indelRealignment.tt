@@ -1,5 +1,0 @@
-[% out_sample_dir _ '/target.intervals' %] : $(addprefix [% in_sample_dir %]/, $(addsuffix .bam, $(ALL_SAMPLE_NAMES)))
-	pgv dubious-regions $(addprefix -i , $^) -o $@
-
-[% out_sample_dir _ '/%.bam' %] : [% in_sample_dir _ '/%.bam' %] [% in_sample_dir _ '/%.bam.bai' %] [% out_sample_dir _ '/target.intervals' %]
-	pgv indel-realign -i $< -o $@ --intervals [% out_sample_dir _ '/target.intervals' %] 

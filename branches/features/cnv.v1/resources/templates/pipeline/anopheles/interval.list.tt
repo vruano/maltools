@@ -1,3 +1,0 @@
-[% FOREACH interval IN manifest.get_intervals().values() %]
-[%- interval %]
-[% END %]
