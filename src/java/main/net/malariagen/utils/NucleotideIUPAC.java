@@ -155,7 +155,7 @@ public enum NucleotideIUPAC {
 	 * @return Never {@code null} but {@link #NaC} if byte is not a legal IUPAC
 	 *         code byte.
 	 */
-	public static NucleotideIUPAC fromBase(byte b) {
+	public static NucleotideIUPAC fromByte(byte b) {
 		if (b < 0)
 			return NaC;
 		return BYTE_TO_CODE[b];
@@ -180,7 +180,7 @@ public enum NucleotideIUPAC {
 	}
 	
 	public static boolean  isUnambiguous(byte b) {
-		return fromBase(b).isUnambiguous();
+		return fromByte(b).isUnambiguous();
 	}
 	
 	/**
@@ -203,7 +203,7 @@ public enum NucleotideIUPAC {
 	}
 
 	public static boolean  isAmbiguous(byte b) {
-		return fromBase(b).isAmbiguous();
+		return fromByte(b).isAmbiguous();
 	}
 	
 	/**
@@ -215,7 +215,7 @@ public enum NucleotideIUPAC {
 	 *         {@code false} otherwise.
 	 */
 	public boolean isCompatibleWith(byte b) {
-		NucleotideIUPAC iupac = fromBase(b);
+		NucleotideIUPAC iupac = fromByte(b);
 		return iupac == null ? false : isCompatibleWith(iupac);
 	}
 
@@ -260,7 +260,7 @@ public enum NucleotideIUPAC {
 	 *         otherwise.
 	 */
 	public static boolean areCompatible(byte b1, byte b2) {
-		NucleotideIUPAC i1 = fromBase(b1);
+		NucleotideIUPAC i1 = fromByte(b1);
 		return i1 == null ? false : i1.isCompatibleWith(b2);
 	}
 
@@ -277,9 +277,9 @@ public enum NucleotideIUPAC {
 	public static NucleotideIUPAC fromBases(byte... b) {
 		if (b.length == 0)
 			return NaC;
-		NucleotideIUPAC result = fromBase(b[0]);
+		NucleotideIUPAC result = fromByte(b[0]);
 		for (int i = 1; i < b.length; i++)
-			result = result.union(fromBase(b[i]));
+			result = result.union(fromByte(b[i]));
 		return result;
 	}
 
@@ -326,7 +326,7 @@ public enum NucleotideIUPAC {
 	}
 
 	public static boolean areEqual(byte b1, byte b2) {
-		return fromBase(b1).equalTo(fromBase(b2));
+		return fromByte(b1).equalTo(fromByte(b2));
 	}
 
 	/**

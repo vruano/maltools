@@ -4,12 +4,10 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
-import net.malariagen.gatk.genotyper.VariantPosteriors;
 import net.malariagen.gatk.genotyper.GenotypingContext;
 
 import org.broadinstitute.sting.gatk.contexts.AlignmentContext;
 import org.broadinstitute.sting.gatk.walkers.genotyper.GenotypePriors;
-import org.broadinstitute.sting.utils.codecs.vcf.VCFFormatHeaderLine;
 import org.broadinstitute.sting.utils.codecs.vcf.VCFHeaderLine;
 import org.broadinstitute.sting.utils.variantcontext.Allele;
 import org.broadinstitute.sting.utils.variantcontext.Genotype;
@@ -50,14 +48,14 @@ public interface GenotypingModel {
 	 */
 	public List<Allele> getGenotypeAlleles(int genotype);
 
-	public Map<String, MutableGenotype> calculateGenotypes(Map<String, AlignmentContext> sc);
+	public Map<String, MutableGenotype> callGenotypes(Map<String, AlignmentContext> sc);
 	
 	/**
 	 * Returns the variant quality given the stratified alignment content, genotypes and posteriors.
 	 * @param ac
 	 * @return
 	 */
-	public double calculateVariantPhredQuality(Map<String, AlignmentContext> ac, Map<String, Genotype> gt);
+	public double variantQuality(Map<String, AlignmentContext> ac, Map<String, Genotype> gt);
 
 	/**
 	 * Returns the genotype index from the allele list provided. 

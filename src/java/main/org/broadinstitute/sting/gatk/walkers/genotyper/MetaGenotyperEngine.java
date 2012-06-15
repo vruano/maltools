@@ -254,7 +254,7 @@ public class MetaGenotyperEngine extends UnifiedGenotyperEngine {
 
 		gmodel.setGenotypingContext(gc);
 		Map<String, MutableGenotype> newGenotypes = gmodel
-				.calculateGenotypes(stratifiedContext);
+				.callGenotypes(stratifiedContext);
 		GenomeLoc locus = refContext.getLocus();
 		VariantContext newVc = new MyVariantContext("MG_call", locus.getContig(), locus.getStart(),
 				locus.getStop(), gc.getAlleleList(),consolidateGenotypes(newGenotypes).values());
@@ -268,7 +268,7 @@ public class MetaGenotyperEngine extends UnifiedGenotyperEngine {
 		newVc = filterGenotypeCalls(newVc,gmodel);
 		if (newVc == null) return null;
 		double negLog10VarQual = gmodel
-				.calculateVariantPhredQuality(stratifiedContext,newVc.getGenotypes()) / 10.0;
+				.variantQuality(stratifiedContext,newVc.getGenotypes()) / 10.0;
 		if (negLog10VarQual > 99999.99) negLog10VarQual = 99999.99;
 		Set<String> filters;
         if (!Double.isNaN(negLog10VarQual) && metaUAC.STANDARD_CONFIDENCE_FOR_EMITTING >negLog10VarQual * 10)

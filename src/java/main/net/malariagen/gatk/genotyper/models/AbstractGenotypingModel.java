@@ -85,7 +85,7 @@ public abstract class AbstractGenotypingModel implements GenotypingModel {
 	protected abstract double calculatePosteriors(AlignmentContext ac, VariantPosteriors dest, int sample);
 
 	@Override
-	public Map<String, MutableGenotype> calculateGenotypes(Map<String, AlignmentContext> sc) {
+	public Map<String, MutableGenotype> callGenotypes(Map<String, AlignmentContext> sc) {
 		String[] samples = sc.keySet().toArray(new String [sc.size()]);
 		AlignmentContext[] acs = new AlignmentContext[samples.length];
 		for (int i = 0; i < samples.length; i++)
@@ -143,7 +143,7 @@ public abstract class AbstractGenotypingModel implements GenotypingModel {
 	}
 	
 	@Override
-	public double calculateVariantPhredQuality(Map<String, AlignmentContext> ac, Map<String, Genotype> gt) {
+	public double variantQuality(Map<String, AlignmentContext> ac, Map<String, Genotype> gt) {
 		double value = 0;
 		for (Genotype g : gt.values()) {
 			if (!g.isCalled()) continue;

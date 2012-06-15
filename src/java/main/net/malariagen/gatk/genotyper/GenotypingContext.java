@@ -5,7 +5,7 @@ import java.util.List;
 import org.broadinstitute.sting.utils.variantcontext.Allele;
 
 /**
- * Collects general information about the context in where genotyping is going to be performed.
+ * Specify the context in where genotyping is going to be performed.
  */
 public interface GenotypingContext {
 

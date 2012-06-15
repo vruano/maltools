@@ -29,6 +29,10 @@ public strictfp class Beta {
 		return Gamma.log10(a) + Gamma.log10(b) - Gamma.log10(a+b);
 	}
 	
+	public static double phred(double a, double b) {
+		return -10 * log10(a,b);
+	}
+	
 	// incomplete beta.
 	public static double log(double x, double a, double b) {
 		if (a <= 0.0 || b <= 0.0) return Double.NaN;
@@ -57,6 +61,10 @@ public strictfp class Beta {
 			double y = Math.pow(10,bt + log10ContinuedFraction(1.0-x,b,a) - Math.log10(b));
 			return y < 0.001 ? Math.log1p(-y) * LOG_10_INV : Math.log10(1.0 - y);
 		}
+	}
+	
+	public static double phred(double x, double a, double b) {
+		return -10.0D * Beta.log10(x,a,b);
 	}
 
 	private static double log10ContinuedFraction(double x, double a, double b) {
