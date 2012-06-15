@@ -9,9 +9,9 @@ import org.broadinstitute.sting.utils.variantcontext.VariantContext;
 
 // Contains common methods that apply to annotators that need to do integer counting upon alleles.
 public abstract class AlleleCountsAnnotator {
-
-	protected static final int NO_ALLELE = -1;
 	
+	protected static final int NO_ALLELE = -1;
+
 	protected ThreadLocal<int[]> alleleIndeces = new ThreadLocal<int[]>();
 	protected ThreadLocal<char[]> alleleChars = new ThreadLocal<char[]>();
 

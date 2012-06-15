@@ -325,7 +325,7 @@
      </fileset>
      <fileset dir="${bwa.dir}" includes="**/bwa" />
   </copy>
-  <svn-info output="${dist.layout.dir}/svn-info.txt" />
+  <!--svn-info output="${dist.layout.dir}/svn-info.txt" /-->
 
   <move file="${dist.layout.dir}/bin/base" tofile="${dist.layout.dir}/bin/${install.name}" />
 

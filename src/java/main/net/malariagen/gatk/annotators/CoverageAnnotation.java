@@ -18,12 +18,13 @@ import net.malariagen.gatk.math.IntegerSequenceDistributionSet;
 import org.broadinstitute.sting.gatk.contexts.AlignmentContext;
 import org.broadinstitute.sting.gatk.contexts.ReferenceContext;
 import org.broadinstitute.sting.gatk.refdata.RefMetaDataTracker;
+import org.broadinstitute.sting.gatk.walkers.annotator.interfaces.AnnotatorCompatibleWalker;
 import org.broadinstitute.sting.gatk.walkers.annotator.interfaces.InfoFieldAnnotation;
 import org.broadinstitute.sting.utils.codecs.vcf.VCFHeaderLineType;
 import org.broadinstitute.sting.utils.codecs.vcf.VCFInfoHeaderLine;
 import org.broadinstitute.sting.utils.variantcontext.VariantContext;
 
-public class CoverageAnnotation implements InfoFieldAnnotation {
+public class CoverageAnnotation extends InfoFieldAnnotation {
 
 	public static AtomicReference<IntegerDistributionSet> coverageDistributionSet = new AtomicReference<IntegerDistributionSet>(
 			null);
@@ -52,8 +53,9 @@ public class CoverageAnnotation implements InfoFieldAnnotation {
 
 	@Override
 	public Map<String, Object> annotate(RefMetaDataTracker tracker,
-			ReferenceContext ref,
+			AnnotatorCompatibleWalker walker, ReferenceContext ref,
 			Map<String, AlignmentContext> stratifiedContexts, VariantContext vc) {
+
 		IntegerDistributionSet cds = coverageDistributionSet.get();
 		if (cds == null)
 			return Collections.emptyMap();
@@ -100,5 +102,7 @@ public class CoverageAnnotation implements InfoFieldAnnotation {
 	public List<VCFInfoHeaderLine> getDescriptions() {
 		return HEADER_LINES;
 	}
+
+
 
 }

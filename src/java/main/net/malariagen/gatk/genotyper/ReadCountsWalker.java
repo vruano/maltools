@@ -14,9 +14,12 @@ import java.util.TreeSet;
 import net.malariagen.gatk.annotators.Constants;
 
 import org.broadinstitute.sting.commandline.Argument;
+import org.broadinstitute.sting.commandline.ArgumentCollection;
 import org.broadinstitute.sting.commandline.Input;
 import org.broadinstitute.sting.commandline.Output;
+import org.broadinstitute.sting.commandline.RodBinding;
 import org.broadinstitute.sting.gatk.DownsampleType;
+import org.broadinstitute.sting.gatk.arguments.DbsnpArgumentCollection;
 import org.broadinstitute.sting.gatk.contexts.AlignmentContext;
 import org.broadinstitute.sting.gatk.contexts.AlignmentContextUtils;
 import org.broadinstitute.sting.gatk.contexts.ReferenceContext;
@@ -31,6 +34,7 @@ import org.broadinstitute.sting.gatk.walkers.LocusWalker;
 import org.broadinstitute.sting.gatk.walkers.ReadFilters;
 import org.broadinstitute.sting.gatk.walkers.TreeReducible;
 import org.broadinstitute.sting.gatk.walkers.annotator.VariantAnnotatorEngine;
+import org.broadinstitute.sting.gatk.walkers.annotator.interfaces.AnnotatorCompatibleWalker;
 import org.broadinstitute.sting.gatk.walkers.variantutils.CombineVariants;
 import org.broadinstitute.sting.utils.GenomeLoc;
 import org.broadinstitute.sting.utils.SampleUtils;
@@ -45,15 +49,16 @@ import org.broadinstitute.sting.utils.pileup.PileupElement;
 import org.broadinstitute.sting.utils.pileup.ReadBackedPileup;
 import org.broadinstitute.sting.utils.variantcontext.Allele;
 import org.broadinstitute.sting.utils.variantcontext.Genotype;
-import org.broadinstitute.sting.utils.variantcontext.InferredGeneticContext;
+import org.broadinstitute.sting.utils.variantcontext.GenotypesContext;
 import org.broadinstitute.sting.utils.variantcontext.VariantContext;
+import org.broadinstitute.sting.utils.variantcontext.VariantContextBuilder;
 
 @BAQMode(QualityMode = BAQ.QualityMode.OVERWRITE_QUALS, ApplicationTime = BAQ.ApplicationTime.ON_INPUT)
 @ReadFilters({ BadMateFilter.class, UnmappedReadFilter.class })
 @By(DataSource.READS)
 @Downsample(by = DownsampleType.BY_SAMPLE, toCoverage = 250)
 public class ReadCountsWalker extends
-		LocusWalker<VariantContext, ReadCountStatistics> implements TreeReducible<ReadCountStatistics> { 
+		LocusWalker<VariantContext, ReadCountStatistics> implements TreeReducible<ReadCountStatistics>, AnnotatorCompatibleWalker { 
 
 	
 	@Input(fullName = "coverageDistribution", shortName = "CvgD", doc = "File where to find the precalcuated coverage distribution", required = false)
@@ -144,13 +149,14 @@ public class ReadCountsWalker extends
 	private CoverageAnnotationEngine coverageEngine;
 	
 	
+	@SuppressWarnings("unchecked")
 	@Override
 	public void initialize() {
 		coverageEngine = new CoverageAnnotationEngine(annotationsToUse,coverageDistributionFile);
 		coverageEngine.initializeCoverageDistribution();
 		super.initialize();
-		engine = new VariantAnnotatorEngine(getToolkit(),
-				Arrays.asList(annotationClassesToUse), annotationsToUse);
+		engine = new VariantAnnotatorEngine(
+				Arrays.asList(annotationClassesToUse), annotationsToUse, (List<String>) Collections.EMPTY_LIST, this,getToolkit());
 		Set<String> samples = SampleUtils.getSAMFileSamples(getToolkit()
 				.getSAMFileHeader());
 		coverageEngine.setupCoverageAnnotation();
@@ -240,14 +246,11 @@ public class ReadCountsWalker extends
 
 		Map<String, AlignmentContext> stratifiedContexts = AlignmentContextUtils
 				.splitContextBySampleName(context);
-		Map<String, Genotype> genotypes = new LinkedHashMap<String, Genotype>(
-				stratifiedContexts.size());
-
+		GenotypesContext genotypes = GenotypesContext.create();
+		
 		for (Map.Entry<String, AlignmentContext> e : stratifiedContexts
 				.entrySet()) {
-			genotypes.put(
-					e.getKey(),
-					calculateGenotype(e.getKey(), e.getValue(), allelesList,
+			genotypes.add(calculateGenotype(e.getKey(), e.getValue(), allelesList,
 							baseToIndex, baseCounts, qualSums, baseCountsBuffer));
 		}
 
@@ -255,14 +258,13 @@ public class ReadCountsWalker extends
 
 		VariantContext vc;
 		try {
-			vc = new VariantContext("RC_call", loc.getContig(), loc.getStart(),
-					loc.getStop(), allelesList, genotypes,
-					VariantContext.NO_NEG_LOG_10PERROR, null, null);
+			VariantContextBuilder vcb = new VariantContextBuilder();
+			vcb.source("RC_call").loc(loc).alleles(allelesList).genotypes(genotypes).log10PError(1);
+			vc = vcb.make();
 		} catch (Exception e) {
 			throw new RuntimeException(e);
 		}
-		vc = engine.annotateContext(tracker, ref, stratifiedContexts, vc)
-				.iterator().next();
+		vc = engine.annotateContext(tracker, ref, stratifiedContexts, vc);
 
 		return vc;
 	}
@@ -272,9 +274,9 @@ public class ReadCountsWalker extends
 		headerInfo.addAll(engine.getVCFAnnotationDescriptions());
 
 		// FORMAT and INFO fields
-		headerInfo.addAll(VCFUtils.getSupportedHeaderStrings());
+		headerInfo.addAll(VCFUtils.getHeaderFields(getToolkit()));
 		headerInfo.add(new VCFFormatHeaderLine(Constants.READ_COUNTS_KEY,
-				VCFFormatHeaderLine.UNBOUNDED, VCFHeaderLineType.Integer,
+				-1, VCFHeaderLineType.Integer,
 				"Absolute read counts for each allele"));
 
 		return headerInfo;
@@ -320,11 +322,10 @@ public class ReadCountsWalker extends
 			throw new RuntimeException("unexpected genotyping mode " + genotypingMode);
 		}
 		
-		Map<String, ?> attributes = Collections.singletonMap(
-				Constants.READ_COUNTS_KEY, baseCountsBuffer.toString());
-		return new Genotype(sampleName, genotypeAlleles,
-				InferredGeneticContext.NO_NEG_LOG_10PERROR, null, attributes,
-				false);
+		Map<String, Object> attributes = Collections.singletonMap(
+				Constants.READ_COUNTS_KEY, (Object) baseCountsBuffer.toString());
+		Genotype result = new Genotype(sampleName, genotypeAlleles,-1,null,attributes,false);
+		return result;
 	}
 
 	private List<Allele> onePerAlleleGenotypeAlleleList(List<Allele> alleleList,
@@ -532,7 +533,7 @@ public class ReadCountsWalker extends
 		if (value == null)
 			return sum;
 
-		out.add(value, value.getReference().getBases()[0]);
+		out.add(value);
 		return sum;
 	}
 
@@ -542,5 +543,29 @@ public class ReadCountsWalker extends
 	    // Nothing to do here for now.
 		return lhs;
 	}
+
+    /**
+     * rsIDs from this file are used to populate the ID column of the output.  Also, the DB INFO flag will be set when appropriate.
+     * dbSNP is not used in any way for the calculations themselves.
+     */
+    @ArgumentCollection
+    protected DbsnpArgumentCollection dbsnp = new DbsnpArgumentCollection();
+    public RodBinding<VariantContext> getDbsnpRodBinding() { return dbsnp.dbsnp; }
+
+    /**
+     * If a call overlaps with a record from the provided comp track, the INFO field will be annotated
+     *  as such in the output with the track name (e.g. -comp:FOO will have 'FOO' in the INFO field).
+     *  Records that are filtered in the comp track will be ignored.
+     *  Note that 'dbSNP' has been special-cased (see the --dbsnp argument).
+     */
+    @Input(fullName="comp", shortName = "comp", doc="comparison VCF file", required=false)
+    public List<RodBinding<VariantContext>> comps = Collections.emptyList();
+    public List<RodBinding<VariantContext>> getCompRodBindings() { return comps; }
+
+    // The following are not used by the Unified Genotyper
+    public RodBinding<VariantContext> getSnpEffRodBinding() { return null; }
+    public List<RodBinding<VariantContext>> getResourceRodBindings() { return Collections.emptyList(); }
+    public boolean alwaysAppendDbsnpId() { return false; }
+	
 
 }

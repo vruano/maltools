@@ -1,10 +1,11 @@
 package net.malariagen.gatk.uniqueness;
 
+import org.broad.tribble.AbstractFeatureCodec;
 import org.broad.tribble.Feature;
 import org.broad.tribble.FeatureCodec;
 import org.broad.tribble.readers.LineReader;
 
-public class UQNCodec implements FeatureCodec<UQNFeature> {
+public class UQNCodec extends AbstractFeatureCodec<UQNFeature> {
 
 	@Override
 	public UQNFeature decode(String line) {

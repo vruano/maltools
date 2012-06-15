@@ -1,10 +1,11 @@
 package net.malariagen.gatk.csl;
 
+import org.broad.tribble.AbstractFeatureCodec;
 import org.broad.tribble.Feature;
 import org.broad.tribble.FeatureCodec;
 import org.broad.tribble.readers.LineReader;
 
-public class CSLCodec implements FeatureCodec<CSLFeature> {
+public class CSLCodec extends AbstractFeatureCodec<CSLFeature> {
 
 	@Override
 	public CSLFeature decode(String line) {
@@ -40,5 +41,6 @@ public class CSLCodec implements FeatureCodec<CSLFeature> {
 	public Object readHeader(LineReader arg0) {
 		return null;
 	}
+
 
 }

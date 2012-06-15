@@ -4,19 +4,13 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.io.PrintWriter;
-import java.lang.reflect.Proxy;
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-
-import net.malariagen.gatk.csl.CSLFeature;
 import net.malariagen.gatk.genotyper.GenotypeVariantFilterEmitMode;
 import net.malariagen.gatk.genotyper.GenotypingContext;
 import net.malariagen.gatk.genotyper.MetaArgumentCollection;
@@ -24,21 +18,17 @@ import net.malariagen.gatk.genotyper.SnpGenotypingContext;
 import net.malariagen.gatk.genotyper.models.GenotypingModel;
 import net.malariagen.gatk.genotyper.models.GenotypingModelException;
 import net.malariagen.gatk.genotyper.models.GenotypingModelUtils;
-import net.sf.samtools.SAMReadGroupRecord;
-
+import net.malariagen.utils.NucleotideIUPAC;
 
 import org.apache.log4j.Logger;
 import org.broadinstitute.sting.gatk.GenomeAnalysisEngine;
 import org.broadinstitute.sting.gatk.contexts.AlignmentContext;
 import org.broadinstitute.sting.gatk.contexts.AlignmentContextUtils;
 import org.broadinstitute.sting.gatk.contexts.ReferenceContext;
-import org.broadinstitute.sting.gatk.datasources.reads.SAMReaderID;
 import org.broadinstitute.sting.gatk.datasources.rmd.ReferenceOrderedDataSource;
 import org.broadinstitute.sting.gatk.refdata.RefMetaDataTracker;
-import org.broadinstitute.sting.gatk.refdata.utils.GATKFeature;
 import org.broadinstitute.sting.gatk.walkers.annotator.VariantAnnotatorEngine;
 import org.broadinstitute.sting.gatk.walkers.genotyper.GenotypeLikelihoodsCalculationModel;
-import org.broadinstitute.sting.gatk.walkers.genotyper.SNPGenotypeLikelihoodsCalculationModel;
 import org.broadinstitute.sting.gatk.walkers.genotyper.UnifiedArgumentCollection;
 import org.broadinstitute.sting.gatk.walkers.genotyper.UnifiedGenotyperEngine;
 import org.broadinstitute.sting.gatk.walkers.genotyper.VariantCallContext;
@@ -51,8 +41,9 @@ import org.broadinstitute.sting.utils.pileup.ReadBackedExtendedEventPileup;
 import org.broadinstitute.sting.utils.pileup.ReadBackedPileup;
 import org.broadinstitute.sting.utils.variantcontext.Allele;
 import org.broadinstitute.sting.utils.variantcontext.Genotype;
-import org.broadinstitute.sting.utils.variantcontext.MutableGenotype;
+import org.broadinstitute.sting.utils.variantcontext.GenotypesContext;
 import org.broadinstitute.sting.utils.variantcontext.VariantContext;
+import org.broadinstitute.sting.utils.variantcontext.VariantContextBuilder;
 
 public class MetaGenotyperEngine extends UnifiedGenotyperEngine {
 
@@ -60,46 +51,22 @@ public class MetaGenotyperEngine extends UnifiedGenotyperEngine {
 
 		public MyVariantContext(String source, String contig, long start,
 				long stop, Collection<Allele> alleles,
-				Collection<Genotype> genotypes, double negLog10PError,
-				Set<String> filters, Map<String, ?> attributes) {
-			super(source, contig, start, stop, alleles, genotypes, negLog10PError, filters,
-					attributes);
-		}
-
-		public MyVariantContext(String source, String contig, long start,
-				long stop, Collection<Allele> alleles,
-				Collection<Genotype> genotypes) {
-			super(source, contig, start, stop, alleles, genotypes);
-		}
-
-		public MyVariantContext(String source, String contig, long start,
-				long stop, Collection<Allele> alleles, double negLog10PError,
-				Set<String> filters, Map<String, ?> attributes) {
-			super(source, contig, start, stop, alleles, negLog10PError, filters, attributes);
-		}
-
-		public MyVariantContext(String source, String contig, long start,
-				long stop, Collection<Allele> alleles,
-				Map<String, Genotype> genotypes, double negLog10PError,
-				Set<String> filters, Map<String, ?> attributes) {
-			super(source, contig, start, stop, alleles, genotypes, negLog10PError, filters,
-					attributes);
-		}
-
-		public MyVariantContext(String source, String contig, long start,
-				long stop, Collection<Allele> alleles) {
-			super(source, contig, start, stop, alleles);
+				GenotypesContext genotypes, double log10PError,
+				Set<String> filters, Map<String, Object> attributes) {
+			super(source, null, contig, start, stop, alleles, genotypes,
+					log10PError, filters, attributes, NucleotideIUPAC.GAP
+							.byteValue(), null);
 		}
 
 		public MyVariantContext(VariantContext other) {
 			super(other);
 		}
-		
+
 		@Override
 		public boolean isSNP() {
 			return true;
 		}
-		
+
 		@Override
 		public VariantContext.Type getType() {
 			return VariantContext.Type.SNP;
@@ -107,60 +74,57 @@ public class MetaGenotyperEngine extends UnifiedGenotyperEngine {
 
 	}
 
-
-	private static final String CANDIATE_SNP_LIST_ROD_NAME = "csl";
+//	private static final String CANDIATE_SNP_LIST_ROD_NAME = "csl";
 
 	public static final String NO_VARIANT_GT_FILTER = "NoVarGT";
-	
+
 	public static final String NO_POLYMORPHIC_GT_FILTER = "NoPolyGT";
 
 	private MetaArgumentCollection metaUAC;
 
 	private PrintWriter baseqDistOut;
-	private Logger metaLogger;
-	private boolean filterBySnpList = false;
+//	private Logger metaLogger;
+//	private boolean filterBySnpList = false;
 
 	private VariantAnnotatorEngine metaAnnotationEngine;
 
 	private ThreadLocal<GenotypingModel> genotypingModel = new ThreadLocal<GenotypingModel>();
-	
+
 	private int sampleCount;
 
-	
 	public MetaGenotyperEngine(GenomeAnalysisEngine toolkit,
 			MetaArgumentCollection UAC, Logger logger,
 			PrintStream verboseWriter, VariantAnnotatorEngine engine,
 			Set<String> samples) {
-		super(toolkit, UAC, logger, verboseWriter, engine, samples);
-		sampleCount = toolkit.getSamples().size();
+		super(toolkit, UAC, logger, verboseWriter, engine, samples, 1);
+		sampleCount = samples.size();
 		metaUAC = UAC;
-		metaLogger = logger;
-		metaAnnotationEngine = engine;
-		filterBySnpList = checkFilterBySnpList(toolkit);
+//		metaLogger = logger;
+//		metaAnnotationEngine = engine;
+//		filterBySnpList = checkFilterBySnpList(toolkit);
 	}
 
+//	private boolean checkFilterBySnpList(GenomeAnalysisEngine toolkit) {
+//		List<ReferenceOrderedDataSource> rodSources = toolkit
+//				.getRodDataSources();
+		// for (ReferenceOrderedDataSource rod : rodSources) {
+		// if (rod.getName().equals(CANDIATE_SNP_LIST_ROD_NAME))
+		// return true;
+		// }
+		// return false;
+//		return true;
+//	}
 
-
-
-	private boolean checkFilterBySnpList(GenomeAnalysisEngine toolkit) {
-		List<ReferenceOrderedDataSource> rodSources = toolkit.getRodDataSources();
-		for (ReferenceOrderedDataSource rod : rodSources) {
-			if (rod.getName().equals(CANDIATE_SNP_LIST_ROD_NAME))
-				return true;
-		}
-		return false;
-	}
-	
 	private boolean isCandidatePosition(RefMetaDataTracker rmdt) {
-		if (!filterBySnpList) 
-			return true;
-		
-		if (!rmdt.hasROD(CANDIATE_SNP_LIST_ROD_NAME))
-			return false;
-		List<GATKFeature> features = rmdt.getGATKFeatureMetaData(CANDIATE_SNP_LIST_ROD_NAME, true);
-		return features.size() > 0;
+		// if (!filterBySnpList)
+		return true;
+		//
+		// if (!rmdt.hasROD(CANDIATE_SNP_LIST_ROD_NAME))
+		// return false;
+		// List<GATKFeature> features =
+		// rmdt.getGATKFeatureMetaData(CANDIATE_SNP_LIST_ROD_NAME, true);
+		// return features.size() > 0;
 	}
-
 
 	public MetaGenotyperEngine(GenomeAnalysisEngine toolkit,
 			MetaArgumentCollection UAC) {
@@ -175,7 +139,8 @@ public class MetaGenotyperEngine extends UnifiedGenotyperEngine {
 		String smodel = metaUAC.smodel;
 		if (smodel == null)
 			return null;
-		genotypingModel.set(result = GenotypingModelUtils.getModelInstance(smodel));
+		genotypingModel.set(result = GenotypingModelUtils
+				.getModelInstance(smodel));
 		return result;
 	}
 
@@ -204,48 +169,56 @@ public class MetaGenotyperEngine extends UnifiedGenotyperEngine {
 	 *            contextual information around the locus
 	 * @return the VariantCallContext object
 	 */
-	public VariantCallContext calculateLikelihoodsAndGenotypes(
+	@Override
+	public List<VariantCallContext> calculateLikelihoodsAndGenotypes(
 			RefMetaDataTracker tracker, ReferenceContext refContext,
 			AlignmentContext rawContext) {
-	
-		
-		if (!isCandidatePosition(tracker)) 
-			return null;
-		
-		GenotypingContext gc = buildGenotypingContext(tracker, refContext, rawContext);
-		
-		PileupElementFilter pueFilter = buildPileupElementFilter(tracker,gc);
-		rawContext = new AlignmentContext(rawContext.getLocation(), rawContext.getBasePileup().getFilteredPileup(pueFilter),rawContext.getSkippedBases(), rawContext.hasPileupBeenDownsampled());
-		gc = buildGenotypingContext(tracker, refContext, rawContext);
-		
-		if (metaUAC.COVERAGE_AT_WHICH_TO_ABORT > 0
-				&& rawContext.size() > metaUAC.COVERAGE_AT_WHICH_TO_ABORT)
-			return null;
-		
-		final GenotypeLikelihoodsCalculationModel.Model model = getCurrentGLModel(
-				tracker, refContext, rawContext);
-		if (model == null) {
-			return (metaUAC.OutputMode == OUTPUT_MODE.EMIT_ALL_SITES
-					&& metaUAC.GenotypingMode == GenotypeLikelihoodsCalculationModel.GENOTYPING_MODE.GENOTYPE_GIVEN_ALLELES ? generateEmptyContext(
-					tracker, refContext, null, rawContext) : null);
-		}
 
+		if (!isCandidatePosition(tracker))
+			return null;
+
+		GenotypingContext gc = buildGenotypingContext(tracker, refContext,
+				rawContext);
+
+		PileupElementFilter pueFilter = buildPileupElementFilter(tracker, gc);
+		rawContext = new AlignmentContext(rawContext.getLocation(), rawContext
+				.getBasePileup().getFilteredPileup(pueFilter),
+				rawContext.getSkippedBases(),
+				rawContext.hasPileupBeenDownsampled());
+		gc = buildGenotypingContext(tracker, refContext, rawContext);
+
+		// TODO removed during migration to new GATK as variable has disapeared.
+		// if (metaUAC.COVERAGE_AT_WHICH_TO_ABORT > 0
+		// && rawContext.size() > metaUAC.COVERAGE_AT_WHICH_TO_ABORT)
+		// return null;
+
+//		final GenotypeLikelihoodsCalculationModel.Model model = getCurrentGLModel(
+//				tracker, refContext, rawContext);
+		//if (model == null) {
+		//	return Collections
+		//			.singletonList((metaUAC.OutputMode == OUTPUT_MODE.EMIT_ALL_SITES
+		//					&& metaUAC.GenotypingMode == GenotypeLikelihoodsCalculationModel.GENOTYPING_MODE.GENOTYPE_GIVEN_ALLELES ? generateEmptyContext(
+		//					tracker, refContext, null, rawContext) : null));
+		//}
 
 		Map<String, AlignmentContext> stratifiedContext = getFilteredAndStratifiedContexts(
 				metaUAC, refContext, rawContext,
 				GenotypeLikelihoodsCalculationModel.Model.SNP);
 		if (stratifiedContext == null || rawContext.size() == 0) {
-			return (metaUAC.OutputMode == OUTPUT_MODE.EMIT_ALL_SITES
-					&& metaUAC.GenotypingMode == GenotypeLikelihoodsCalculationModel.GENOTYPING_MODE.GENOTYPE_GIVEN_ALLELES ? generateEmptyContext(
-					tracker, refContext, stratifiedContext, rawContext) : null);
+			return Collections
+					.singletonList((metaUAC.OutputMode == OUTPUT_MODE.EMIT_ALL_SITES
+							&& metaUAC.GenotypingMode == GenotypeLikelihoodsCalculationModel.GENOTYPING_MODE.GENOTYPE_GIVEN_ALLELES ? generateEmptyContext(
+							tracker, refContext, stratifiedContext, rawContext)
+							: null));
 		}
 
 		GenotypingModel gmodel = getGenotypingModel();
 		if (gmodel == null)
 			throw new GenotypingModelException(
 					"a genotyping model must be specified");
-		String[] samples = stratifiedContext.keySet().toArray(new String[stratifiedContext.size()]);
-		int sampleCount = samples.length; 
+		String[] samples = stratifiedContext.keySet().toArray(
+				new String[stratifiedContext.size()]);
+		int sampleCount = samples.length;
 		AlignmentContext[] ac = new AlignmentContext[sampleCount];
 		for (int i = 0; i < sampleCount; i++) {
 			String s = samples[i];
@@ -253,106 +226,110 @@ public class MetaGenotyperEngine extends UnifiedGenotyperEngine {
 		}
 
 		gmodel.setGenotypingContext(gc);
-		Map<String, MutableGenotype> newGenotypes = gmodel
+		GenotypesContext newGenotypes = gmodel
 				.calculateGenotypes(stratifiedContext);
 		GenomeLoc locus = refContext.getLocus();
-		VariantContext newVc = new MyVariantContext("MG_call", locus.getContig(), locus.getStart(),
-				locus.getStop(), gc.getAlleleList(),consolidateGenotypes(newGenotypes).values());
+		VariantContext newVc = new MyVariantContext("MG_call",
+				locus.getContig(), locus.getStart(), locus.getStop(),
+				gc.getAlleleList(), newGenotypes, -1, null, null);
 
-		
-		
-		
-		newVc = metaAnnotationEngine
-				.annotateContext(tracker, refContext, stratifiedContext, newVc)
-				.iterator().next();
-		newVc = filterGenotypeCalls(newVc,gmodel);
-		if (newVc == null) return null;
-		double negLog10VarQual = gmodel
-				.calculateVariantPhredQuality(stratifiedContext,newVc.getGenotypes()) / 10.0;
-		if (negLog10VarQual > 99999.99) negLog10VarQual = 99999.99;
+		newVc = metaAnnotationEngine.annotateContext(tracker, refContext,
+				stratifiedContext, newVc);
+
+		newVc = filterGenotypeCalls(newVc, gmodel);
+		if (newVc == null)
+			return null;
+		double negLog10VarQual = gmodel.calculateVariantPhredQuality(
+				stratifiedContext, newVc.getGenotypes()) / 10.0;
+		if (negLog10VarQual > 99999.99)
+			negLog10VarQual = 99999.99;
 		Set<String> filters;
-        if (!Double.isNaN(negLog10VarQual) && metaUAC.STANDARD_CONFIDENCE_FOR_EMITTING >negLog10VarQual * 10)
-                   return null;
 		if (!Double.isNaN(negLog10VarQual)
-				&& metaUAC.STANDARD_CONFIDENCE_FOR_CALLING > negLog10VarQual * 10) 
+				&& metaUAC.STANDARD_CONFIDENCE_FOR_EMITTING > negLog10VarQual * 10)
+			return null;
+		if (!Double.isNaN(negLog10VarQual)
+				&& metaUAC.STANDARD_CONFIDENCE_FOR_CALLING > negLog10VarQual * 10)
 			filters = Collections.singleton(LOW_QUAL_FILTER_NAME);
-		else 
+		else
 			filters = Collections.emptySet();
-		
+
 		newVc = crossAnnotations(newVc);
-		newVc = VariantContext.modifyPErrorFiltersAndAttributes(newVc, negLog10VarQual, filters, newVc.getAttributes());
+		VariantContextBuilder vcb = new VariantContextBuilder(newVc);
+		vcb.log10PError(-negLog10VarQual);
+		vcb.filters(filters);
+		newVc = vcb.make();
 		VariantCallContext result = new VariantCallContext(newVc,
 				confidentlyCalled(negLog10VarQual));
-		result.setRefBase(gc.getReferenceAllele().getBases()[0]);
 		dumpBaseqDistOut(stratifiedContext);
-		return result;
+		return Collections.singletonList(result);
 	}
-
 
 	private VariantContext crossAnnotations(VariantContext vc) {
 		return vc;
 	}
 
-
 	private SnpGenotypingContext buildGenotypingContext(
-			RefMetaDataTracker tracker, ReferenceContext refContext, AlignmentContext rawContext) {
-		
+			RefMetaDataTracker tracker, ReferenceContext refContext,
+			AlignmentContext rawContext) {
+
 		byte possibleAlternatives = candidateSnpListAlternative(tracker);
-		
+
 		if (possibleAlternatives == 'N')
-			return new SnpGenotypingContext(true,refContext,rawContext);
+			return new SnpGenotypingContext(true, refContext, rawContext);
 		else
-			return new SnpGenotypingContext(true,possibleAlternatives,refContext,rawContext);
+			return new SnpGenotypingContext(true, possibleAlternatives,
+					refContext, rawContext);
 	}
 
-
 	private byte candidateSnpListAlternative(RefMetaDataTracker tracker) {
-		List<GATKFeature> tracks = tracker.getGATKFeatureMetaData(CANDIATE_SNP_LIST_ROD_NAME, true);
-		for (GATKFeature ft : tracks) {
-			Object o = ft.getUnderlyingObject();
-			if (o instanceof CSLFeature) {
-				CSLFeature c = (CSLFeature)o;
-				return c.getAlternative();
-			}
-		}
+		// List<GATKFeature> tracks =
+		// tracker.getGATKFeatureMetaData(CANDIATE_SNP_LIST_ROD_NAME, true);
+		// for (GATKFeature ft : tracks) {
+		// Object o = ft.getUnderlyingObject();
+		// if (o instanceof CSLFeature) {
+		// CSLFeature c = (CSLFeature)o;
+		// return c.getAlternative();
+		// }
+		// }
 		return 'N';
 	}
 
+	private PileupElementFilter buildPileupElementFilter(
+			RefMetaDataTracker tracker, final GenotypingContext gc) {
 
-	private PileupElementFilter buildPileupElementFilter(RefMetaDataTracker tracker,
-			final GenotypingContext gc) {
-		
 		return new PileupElementFilter() {
 			@Override
 			public boolean allow(PileupElement pileupElement) {
 				byte b = pileupElement.getBase();
 				if (gc.getAlleleIndex(b) < 0)
-						return false;
+					return false;
 				if (pileupElement.getMappingQual() < metaUAC.MIN_MAPPING_QUALTY_SCORE)
-						return false;
+					return false;
 				if (pileupElement.getQual() < metaUAC.MIN_BASE_QUALTY_SCORE)
-						return false;
+					return false;
 				return true;
-			}};
+			}
+		};
 	}
 
-
-	private VariantContext filterGenotypeCalls(VariantContext newVc, GenotypingModel gc) {
-		Map<String, Genotype> genotypes = newVc.getGenotypes();
-		Map<String, Genotype> newGenotypes = null;
+	private VariantContext filterGenotypeCalls(VariantContext newVc,
+			GenotypingModel gc) {
+		GenotypesContext genotypes = newVc.getGenotypes();
 		int[] genotypeCounts = new int[gc.getGenotypeCount()];
+		boolean modified = false;
 		int totalDifferentGenotypes = 0;
-		for (Map.Entry<String, Genotype> e : genotypes.entrySet()) {
-			String s = e.getKey();
-			Genotype g = e.getValue();
-			
-			double gConf = g.hasAttribute("GC") ? g.getAttributeAsDouble("GC") : Double.MIN_VALUE;
-			if (g.getNegLog10PError() < metaUAC.MIN_GENOTYPE_QUALITY || gConf < metaUAC.MIN_GENOTYPE_CONFIDENCE) {
-				if (newGenotypes == null) 
-					newGenotypes = new HashMap<String,Genotype>(genotypes);
-				newGenotypes.put(s,Genotype.modifyAlleles(g,Collections.singletonList(Allele.NO_CALL)));
-			}
-			else {
+		for (int i = 0; i < genotypes.size(); i++) {
+			Genotype g = genotypes.get(i);
+			double gConf = g.hasAttribute("GC") ? (Double) g.getAttribute("GC")
+					: Double.MIN_VALUE;
+			if (-g.getLog10PError() < metaUAC.MIN_GENOTYPE_QUALITY
+					|| gConf < metaUAC.MIN_GENOTYPE_CONFIDENCE) {
+				modified = true;
+				genotypes.set(
+						i,
+						Genotype.modifyAlleles(g,
+								Collections.singletonList(Allele.NO_CALL)));
+			} else {
 				int gIdx = gc.getGenotypeIndex(g.getAlleles());
 				if (gIdx != -1 && genotypeCounts[gIdx]++ == 0)
 					totalDifferentGenotypes++;
@@ -364,131 +341,81 @@ public class MetaGenotyperEngine extends UnifiedGenotyperEngine {
 					if (metaUAC.gtVarFilterEmitMode == GenotypeVariantFilterEmitMode.POLYMORPHIC)
 						return null;
 					else if (metaUAC.gtVarFilterEmitMode == GenotypeVariantFilterEmitMode.NO_POLYMORPHIC_FILTER) {
-						newVc = addFilterToVariantContext(newVc, NO_POLYMORPHIC_GT_FILTER);
-					}
-					else if (totalDifferentGenotypes == 0 || genotypeCounts[0] != 0) {
+						newVc = addFilterToVariantContext(newVc,
+								NO_POLYMORPHIC_GT_FILTER);
+					} else if (totalDifferentGenotypes == 0
+							|| genotypeCounts[0] != 0) {
 						if (metaUAC.gtVarFilterEmitMode == GenotypeVariantFilterEmitMode.VARIANT)
 							return null;
-						else 
-							newVc = addFilterToVariantContext(newVc, NO_VARIANT_GT_FILTER);
+						else
+							newVc = addFilterToVariantContext(newVc,
+									NO_VARIANT_GT_FILTER);
 					}
 				}
-			}
-			else if (totalDifferentGenotypes == 0 || genotypeCounts[0] != 0) {
+			} else if (totalDifferentGenotypes == 0 || genotypeCounts[0] != 0) {
 				switch (metaUAC.gtVarFilterEmitMode) {
 				case VARIANT:
 				case POLYMORPHIC:
 					return null;
 				default:
-					newVc = addFilterToVariantContext(newVc, NO_VARIANT_GT_FILTER);
+					newVc = addFilterToVariantContext(newVc,
+							NO_VARIANT_GT_FILTER);
 				}
 			}
 		}
-		return newGenotypes == null ? newVc : VariantContext.modifyGenotypes(newVc, newGenotypes);
+		if (!modified)
+			return newVc;
+		VariantContextBuilder vcb = new VariantContextBuilder(newVc);
+		vcb.genotypes(genotypes);
+		return vcb.make();
 	}
-
 
 	private VariantContext addFilterToVariantContext(VariantContext newVc,
 			String newFilter) {
 		Set<String> filters = newVc.getFilters();
 		if (filters == null || filters.size() == 0) {
 			filters = Collections.singleton(newFilter);
-		}
-		else {
+		} else {
 			filters = new HashSet<String>(filters);
 			filters.add(newFilter);
 		}
-		newVc = VariantContext.modifyFilters(newVc, filters);
-		return newVc;
-	}
-
-	
-
-	private Map<String, Genotype> consolidateGenotypes(
-			Map<String, MutableGenotype> newGenotypes) {
-		Map<String, Genotype> g = new HashMap<String, Genotype>(
-				newGenotypes.size());
-		for (Map.Entry<String, MutableGenotype> e : newGenotypes.entrySet()) {
-			MutableGenotype mg = e.getValue();
-			//if (mg.getNegLog10PError() < metaUAC.MIN_GENOTYPE_QUALITY)
-			//	mg.setAlleles(Collections.singletonList(Allele.NO_CALL));
-			g.put(e.getKey(), mg.unmodifiableGenotype());
-		}
-		return g;
+		VariantContextBuilder vcb = new VariantContextBuilder(newVc);
+		vcb.filters(filters);
+		return vcb.make();
 	}
 
 	protected boolean confidentlyCalled(double conf) {
 		return conf >= metaUAC.STANDARD_CONFIDENCE_FOR_CALLING;
 	}
 
-	private GenotypeLikelihoodsCalculationModel.Model getCurrentGLModel(
-			final RefMetaDataTracker tracker,
-			final ReferenceContext refContext, final AlignmentContext rawContext) {
-		if (rawContext.hasExtendedEventPileup()) {
-			// todo - remove this code
-			if ((metaUAC.GLmodel == GenotypeLikelihoodsCalculationModel.Model.BOTH || metaUAC.GLmodel == GenotypeLikelihoodsCalculationModel.Model.INDEL)
-					&& (metaUAC.GenotypingMode != GenotypeLikelihoodsCalculationModel.GENOTYPING_MODE.GENOTYPE_GIVEN_ALLELES))
-				return GenotypeLikelihoodsCalculationModel.Model.INDEL;
-		} else {
-			// no extended event pileup
-			// if we're genotyping given alleles and we have a requested SNP at
-			// this position, do SNP
-			if (metaUAC.GenotypingMode == GenotypeLikelihoodsCalculationModel.GENOTYPING_MODE.GENOTYPE_GIVEN_ALLELES) {
-				VariantContext vcInput = SNPGenotypeLikelihoodsCalculationModel
-						.getSNPVCFromAllelesRod(tracker, refContext, false,
-								metaLogger);
-				if (vcInput == null)
-					return null;
-
-				// todo - no support to genotype MNP's yet
-				if (vcInput.isMNP())
-					return null;
-
-				if (vcInput.isSNP()) {
-					if ((metaUAC.GLmodel == GenotypeLikelihoodsCalculationModel.Model.BOTH || metaUAC.GLmodel == GenotypeLikelihoodsCalculationModel.Model.SNP))
-						return GenotypeLikelihoodsCalculationModel.Model.SNP;
-					else
-						// ignore SNP's if user chose INDEL mode
-						return null;
-				} else if ((vcInput.isIndel() || vcInput.isMixed())
-						&& (metaUAC.GLmodel == GenotypeLikelihoodsCalculationModel.Model.BOTH || metaUAC.GLmodel == GenotypeLikelihoodsCalculationModel.Model.INDEL))
-					return GenotypeLikelihoodsCalculationModel.Model.INDEL;
-			} else {
-				// todo - this assumes SNP's take priority when BOTH is
-				// selected, should do a smarter way once extended events are
-				// removed
-				if (metaUAC.GLmodel == GenotypeLikelihoodsCalculationModel.Model.BOTH
-						|| metaUAC.GLmodel == GenotypeLikelihoodsCalculationModel.Model.SNP)
-					return GenotypeLikelihoodsCalculationModel.Model.SNP;
-				else if (metaUAC.GLmodel == GenotypeLikelihoodsCalculationModel.Model.INDEL)
-					return GenotypeLikelihoodsCalculationModel.Model.INDEL;
-			}
-		}
-		return null;
-	}
 
 	private VariantCallContext generateEmptyContext(RefMetaDataTracker tracker,
 			ReferenceContext ref,
 			Map<String, AlignmentContext> stratifiedContexts,
 			AlignmentContext rawContext) {
 		VariantContext vc;
-		if (metaUAC.GenotypingMode == GenotypeLikelihoodsCalculationModel.GENOTYPING_MODE.GENOTYPE_GIVEN_ALLELES) {
-			VariantContext vcInput = SNPGenotypeLikelihoodsCalculationModel
-					.getSNPVCFromAllelesRod(tracker, ref, false, metaLogger);
-			if (vcInput == null)
-				return null;
-			vc = new VariantContext("MG_call", vcInput.getChr(),
-					vcInput.getStart(), vcInput.getEnd(), vcInput.getAlleles());
-		} else {
+
+// TODO need to handle this possibility?.		
+    if (metaUAC.GenotypingMode == GenotypeLikelihoodsCalculationModel.GENOTYPING_MODE.GENOTYPE_GIVEN_ALLELES) 
+    	throw new UnsupportedOperationException("do not support genotyping on provided alleles");
+//			VariantContext vcInput = SNPGenotypeLikelihoodsCalculationModel
+//					.getSNPVCFromAllelesRod(tracker, ref, false, metaLogger);
+//			if (vcInput == null)
+//				return null;
+//			vc = new VariantContext("MG_call", vcInput.getChr(),
+//					vcInput.getStart(), vcInput.getEnd(), vcInput.getAlleles());
+//		} else {
 			// deal with bad/non-standard reference bases
 			if (!Allele.acceptableAlleleBases(new byte[] { ref.getBase() }))
 				return null;
 
 			Set<Allele> alleles = new HashSet<Allele>();
 			alleles.add(Allele.create(ref.getBase(), true));
-			vc = new VariantContext("MG_call", ref.getLocus().getContig(), ref
-					.getLocus().getStart(), ref.getLocus().getStart(), alleles);
-		}
+			VariantContextBuilder vcb = new VariantContextBuilder();
+			GenomeLoc loc = ref.getLocus();
+			vcb.alleles(alleles).loc(loc.getContig(),loc.getStart(),loc.getStop()).source("MG_call");
+			vc = vcb.make();
+//		}
 
 		if (metaAnnotationEngine != null) {
 			// we want to use the *unfiltered* and *unBAQed* context for the
@@ -499,18 +426,15 @@ public class MetaGenotyperEngine extends UnifiedGenotyperEngine {
 			else if (rawContext.hasBasePileup())
 				pileup = rawContext.getBasePileup();
 			stratifiedContexts = AlignmentContextUtils
-					.splitContextBySampleName(pileup,
-							metaUAC.ASSUME_SINGLE_SAMPLE);
+					.splitContextBySampleName(pileup);
 
 			vc = metaAnnotationEngine
-					.annotateContext(tracker, ref, stratifiedContexts, vc)
-					.iterator().next();
+					.annotateContext(tracker, ref, stratifiedContexts, vc);
 		}
 
-		return new VariantCallContext(vc, ref.getBase(), false);
+		return new VariantCallContext(vc, false);
 	}
 
-	
 	private void dumpBaseqDistOut(
 			Map<String, AlignmentContext> stratifiedContext) {
 		PrintWriter pw = getBaseqDistOutWriter();
@@ -544,14 +468,13 @@ public class MetaGenotyperEngine extends UnifiedGenotyperEngine {
 				ReadBackedPileup pileup = rawContext.getBasePileup();
 
 				// don't call when there is no coverage
-				if (pileup.size() == 0
+				if (pileup.isEmpty()
 						&& UAC.OutputMode != OUTPUT_MODE.EMIT_ALL_SITES)
 					return null;
 
 				// stratify the AlignmentContext and cut by sample
 				stratifiedContexts = AlignmentContextUtils
-						.splitContextBySampleName(pileup,
-								UAC.ASSUME_SINGLE_SAMPLE);
+						.splitContextBySampleName(pileup);
 
 			} else {
 				// todo - tmp will get rid of extended events so this wont be
@@ -565,14 +488,13 @@ public class MetaGenotyperEngine extends UnifiedGenotyperEngine {
 				ReadBackedExtendedEventPileup pileup = rawPileup;
 
 				// don't call when there is no coverage
-				if (pileup.size() == 0
+				if (pileup.isEmpty()
 						&& UAC.OutputMode != OUTPUT_MODE.EMIT_ALL_SITES)
 					return null;
 
 				// stratify the AlignmentContext and cut by sample
 				stratifiedContexts = AlignmentContextUtils
-						.splitContextBySampleName(pileup,
-								UAC.ASSUME_SINGLE_SAMPLE);
+						.splitContextBySampleName(pileup);
 			}
 		} else if (model == GenotypeLikelihoodsCalculationModel.Model.SNP) {
 
@@ -581,8 +503,7 @@ public class MetaGenotyperEngine extends UnifiedGenotyperEngine {
 
 			// stratify the AlignmentContext and cut by sample
 			stratifiedContexts = AlignmentContextUtils
-					.splitContextBySampleName(rawContext.getBasePileup(),
-							UAC.ASSUME_SINGLE_SAMPLE);
+					.splitContextBySampleName(rawContext.getBasePileup());
 
 			if (!(UAC.OutputMode == OUTPUT_MODE.EMIT_ALL_SITES && UAC.GenotypingMode != GenotypeLikelihoodsCalculationModel.GENOTYPING_MODE.GENOTYPE_GIVEN_ALLELES)) {
 				int numDeletions = 0;
@@ -592,7 +513,7 @@ public class MetaGenotyperEngine extends UnifiedGenotyperEngine {
 					}
 				}
 				if (((double) numDeletions)
-						/ ((double) rawContext.getBasePileup().size()) > UAC.MAX_DELETION_FRACTION) {
+						/ ((double) rawContext.getBasePileup().depthOfCoverage()) > UAC.MAX_DELETION_FRACTION) {
 					return null;
 				}
 			}
@@ -601,18 +522,14 @@ public class MetaGenotyperEngine extends UnifiedGenotyperEngine {
 		return stratifiedContexts;
 	}
 
-
 	public Collection<? extends VCFHeaderLine> getHeaderLines() {
 		return this.getGenotypingModel().getHeaderLines();
 	}
 
-
-
-
-	public VariantCallContext newVariantCallContext(VariantContext newVc, byte ref,
-			boolean confidentlyCalled) {
-		VariantCallContext result = new VariantCallContext(newVc,confidentlyCalled);
-		result.setRefBase(ref);
+	public VariantCallContext newVariantCallContext(VariantContext newVc,
+			byte ref, boolean confidentlyCalled) {
+		VariantCallContext result = new VariantCallContext(newVc,
+				confidentlyCalled);
 		return result;
 	}
 

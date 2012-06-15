@@ -13,6 +13,7 @@ import net.malariagen.utils.NucleotideIUPAC;
 import org.broadinstitute.sting.gatk.contexts.AlignmentContext;
 import org.broadinstitute.sting.gatk.contexts.ReferenceContext;
 import org.broadinstitute.sting.gatk.refdata.RefMetaDataTracker;
+import org.broadinstitute.sting.gatk.walkers.annotator.interfaces.AnnotatorCompatibleWalker;
 import org.broadinstitute.sting.gatk.walkers.annotator.interfaces.InfoFieldAnnotation;
 import org.broadinstitute.sting.utils.codecs.vcf.VCFHeaderLineType;
 import org.broadinstitute.sting.utils.codecs.vcf.VCFInfoHeaderLine;
@@ -21,7 +22,7 @@ import org.broadinstitute.sting.utils.pileup.ReadBackedPileup;
 import org.broadinstitute.sting.utils.variantcontext.Allele;
 import org.broadinstitute.sting.utils.variantcontext.VariantContext;
 
-public class AlleleQualityAnnotation implements InfoFieldAnnotation {
+public class AlleleQualityAnnotation extends InfoFieldAnnotation {
 	
 	public static final String ALLELE_QUALITY_KEY = "AQ";
 	
@@ -32,21 +33,20 @@ public class AlleleQualityAnnotation implements InfoFieldAnnotation {
 	private static List<VCFInfoHeaderLine> HEADER_LINES = Collections.singletonList(
 		new VCFInfoHeaderLine(ALLELE_QUALITY_KEY, -1, VCFHeaderLineType.Float, "Believe in that the allele actually exist, as long as mapping is correct"));
 	
-	
 	@Override
-	public Map<String,Object> annotate(RefMetaDataTracker tracker,
-			ReferenceContext ref,
-			Map<String, AlignmentContext> acs, VariantContext vc) {
+	public Map<String, Object> annotate(RefMetaDataTracker tracker,
+			AnnotatorCompatibleWalker walker, ReferenceContext ref,
+			Map<String, AlignmentContext> stratifiedContexts, VariantContext vc) {
 		
 		if (!vc.isSNP())
 			return Collections.emptyMap();
-		Set<Allele> alleles = vc.getAlternateAlleles();
+		List<Allele> alleles = vc.getAlternateAlleles();
 		if (alleles.size() == 0)
 			return Collections.emptyMap();
 		double errorRateSum = 0;
 		int[] alleleCounts = new int[NucleotideIUPAC.values().length];
 		int total = 0;
-		for (AlignmentContext ac : acs.values()) {
+		for (AlignmentContext ac : stratifiedContexts.values()) {
 			ReadBackedPileup rb = ac.getBasePileup();
 			for (PileupElement e : rb) {
 				alleleCounts[NucleotideIUPAC.fromBase(e.getBase()).ordinal()]++;
@@ -98,5 +98,7 @@ public class AlleleQualityAnnotation implements InfoFieldAnnotation {
 	public List<VCFInfoHeaderLine> getDescriptions() {
 		return HEADER_LINES;
 	}
+
+
 
 }

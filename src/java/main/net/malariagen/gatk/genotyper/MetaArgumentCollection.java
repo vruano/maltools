@@ -18,7 +18,7 @@ public class MetaArgumentCollection extends UnifiedArgumentCollection {
     public String baseqDistOut = null;
 
     @Argument(fullName = "min_genotype_quality", shortName = "mgq", doc = "Minimum genotype quality to make a call", required = false)
-	public double MIN_GENOTYPE_QUALITY = 0.01;
+	public double MIN_GENOTYPE_QUALITY = - 0.01;
     
     @Argument(fullName = "gt_emit_mode", shortName = "gem", doc = "Wether to emit variant based on their genotype calls", required = false)
     public GenotypeVariantFilterEmitMode gtVarFilterEmitMode = GenotypeVariantFilterEmitMode.EMIT_ALL;
@@ -28,5 +28,9 @@ public class MetaArgumentCollection extends UnifiedArgumentCollection {
     
     @Argument(fullName = "parent", shortName = "P", doc = "Parent sample name", required = false)
     public List<String> parents = Collections.emptyList();
+   
+    @Argument(fullName = "min_mapping_quality_score", shortName = "mmq", doc = "Minimum mapping  quality required for a read to be considered during genotyping", required = false)
+    public int MIN_MAPPING_QUALTY_SCORE = 0;
+    
     
 }

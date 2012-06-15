@@ -1,10 +1,10 @@
 package net.malariagen.gatk.gff;
 
+import org.broad.tribble.AbstractFeatureCodec;
 import org.broad.tribble.Feature;
-import org.broad.tribble.FeatureCodec;
 import org.broad.tribble.readers.LineReader;
 
-public class GFFCodec implements FeatureCodec<GFFFeature> {
+public class GFFCodec extends AbstractFeatureCodec<GFFFeature> {
 
 	@Override
 	public Feature decodeLoc(String line) {
