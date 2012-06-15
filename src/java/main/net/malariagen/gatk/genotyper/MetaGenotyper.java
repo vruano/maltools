@@ -158,6 +158,7 @@ public class MetaGenotyper extends
 		getToolkit().getFilters();
 		samples = SampleUtils.getSAMFileSamples(getToolkit()
 					.getSAMFileHeader());
+		getToolkit().getRodDataSources();
 		// initialize the verbose writer
 		if (verboseWriter != null)
 			verboseWriter

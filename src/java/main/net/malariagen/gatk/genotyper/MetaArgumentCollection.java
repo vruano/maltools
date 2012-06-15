@@ -5,7 +5,9 @@ import java.util.List;
 
 import net.sf.picard.cmdline.CommandLineParser;
 
+import org.broad.tribble.Feature;
 import org.broadinstitute.sting.commandline.Argument;
+import org.broadinstitute.sting.commandline.RodBinding;
 import org.broadinstitute.sting.gatk.walkers.genotyper.UnifiedArgumentCollection;
 
 public class MetaArgumentCollection extends UnifiedArgumentCollection {
@@ -32,5 +34,7 @@ public class MetaArgumentCollection extends UnifiedArgumentCollection {
     @Argument(fullName = "min_mapping_quality_score", shortName = "mmq", doc = "Minimum mapping  quality required for a read to be considered during genotyping", required = false)
     public int MIN_MAPPING_QUALTY_SCORE = 0;
     
+    @Argument(fullName = "rodBind", shortName = "B", doc = "Additional ROD bindings", required = false)
+    public List<RodBinding<Feature>> rodBinds;
     
 }

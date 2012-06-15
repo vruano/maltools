@@ -190,8 +190,8 @@ public class BernoulliGenotypingModelTest extends WalkerTest {
 						+ "-smodel Bernoulli/0.01/ -A GenotypeConfidenceSum -A AlleleQuality -A AverageBaseQuality "
 						+ "-P PG0083-C -P PG0084-C "
 						+ "-A DepthPerAlleleByVariant -A UniquenessScore "
-						+ "-A NumberSamplesWithData %s",//-B:uniqueness,UQN %s %s -B:csl,CSL %s",
-						reference,output,output,sb.toString());
+						+ "-A NumberSamplesWithData %s -B:uniqueness,UQN %s",// %s -B:csl,CSL %s",
+						reference,output,output,sb.toString(),uniqness);
 						//reference, output, output, uniqness, sb.toString(),
 						//"/data/haldane/malariagen/pfalciparum/reference/candidate_snps_v1.csl");
 						//reference, output, output, uniqness, sb.toString(),
