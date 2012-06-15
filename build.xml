@@ -252,10 +252,10 @@
 
 <target name="java.build" depends="java.lib" unless="Queue.jar.utd" >
   <mkdir dir="${build.java.dir}/dist" />
-  <ant dir="${gatk.dir}" target="queue" inheritAll="false">
+  <!--ant dir="${gatk.dir}" target="queue" inheritAll="false">
     <property name="lib.dir" value="${build.java.dir}/lib" />
     <property name="dist.dir" value="${build.java.dir}/dist" />
-  </ant>
+  </ant-->
 </target>
 
 <target name="java.test.build" depends="java.lib, test.init">

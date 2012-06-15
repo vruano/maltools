@@ -255,8 +255,7 @@ public class WalkerTest extends BaseTest {
         CommandLineGATK instance = new CommandLineGATK();
         String[] command = Utils.escapeExpressions(args);
         // add the logging level to each of the integration test commands
-        command = Utils.appendArray(command, "-et", ENABLE_REPORTING ? "STANDARD" : "NO_ET");
-       
+//       command = Utils.appendArray(command, "-et", ENABLE_REPORTING ? "STANDARD" : "NO_ET");
         // run the executable
         boolean gotAnException = false;
         try {

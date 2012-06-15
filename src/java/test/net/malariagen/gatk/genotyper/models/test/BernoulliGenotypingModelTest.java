@@ -178,25 +178,23 @@ public class BernoulliGenotypingModelTest extends WalkerTest {
 			bamFiles[i] = new File(baseDir, progenyNames[i - 2] + ".bam");
 			sb.append("-I ").append(bamFiles[i].toString()).append(' ');
 		}
-		// StringBuffer sb = new StringBuffer(1000);
 
-		// for (File f : bamFiles)
-		// sb.append("-I ").append(f.toString()).append(' ');
-
-		File reference = new File(getClass().getResource(
-				"/mockups/bernoulli-test/reference/3D7_pm.fa").getFile());
-		File uniqness = new File(getClass().getResource(
-				"/mockups/bernoulli-test/reference/3D7_pm.uq").getFile());
+		File reference = new File(
+				"/data/haldane/malariagen/pfalciparum/reference/3D7_pm.fa");
+		File uniqness = new File(
+				"/data/haldane/malariagen/pfalciparum/reference/3D7_pm.uq");
 		File output = File.createTempFile("BernoulliTest", ".vcf");
 		Formatter formatter = new Formatter();
 		Formatter cmdSpec = formatter
 				.format("-R %s -T MetaGenotyper -o %s -baseq_do %s.bdo -mbq 20 -mmq 20 -mgq 0 -mgc -200 -stand_emit_conf 0 -out_mode EMIT_ALL_SITES -gem EMIT_ALL "
 						+ "-smodel Bernoulli/0.01/ -A GenotypeConfidenceSum -A AlleleQuality -A AverageBaseQuality "
 						+ "-P PG0083-C -P PG0084-C "
-						+ "-A ReadDepthAndAllelicFractionBySample -A DepthPerAlleleByVariant -A UniquenessScore "
-						+ "-A NumberSamplesWithData -B:uniqueness,UQN %s %s -B:csl,CSL %s",
-						reference, output, output, uniqness, sb.toString(),
-						"/data/haldane/malariagen/pfalciparum/reference/candidate_snps_v1.csl");
+						+ "-A DepthPerAlleleByVariant -A UniquenessScore "
+						+ "-A NumberSamplesWithData %s",//-B:uniqueness,UQN %s %s -B:csl,CSL %s",
+						reference,output,output,sb.toString());
+						//reference, output, output, uniqness, sb.toString(),
+						//"/data/haldane/malariagen/pfalciparum/reference/candidate_snps_v1.csl");
+						//reference, output, output, uniqness, sb.toString(),
 		// No md5s for now.
 		List<String> md5s = Collections.emptyList();
 		WalkerTest.WalkerTestSpec spec = new WalkerTest.WalkerTestSpec(

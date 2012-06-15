@@ -38,6 +38,7 @@ import org.broadinstitute.sting.gatk.refdata.RefMetaDataTracker;
 import org.broadinstitute.sting.gatk.walkers.*;
 import org.broadinstitute.sting.gatk.samples.*;
 import org.broadinstitute.sting.gatk.walkers.annotator.VariantAnnotatorEngine;
+import org.broadinstitute.sting.gatk.walkers.annotator.interfaces.AnnotatorCompatibleWalker;
 import org.broadinstitute.sting.gatk.walkers.genotyper.GenotypeLikelihoodsCalculationModel;
 import org.broadinstitute.sting.gatk.walkers.genotyper.MetaGenotyperEngine;
 import org.broadinstitute.sting.gatk.walkers.genotyper.UnifiedGenotyperEngine;
@@ -67,7 +68,7 @@ import java.io.PrintStream;
 //@Downsample(by = DownsampleType.BY_SAMPLE, toCoverage = 250)
 public class MetaGenotyper extends
 		LocusWalker<VariantCallContext, MetaGenotyper.UGStatistics> implements
-		TreeReducible<MetaGenotyper.UGStatistics> {
+		TreeReducible<MetaGenotyper.UGStatistics>, AnnotatorCompatibleWalker {
 
 	@ArgumentCollection
 	private MetaArgumentCollection UAC = new MetaArgumentCollection();
@@ -149,6 +150,7 @@ public class MetaGenotyper extends
 	 * Initialize the samples, output, and genotype calculation model
 	 * 
 	 **/
+	@SuppressWarnings("unchecked")
 	public void initialize() {
 		// get all of the unique sample names
 		// if we're supposed to assume a single sample, do so
@@ -162,7 +164,7 @@ public class MetaGenotyper extends
 					.println("AFINFO\tLOC\tREF\tALT\tMAF\tF\tAFprior\tAFposterior\tNormalizedPosterior");
 //		annotationEngine = new VariantAnnotatorEngine(getToolkit(),
 //				Arrays.asList(annotationClassesToUse), annotationsToUse);
-		annotationEngine = new VariantAnnotatorEngine(getToolkit());
+		annotationEngine = new VariantAnnotatorEngine(Arrays.asList(annotationClassesToUse), annotationsToUse, Collections.EMPTY_LIST,this,getToolkit());
 		MG_engine = new MetaGenotyperEngine(getToolkit(), UAC, logger,
 				verboseWriter, annotationEngine, samples);
 		if (UAC.parents.size() == 0)
@@ -359,6 +361,8 @@ public class MetaGenotyper extends
 			return null;
 		
 		VariantCallContext vc = vcl.get(0);
+		if (vc == null)
+			return null;
 		StringBuffer sb = new StringBuffer(10);
 		String previous = null;
 		boolean segregating = false;
@@ -482,5 +486,27 @@ public class MetaGenotyper extends
 					sum.nCallsMade));
 		}
 	}
+
+
+    /**
+     * If a call overlaps with a record from the provided comp track, the INFO field will be annotated
+     *  as such in the output with the track name (e.g. -comp:FOO will have 'FOO' in the INFO field).
+     *  Records that are filtered in the comp track will be ignored.
+     *  Note that 'dbSNP' has been special-cased (see the --dbsnp argument).
+     */
+    @Input(fullName="comp", shortName = "comp", doc="comparison VCF file", required=false)
+    public List<RodBinding<VariantContext>> comps = Collections.emptyList();
+    public List<RodBinding<VariantContext>> getCompRodBindings() { return comps; }
+
+    // The following are not used by the Unified Genotyper
+    public RodBinding<VariantContext> getSnpEffRodBinding() { return null; }
+    public List<RodBinding<VariantContext>> getResourceRodBindings() { return Collections.emptyList(); }
+    public boolean alwaysAppendDbsnpId() { return false; }
+
+	@Override
+	public RodBinding<VariantContext> getDbsnpRodBinding() {
+		return null;
+	}
+	
 
 }

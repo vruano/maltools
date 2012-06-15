@@ -6,6 +6,7 @@ import java.io.PrintStream;
 import java.io.PrintWriter;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -49,13 +50,15 @@ public class MetaGenotyperEngine extends UnifiedGenotyperEngine {
 
 	public class MyVariantContext extends VariantContext {
 
+		private static final String NO_ID = ".";
+
 		public MyVariantContext(String source, String contig, long start,
 				long stop, Collection<Allele> alleles,
 				GenotypesContext genotypes, double log10PError,
 				Set<String> filters, Map<String, Object> attributes) {
-			super(source, null, contig, start, stop, alleles, genotypes,
+			super(source, NO_ID, contig, start, stop, alleles, genotypes,
 					log10PError, filters, attributes, NucleotideIUPAC.GAP
-							.byteValue(), null);
+							.byteValue(), EnumSet.noneOf(Validation.class) );
 		}
 
 		public MyVariantContext(VariantContext other) {
@@ -71,6 +74,22 @@ public class MetaGenotyperEngine extends UnifiedGenotyperEngine {
 		public VariantContext.Type getType() {
 			return VariantContext.Type.SNP;
 		}
+		
+		@Override
+	    public Allele getAltAlleleWithHighestAlleleCount() {
+	    	if (this.alleles.size() >= 2)
+	    		return super.getAltAlleleWithHighestAlleleCount();
+	    	else {
+	    		Allele ref = this.getReference();
+	    		switch(NucleotideIUPAC.fromBase(ref.getBases()[0])) {
+	    		case A: return Allele.create((byte)'T',false);
+	    		case T: return Allele.create((byte)'A',false);
+	    		case G: return Allele.create((byte)'C',false);
+	    		case C: return Allele.create((byte)'G',false);
+	    		}
+	    		throw new IllegalStateException("invalid reference allele");
+	    	}
+	    }
 
 	}
 
@@ -100,7 +119,7 @@ public class MetaGenotyperEngine extends UnifiedGenotyperEngine {
 		sampleCount = samples.size();
 		metaUAC = UAC;
 //		metaLogger = logger;
-//		metaAnnotationEngine = engine;
+		metaAnnotationEngine = engine;
 //		filterBySnpList = checkFilterBySnpList(toolkit);
 	}
 
@@ -320,7 +339,7 @@ public class MetaGenotyperEngine extends UnifiedGenotyperEngine {
 		int totalDifferentGenotypes = 0;
 		for (int i = 0; i < genotypes.size(); i++) {
 			Genotype g = genotypes.get(i);
-			double gConf = g.hasAttribute("GC") ? (Double) g.getAttribute("GC")
+			double gConf = g.hasAttribute("GC") ? g.getAttributeAsDouble("GC",0)
 					: Double.MIN_VALUE;
 			if (-g.getLog10PError() < metaUAC.MIN_GENOTYPE_QUALITY
 					|| gConf < metaUAC.MIN_GENOTYPE_CONFIDENCE) {

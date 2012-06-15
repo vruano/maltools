@@ -10,9 +10,6 @@ import net.malariagen.gatk.genotyper.GenotypingContext;
 import net.malariagen.gatk.genotyper.models.GModel;
 import net.malariagen.gatk.math.Beta;
 
-import org.apache.commons.math.MathException;
-import org.apache.commons.math.util.ContinuedFraction;
-import org.apache.commons.math.util.FastMath;
 import org.broadinstitute.sting.gatk.contexts.AlignmentContext;
 import org.broadinstitute.sting.gatk.walkers.genotyper.GenotypePriors;
 import org.broadinstitute.sting.utils.pileup.PileupElement;
