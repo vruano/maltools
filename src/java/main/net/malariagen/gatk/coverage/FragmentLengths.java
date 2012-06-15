@@ -139,11 +139,23 @@ public class FragmentLengths {
 
 	private void arrayBasedIlMerge(FragmentLengths other) {
 		for (Map.Entry<String,Integer> e : smIndex) {
-			
+			String s = e.getKey();
+			int myIdx = e.getValue();
+			Integer otIdxI = other.smIndex.get(s);
+			if (otIdxI == null)
+				continue;
+			arrayBasedIlMerge(other, myIdx, otIdxI);
 		}
 		for (Map.Entry<String,Integer> e: rgIndex) {
-			
+			String rg = e.getKey();
 		}
+	}
+
+	private void arrayBasedIlMerge(FragmentLengths other, int myIdx,
+			Integer otIdxI) {
+		
+		// TODO Auto-generated method stub
+		
 	}
 
 	private void increaseMaxLength(int newValue) {
