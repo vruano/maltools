@@ -210,8 +210,13 @@
 
 <target name="gatk.get" depends="init">
   <git-get url="${gatk.url}" dir="${gatk.dir}" commit="${gatk.commit}" branch="${gatk.branch}" patch="${gatk.patch}" />
-  <available file="${gatk.dir}/.patch_applied" property="${gatk.patched}" />
-  <fail message="Gatk was not patched (missing ${gatk.dir}/.patch_applied)" unless="${gatk.patched}"/>
+  <condition property="gatk.patched">
+   <or> 
+     <available file="${gatk.dir}/.patch_applied" property="${gatk.patched}" />
+     <equals arg1="${gatk.patch}" arg2="NONE" />
+   </or>
+  </condition>
+  <fail message="Gatk was not patched (missing ${gatk.dir}/.patch_applied)" unless="gatk.patched"/>
   <available file="${gatk.dir}/.built" property="${gatk.built}" />
 </target>
 
