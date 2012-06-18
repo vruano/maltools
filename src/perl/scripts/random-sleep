@@ -1,5 +1,0 @@
-#!/usr/bin/env perl
-
-my $max = shift || 60;
-$wait = int(rand($max));
-sleep $wait;

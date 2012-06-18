@@ -1,5 +1,0 @@
-use strict;
-use warnings;
-use POSIX::1003::Limit qw(getrlimit %rlimit);
-
-print join("\n", map { "$_ = " . join(",",getrlimit($_)) } keys %rlimit),"\n";

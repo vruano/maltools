@@ -228,10 +228,11 @@
 <target name="gatk.init" depends="gatk.build" />
 
 
-<target name="java.init" depends="gatk.init">
+<target name="java.init" depends="gatk.init,ivy.init">
   <mkdir dir="${build.java.dir}" />
   <mkdir dir="${build.java.dir}/classes" />
   <mkdir dir="${build.java.dir}/jars" />
+  <ivy-retrieve conf="devel"/>
   <uptodate property="malariagen.jar.utd" targetfile="${build.java.dir}/jars/malariagen.jar">
     <srcfiles dir="${source.java.dir}/main" includes="**/*.java"/>
     <srcfiles dir="${gatk.dir}/dist" includes="**/*.jar"/>

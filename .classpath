@@ -54,6 +54,7 @@
 	<classpathentry kind="lib" path="3rdparty/gatk/lib/picard-private-parts-2181.jar"/>
 	<classpathentry kind="lib" path="3rdparty/gatk/lib/sam-1.59.1066.jar"/>
 	<classpathentry kind="lib" path="3rdparty/gatk/lib/tribble-53.jar"/>
+	<classpathentry kind="lib" path="3rdparty/snakeyaml-bundle.jar" sourcepath="3rdparty/snakeyaml-source.jar"/>
 	<classpathentry kind="output" path="build/classes"/>
 	<referencedentry kind="lib" path="libs/Sting/dist/Queue.jar" sourcepath="libs/Sting/java/src"/>
 	<referencedentry kind="lib" path="3rdparty/gatk/dist/tribble-53.jar" sourcepath="3rdparty/gatk/public/java/src"/>
