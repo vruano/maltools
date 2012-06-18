@@ -1,0 +1,153 @@
+#!/usr/bin/env perl
+
+use warnings;
+use strict;
+
+use Vcf;
+use Getopt::Long qw(:config no_ignore_case);
+use IO::File;
+use File::Spec::Functions qw(catfile);
+
+my $in_vcf_file;
+my $matrix_dir;
+my $report_dir;
+my $output_file;
+my @parents = ();
+
+GetOptions("in-vcf=s" => \$in_vcf_file, "matrix=s" => \$matrix_dir, "report=s" => \$report_dir, "output=s" => \$output_file, 'parent|p=s@' => \@parents);
+
+$#parents == 1 or die "you need to specify exactly two parent samples";
+$matrix_dir && -d $matrix_dir or die "the input matrix directory cannot be opened";
+$report_dir && -d $report_dir or die "the report directory cannot be opened";
+$in_vcf_file && -f $in_vcf_file or die "the input vcf file could not be opened";
+$output_file or die "you must specify and output";
+
+
+my $in_vcf = Vcf->new(file => $in_vcf_file);
+
+$in_vcf->parse_header;
+
+$in_vcf->add_header_line({key => 'INFO', ID => 'SEGREGATE', Number => 0, Type => 'Flag', Description => 'Indicate what variants are segregating'});
+$in_vcf->add_header_line({key => 'FORMAT', ID => 'ER', Number => 1, Type => 'Integer', Description => 'Error type detected (0=No. error, 1=Mendel, 2=Errant)'});
+
+my @in_samples = $in_vcf->get_samples;
+
+my $_idx = 0;
+my %in_samples = map { $_ => $_idx++ } @in_samples;
+
+my @missing_parents = grep { ! exists($in_samples{$_}) } @parents;
+
+$#missing_parents < 0 or die "parents: " .join(", ",@missing_parents) . " not found in input vcf";
+
+my @parent_indeces = map { $in_samples{$_} } @parents;
+my @is_parent = map { 0 } @in_samples;
+@is_parent[@parent_indeces] = map { 1 } @parent_indeces;
+
+
+my $var = $in_vcf->next_data_hash() or die "empty input vcf, no variants found";
+
+my $chr = $var->{CHROM};
+my $pos = -1;
+my ($positions_line, $progeny_line, $parents_line, $mendels_line, $errant_line);
+
+my $positions_fh = IO::File->new(catfile($matrix_dir,"positions.$chr"),'r');
+my $progeny_fh = IO::File->new(catfile($matrix_dir,"progeny.$chr"),'r');
+my $parents_fh = IO::File->new(catfile($matrix_dir,"parents.$chr"),'r');
+my $mendels_fh = IO::File->new(catfile($report_dir,"mendels.${chr}.txt"),'r');
+my $errant_fh = IO::File->new(catfile($report_dir,"errant.${chr}.txt"),'r');
+my $out_fh = IO::File->new($output_file,"w");
+
+print $out_fh $in_vcf->format_header();
+
+while (my $var = $in_vcf->next_data_hash()) {
+    my $var_chr = $var->{CHROM};
+    my $var_pos = $var->{POS};
+    open_chr($var_chr) if (!$chr || $var_chr ne $chr);
+    next unless seek_pos($var_pos);
+    my @calls = compose_calls();
+    my @errors = $mendels_line ? compose_errors() : ();
+    my $gtypes = $var->{gtypes};
+    push @{$var->{FORMAT}},'ER';
+    $var->{INFO}->{SEGREGATES} = undef if segregates();
+    foreach my $sample (@in_samples) {
+       my $sgtype = $gtypes->{$sample};
+       $sgtype->{ER} = shift(@errors) if $mendels_line;
+       $sgtype->{GT} = shift(@calls);
+    }
+    print $out_fh $in_vcf->format_line($var);
+}
+
+sub segregates {
+   my @parents_call = split(/[\t,]/,$parents_line);
+   my %call_counts = ();
+   foreach my $call (@parents_call) {
+      $call_counts{$call}++;
+   }
+   return scalar(keys %call_counts) >= 2;
+}
+
+sub compose_calls {
+   my @progeny_calls = split(/[\t,]/,$progeny_line);
+   my @parents_calls = split(/[\t,]/,$parents_line);
+   my @result = ();
+   for (my $i = 0; $i <= $#is_parent; $i++) {
+     if ($is_parent[$i]) {
+        push @result, shift @parents_calls;
+     }
+     else {
+        push @result, shift @progeny_calls;
+     }
+   }
+   return @result; 
+}
+
+sub compose_errors {
+  my @result = ();
+  my @mendels = split(/[\t,]/,$mendels_line);
+  my @errant = split(/[\t,]/,$errant_line);
+  for (my $i = 0; $i <= $#is_parent; $i++) {
+     if ($is_parent[$i]) {
+        push @result,0;
+     }
+     else {
+        my $mendel = shift @mendels;
+        my $errant = shift @errant;
+        push @result, $mendel + 2 * $errant;
+     }
+  }
+  return @result;
+}
+
+sub open_chr {
+   my $var_chr = shift;
+   $_ && $_->close() foreach ($positions_fh, $progeny_fh, $parents_fh, $mendels_fh, $errant_fh);
+   $positions_fh = IO::File->new(catfile($matrix_dir,"positions.$var_chr"),'r') || IO::File->new('/dev/null');
+   $progeny_fh = IO::File->new(catfile($matrix_dir,"progeny.$var_chr"),'r') || IO::File->new('/dev/null');
+   $parents_fh = IO::File->new(catfile($matrix_dir,"parents.$var_chr"),'r') || IO::File->new('/dev/null');
+   $mendels_fh = IO::File->new(catfile($report_dir,"mendels.${var_chr}.txt"),'r') || IO::File->new('/dev/null');
+   $errant_fh = IO::File->new(catfile($report_dir,"errant.${var_chr}.txt"),'r') || IO::File->new('/dev/null');
+   $chr = $var_chr;
+   $pos = -1;
+}
+
+sub seek_pos {
+   my $var_pos = shift;
+   while ($var_pos > $pos) {
+      ($positions_line, $progeny_line, $parents_line, $mendels_line, $errant_line) 
+          = map { scalar(<$_>) } ($positions_fh, $progeny_fh, $parents_fh, $mendels_fh, $errant_fh);
+      if (!$positions_line) {
+        $pos = 'inf'; 
+        return 0;
+      }
+      chomp $positions_line if defined $positions_line;
+      chomp $progeny_line if defined $progeny_line;
+      chomp $parents_line if defined $parents_line;
+      chomp $mendels_line if defined $mendels_line;
+      chomp $errant_line if defined $errant_line;
+      $pos = $positions_line; 
+   }   
+   return $var_pos == $pos;
+}
+
+
+1;
