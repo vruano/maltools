@@ -27,6 +27,8 @@ public class FragmentLengthSummary implements Serializable {
 	 * 
 	 */
 	private static final long serialVersionUID = 4519497188985297029L;
+
+	public static final String SUMMARY_FILE_NAME = "summary";
 	
 	Map<String, MyIntegerDistribution> smFlDist;
 	Map<String, MyIntegerDistribution> smIlDist;
@@ -79,7 +81,7 @@ public class FragmentLengthSummary implements Serializable {
 	}
 
 	public void saveIn(File dirOut) throws IOException {
-		File summaryFile = new File(dirOut, "summary.tsv");
+		File summaryFile = new File(dirOut, SUMMARY_FILE_NAME);
 		File histogramFile = new File(dirOut, "histogram.tsv");
 		File serializedFile = new File(dirOut, "serialized.jso");
 		dirOut.mkdir();
