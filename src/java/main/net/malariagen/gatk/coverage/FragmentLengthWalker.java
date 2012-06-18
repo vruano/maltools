@@ -1,6 +1,9 @@
 package net.malariagen.gatk.coverage;
 
 import java.util.Collection;
+import java.util.HashSet;
+import java.util.LinkedHashSet;
+import java.util.Set;
 
 import net.sf.samtools.SAMReadGroupRecord;
 
@@ -20,20 +23,35 @@ public class FragmentLengthWalker extends ReadWalker<GATKSAMRecord,FragmentLengt
 	@Argument(shortName="maxfl", fullName="max_fragment_length", doc = "maximum admissible fragment length; mapped read pairs on the same cromosome that have a larger fragment size would be discarded", required = false)
 	public int maxLength = 10000;
 	
+	private Set<String> sampleIds;
+	
+	private Set<String> rgIds;
+	
 	@Override
 	public GATKSAMRecord map(ReferenceContext ref, GATKSAMRecord read,
 			ReadMetaDataTracker metaDataTracker) {
-		// TODO Auto-generated method stub
-		return null;
+		return read;
 	}
-
+	
 	@Override
-	public FragmentLengths reduceInit() {
+	public void initialize() {
+		super.initialize();
 		Collection<? extends Sample> samples = getToolkit().getSampleDB().getSamples();
 		SAMDataSource rds = getToolkit().getReadsDataSource();
 		Collection<? extends SAMReadGroupRecord> rgs = 
 		rds.getHeader().getReadGroups();
-		return FragmentLengths.create(samples, rgs, maxLength);
+		sampleIds = new LinkedHashSet<String>(samples.size());
+		rgIds = new LinkedHashSet<String>(rgs.size());
+		for (Sample s : samples)
+			sampleIds.add(s.getID());
+		for (SAMReadGroupRecord r : rgs)
+			rgIds.add(r.getId());
+	}
+
+	@Override
+	public FragmentLengths reduceInit() {
+
+		return FragmentLengths.create(sampleIds, rgIds, maxLength);
 	}
 
 	@Override

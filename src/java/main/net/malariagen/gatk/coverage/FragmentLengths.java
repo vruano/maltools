@@ -9,7 +9,6 @@ import net.sf.samtools.AlignmentBlock;
 import net.sf.samtools.SAMReadGroupRecord;
 import net.sf.samtools.SAMRecord;
 
-import org.broadinstitute.sting.gatk.samples.Sample;
 import org.broadinstitute.sting.utils.sam.GATKSAMRecord;
 
 public abstract class FragmentLengths {
@@ -21,18 +20,18 @@ public abstract class FragmentLengths {
 		int trim;
 	}
 	
-	private long size;
+	protected long size;
 
 	protected int maxLength;
-	protected Collection<? extends Sample> samples;
-	protected Collection<? extends SAMReadGroupRecord> readGroups;
+	protected Collection<String> samples;
+	protected Collection<String> readGroups;
 	protected Map<String,Integer> rgIndex;
 	protected Map<String,Integer> smIndex;
 	protected Map<String,FirstMate> firstMates = new HashMap<String,FirstMate>(100);
 
 	public static long FREQ_SIZE_THR = 1000000;
 	
-	public static FragmentLengths create(Collection<? extends Sample> samples, Collection<? extends SAMReadGroupRecord> rgs, int maxLength) {
+	public static FragmentLengths create(Collection<String> samples, Collection<String> rgs, int maxLength) {
 		return new FragmentLengthArrays(samples,rgs,maxLength);
 	}
 	
@@ -62,8 +61,8 @@ public abstract class FragmentLengths {
 	}
 
 	
-	protected FragmentLengths(Collection<? extends Sample> samples, 
-			Collection<? extends SAMReadGroupRecord> rgs, int maxLength) {
+	protected FragmentLengths(Collection<String> samples, 
+			Collection<String> rgs, int maxLength) {
 		if (maxLength <= 0)
 			throw new IllegalArgumentException("max-fragment length must be more than 0");
 		this.maxLength = maxLength;
@@ -73,41 +72,42 @@ public abstract class FragmentLengths {
 		int nextRgIdx = 0;
 		smIndex = new HashMap<String,Integer>(samples.size());
 		rgIndex = new HashMap<String,Integer>(rgs.size());
-		for (Sample s : samples) 
-			smIndex.put(s.getID(),nextSmIdx++);
-		for (SAMReadGroupRecord rg : rgs) 
-			smIndex.put(rg.getId(),nextRgIdx++);
+		for (String s : samples) 
+			smIndex.put(s,nextSmIdx++);
+		for (String rg : rgs) 
+			rgIndex.put(rg,nextRgIdx++);
 		firstMates = new HashMap<String,FirstMate>(100);
 		
 	}
 	
 	
 	public boolean add(SAMRecord read) {
-		if (read.getFirstOfPairFlag())
+		if (read.getReadUnmappedFlag())
+		   return false;
+		if (read.getMateUnmappedFlag())
+		   return false;
+		String mateRef = read.getMateReferenceName();
+		if (! mateRef.equals("=") && !mateRef.equals(read.getReferenceName()))
+			return false;
+		int mateStart = read.getMateAlignmentStart();
+		int start = read.getAlignmentStart();
+		if (mateStart > start) 
 			return countFirst(read);
-		else 
+		else if ((mateStart - start) > maxLength)
+			return false;
+		else
 			return countSecond(read);
 	}
 	
 	private boolean countFirst(SAMRecord read) {
-		if (!read.getMateUnmappedFlag())
+		if (read.getReadNegativeStrandFlag())
 			return false;
-		String mateRef = read.getMateReferenceName();
-		if (! mateRef.equals("=") && !mateRef.equals(read.getReferenceName()) 
-				&& !read.getMateReferenceName().equals("="))
-			return false;
-		
-		int mateStart = read.getMateAlignmentStart();
-		int start = read.getAlignmentStart();
-		if (start == 0) return false;
-		if ((mateStart -start) > maxLength) return false;
-		
 		FirstMate fm = new FirstMate();
 		fm.length = read.getReadLength();
-		fm.start = start;
+		fm.start = read.getAlignmentStart();
 		fm.stop = read.getAlignmentEnd();
 		fm.trim =  (fm.stop - fm.start + 1 == fm.length) ? 0 : calculateTrim(read);
-		
+
 		firstMates.put(read.getReadName(), fm);
 		return false;
 	}
@@ -126,6 +126,8 @@ public abstract class FragmentLengths {
 	    int fragmentLength = start - fm.start + 1;
 	    int insertLength = fragmentLength - length - fm.length;
 	    SAMReadGroupRecord rg = read.getReadGroup();
+	    if (rg == null)
+	    	throw new IllegalArgumentException("reads need to belong to a read-group");
 	    Integer smIdx = smIndex.get(rg.getSample());
 	    Integer rgIdx = rgIndex.get(rg.getId());
 	    if (smIdx == null)
@@ -173,6 +175,13 @@ public abstract class FragmentLengths {
 		return sum;
 		
 	}
+
+	public long size() {
+		return size;
+	}
+
+	public abstract FragmentLengthSummary summary();
+	
 }
 
 

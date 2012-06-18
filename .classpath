@@ -57,4 +57,5 @@
 	<classpathentry kind="output" path="build/classes"/>
 	<referencedentry kind="lib" path="libs/Sting/dist/Queue.jar" sourcepath="libs/Sting/java/src"/>
 	<referencedentry kind="lib" path="3rdparty/gatk/dist/tribble-53.jar" sourcepath="3rdparty/gatk/public/java/src"/>
+	<referencedentry kind="lib" path="3rdparty/gatk/dist/sam-1.59.1066.jar" sourcepath="3rdparty/picard/src/java"/>
 </classpath>

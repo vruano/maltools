@@ -6,26 +6,21 @@ import java.util.Map;
 import java.util.PriorityQueue;
 import java.util.Stack;
 
-import org.broadinstitute.sting.gatk.samples.Sample;
-import net.sf.samtools.SAMReadGroupRecord;
+
 
 public class FragmentLengthFrequencies extends FragmentLengths {
 
-	
 	private PriorityQueue<Integer> insertLengths = new PriorityQueue<Integer>(); 
 	
+	long[][] rgFlFreq;
+	long[][] smFlFreq;
 	
-	private long[][] rgFlFreq;
-	private long[][] smFlFreq;
-	
-	private long[][] rgIlFreq;
-	private long[][] smIlFreq;	
+	long[][] rgIlFreq;
+	long[][] smIlFreq;	
 
 	private PriorityQueue<Integer> fragmentLengths = new PriorityQueue<Integer>();
-
 	
-	
-	FragmentLengthFrequencies(Collection<? extends Sample> samples, Collection<? extends SAMReadGroupRecord> rgs, int maxLength) {
+	FragmentLengthFrequencies(Collection<String> samples, Collection<String> rgs, int maxLength) {
 		super(samples,rgs,maxLength);
 		int sampleCount = smIndex.size();
 		int rgCount = rgIndex.size();
@@ -59,6 +54,7 @@ public class FragmentLengthFrequencies extends FragmentLengths {
 			increaseMaxLength(other.maxLength);
 		mergeSampleArrays(other);
 		mergeReadGroupArrays(other);
+		this.size += other.size;
 	}
 	
 	private void mergeReadGroupArrays(FragmentLengthArrays other) {
@@ -116,6 +112,7 @@ public class FragmentLengthFrequencies extends FragmentLengths {
 			increaseMaxLength(other.maxLength);
 		int size = other.insertLengths.size();
 			mergeFreqs(other, size << 1 > maxLength);
+		this.size += other.size;
 	}
 
 	private void mergeFreqs(FragmentLengthFrequencies other, boolean arrayBased) {
@@ -193,6 +190,12 @@ public class FragmentLengthFrequencies extends FragmentLengths {
 			smIlFreq[i] = Arrays.copyOf(smIlFreq[i],newValue);
 			smIlFreq[i] = Arrays.copyOf(smIlFreq[i],newValue);
 		}
+	}
+
+
+	@Override
+	public FragmentLengthSummary summary() {
+		return new FragmentLengthSummary(this);
 	}
 	
 	

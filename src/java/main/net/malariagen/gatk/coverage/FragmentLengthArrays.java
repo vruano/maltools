@@ -4,9 +4,6 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Map;
 
-import net.sf.samtools.SAMReadGroupRecord;
-
-import org.broadinstitute.sting.gatk.samples.Sample;
 
 public class FragmentLengthArrays extends FragmentLengths {
 
@@ -16,8 +13,8 @@ public class FragmentLengthArrays extends FragmentLengths {
 	int[][] rgFlengths;
 	
 	
-	FragmentLengthArrays(Collection<? extends Sample> samples,
-			Collection<? extends SAMReadGroupRecord> rgs, int maxLength) {
+	FragmentLengthArrays(Collection<String> samples,
+			Collection<String> rgs, int maxLength) {
 		super(samples, rgs, maxLength);
 		int capacity = 10000;
 		int sampleCount = smIndex.size();
@@ -43,6 +40,8 @@ public class FragmentLengthArrays extends FragmentLengths {
 			rgIlengths[rgIdx] = Arrays.copyOf(rgIlengths[rgIdx], rgIlengths[rgIdx].length << 1);
 			rgFlengths[rgIdx] = Arrays.copyOf(rgFlengths[rgIdx], rgFlengths[rgIdx].length << 1);
 		}
+		smFlengths[smIdx][0]++;
+		rgFlengths[rgIdx][0]++;
 		smIlengths[smIdx][smNext] = rgIlengths[rgIdx][rgNext] = insertLength;
 		smFlengths[smIdx][smNext] = rgFlengths[rgIdx][rgNext] = fragmentLength;
 	}
@@ -51,6 +50,7 @@ public class FragmentLengthArrays extends FragmentLengths {
 	public void mergeIn(FragmentLengthArrays other) {
 		mergeSampleArrays(other);
 		mergeReadGroupArrays(other);
+		this.size += other.size;
 	}
 
 	private void mergeReadGroupArrays(FragmentLengthArrays other) {
@@ -103,6 +103,17 @@ public class FragmentLengthArrays extends FragmentLengths {
 			System.arraycopy(otArray,1,smFlengths[myIdx],myCount + 1,otCount);
 			smFlengths[myIdx][0] += otCount;
 		}
+	}
+
+	public FragmentLengthFrequencies frequencies() {
+		FragmentLengthFrequencies result = new FragmentLengthFrequencies(this.samples,this.readGroups,this.maxLength);
+		result.mergeIn(this);
+		return result;
+	}
+
+	@Override
+	public FragmentLengthSummary summary() {
+		return frequencies().summary();
 	}
 
 }
