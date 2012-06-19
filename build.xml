@@ -258,10 +258,10 @@
 
 <target name="java.build" depends="java.lib" unless="Queue.jar.utd" >
   <mkdir dir="${build.java.dir}/dist" />
-  <!--ant dir="${gatk.dir}" target="queue" inheritAll="false">
+  <ant dir="${gatk.dir}" target="core" inheritAll="false">
     <property name="lib.dir" value="${build.java.dir}/lib" />
     <property name="dist.dir" value="${build.java.dir}/dist" />
-  </ant-->
+  </ant>
 </target>
 
 <target name="java.test.build" depends="java.lib, test.init">
@@ -295,7 +295,7 @@
   </junit> 
 </target>
 
-<target name="devel.layout">
+<target name="install-devel">
   <antcall target="dist.layout">
     <param name="dist.layout.dir" value="${dist.dir}/layout-devel" />
     <param name="install.config" value="${resources.dir}/devel.config" />
@@ -391,6 +391,21 @@
   </copy>
   <chmod perm="a+rx" type="file" dir="${install.dir}/bin" includes="**/*" />
   <chmod perm="a+rx" type="file" dir="${install.dir}/resources/pgv_pipeline/variation_filtering2" includes="**/*.pl" />
+</target>
+	
+<target name="java.clean">
+	<delete dir="${build.java.dir}" />
+</target>
+	
+<target name="dist.clean">
+    <delete dir="${dist.dir}" />
+</target>
+	
+<target name="dist.layout.clean">
+    <delete dir="${dist.layout.dir}" />
+</target>
+	
+<target name="clean" depends="java.clean,dist.layout.clean">
 </target>
 
 </project>

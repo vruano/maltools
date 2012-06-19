@@ -47,10 +47,11 @@ import org.broadinstitute.sting.utils.variantcontext.VariantContext;
 import org.broadinstitute.sting.utils.variantcontext.VariantContextBuilder;
 
 public class MetaGenotyperEngine extends UnifiedGenotyperEngine {
+	
+	private static final String NO_ID = ".";
 
 	public class MyVariantContext extends VariantContext {
 
-		private static final String NO_ID = ".";
 
 		public MyVariantContext(String source, String contig, long start,
 				long stop, Collection<Allele> alleles,

@@ -3,15 +3,15 @@ package net.malariagen.gatk.coverage.test;
 import static org.junit.Assert.*;
 
 import java.io.File;
-import java.io.FileWriter;
 import java.io.IOException;
-import java.io.Writer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
 import net.malariagen.gatk.coverage.FragmentLengths;
 import net.malariagen.gatk.coverage.FragmentLengthSummary;
+import net.malariagen.gatk.math.IntegerDistribution;
+import net.malariagen.gatk.test.WalkerTest;
 import net.sf.samtools.SAMFileHeader;
 import net.sf.samtools.SAMSequenceDictionary;
 import net.sf.samtools.SAMSequenceRecord;
@@ -320,10 +320,32 @@ public class FragmentLengthsTest {
 		f.delete();
 		f.mkdir();
 		summary.saveIn(f);
+		FragmentLengthSummary summary2 = FragmentLengthSummary.loadFrom(f);
+		assertNotNull(summary2);
 		System.err.println("Output f " + f);
 		
 	}
+	
+	@Test
+	public void actualBamRun() throws IOException {
+		File testBam = new File(this.getClass().getClassLoader().getResource("3D7.bam").getFile());
+		File refFasta = new File("/data/haldane/malariagen/pfalciparum/reference/3D7_pm.fa");
+		File outDir = File.createTempFile("flwtest", ".out");
+		outDir.delete();
+		outDir.mkdir();
+		WalkerTest.executeTest("FragmentLength", String.format("-T FragmentLength -R %s -I %s -o %s",refFasta,testBam,outDir), null);
+		assertTrue(new File(outDir,FragmentLengthSummary.SUMMARY_FILE_NAME).exists());
+		assertTrue(new File(outDir,FragmentLengthSummary.HISTO_FILE_NAME).exists());
+		assertTrue(new File(outDir,FragmentLengthSummary.SERIAL_FILE_NAME).exists());
+		FragmentLengthSummary s = FragmentLengthSummary.loadFrom(outDir);
+		assertNotNull(s);
+		IntegerDistribution dist = s.getReadGroupFragmentLengths("Pf3d7.test.1");
+		assertNotNull(dist);
+		assertEquals(dist.mean(),500,0.001);
+		assertEquals(dist.median(),500,0.001);
+	}
 
+	
 	public GATKSAMRecord[] createMappedPair(String name, String seq, int start,
 			int end, String firstCigar, String secondCigar) {
 		List<GATKSAMRecord> list = ArtificialSAMUtils.createPair(sh, name,

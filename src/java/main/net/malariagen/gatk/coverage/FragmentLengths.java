@@ -178,6 +178,8 @@ public abstract class FragmentLengths {
 			return false;
 		if (rgIdx == null)
 			return false;
+		if (fragmentLength <= fm.length + length)
+			return false;
 		addLengths(fragmentLength, insertLength, smIdx, rgIdx);
 		size++;
 		return true;

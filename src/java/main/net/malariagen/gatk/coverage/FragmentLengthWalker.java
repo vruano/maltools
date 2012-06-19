@@ -8,27 +8,42 @@ import java.util.Collection;
 import java.util.LinkedHashSet;
 import java.util.Set;
 
+import net.sf.samtools.BAMRecord;
 import net.sf.samtools.SAMReadGroupRecord;
 
 import org.broadinstitute.sting.commandline.Argument;
 import org.broadinstitute.sting.commandline.Output;
 import org.broadinstitute.sting.gatk.contexts.ReferenceContext;
 import org.broadinstitute.sting.gatk.datasources.reads.SAMDataSource;
+import org.broadinstitute.sting.gatk.filters.BadMateFilter;
+import org.broadinstitute.sting.gatk.filters.NotPrimaryAlignmentFilter;
+import org.broadinstitute.sting.gatk.filters.UnmappedReadFilter;
 import org.broadinstitute.sting.gatk.refdata.ReadMetaDataTracker;
 import org.broadinstitute.sting.gatk.samples.Sample;
+import org.broadinstitute.sting.gatk.walkers.BAQMode;
+import org.broadinstitute.sting.gatk.walkers.By;
+import org.broadinstitute.sting.gatk.walkers.DataSource;
+import org.broadinstitute.sting.gatk.walkers.ReadFilters;
 import org.broadinstitute.sting.gatk.walkers.ReadWalker;
+import org.broadinstitute.sting.gatk.walkers.Requires;
 import org.broadinstitute.sting.gatk.walkers.TreeReducible;
+import org.broadinstitute.sting.utils.baq.BAQ;
 import org.broadinstitute.sting.utils.exceptions.UserException;
 import org.broadinstitute.sting.utils.sam.GATKSAMRecord;
+import org.jets3t.service.model.S3Object;
 
-
+@ReadFilters({ BadMateFilter.class, UnmappedReadFilter.class,
+	NotPrimaryAlignmentFilter.class })
+@By(DataSource.READS)
+@Requires(DataSource.READS)
+@BAQMode(QualityMode = BAQ.QualityMode.DONT_MODIFY, ApplicationTime = BAQ.ApplicationTime.HANDLED_IN_WALKER)
 public class FragmentLengthWalker extends ReadWalker<GATKSAMRecord,FragmentLengths> implements TreeReducible<FragmentLengths> {
 
 
 	@Argument(shortName="maxfl", fullName="max_fragment_length", doc = "maximum admissible fragment length; mapped read pairs on the same cromosome that have a larger fragment size would be discarded", required = false)
 	public int maxLength = 10000;
 	
-	
+	BAMRecord r;
 //	@Argument(fullName="overwrite", shortName="ow", doc = "allow the program to overwrite the content of the output directory if it already exists and is not empty",required = false)
 //	public boolean overwrite = false;
 	

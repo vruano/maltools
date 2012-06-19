@@ -7,7 +7,6 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
-import java.io.Reader;
 import java.io.Serializable;
 
 
@@ -17,7 +16,6 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 
-import net.malariagen.gatk.math.EmptyIntegerDistribution;
 import net.malariagen.gatk.math.IntegerDistribution;
 import net.malariagen.utils.io.TsvWriter;
 
@@ -28,7 +26,9 @@ public class FragmentLengthSummary implements Serializable {
 	 */
 	private static final long serialVersionUID = 4519497188985297029L;
 
-	public static final String SUMMARY_FILE_NAME = "summary";
+	public static final String SUMMARY_FILE_NAME = "summary.tsv";
+	public static final String HISTO_FILE_NAME = "histogram.tsv";
+	public static final String SERIAL_FILE_NAME = "serialized.jso";
 	
 	Map<String, MyIntegerDistribution> smFlDist;
 	Map<String, MyIntegerDistribution> smIlDist;
@@ -60,7 +60,7 @@ public class FragmentLengthSummary implements Serializable {
 		if (!dirIn.canRead())
 			throw new IOException("the input directory does not allow to read from");
 		
-		File serializeFile = new File(dirIn,"serialized.jso");
+		File serializeFile = new File(dirIn,SERIAL_FILE_NAME);
 		if (!serializeFile.exists())
 			throw new IOException("the input serialize file does not exists or is not reachable");
 		if (!serializeFile.isFile())
@@ -82,8 +82,8 @@ public class FragmentLengthSummary implements Serializable {
 
 	public void saveIn(File dirOut) throws IOException {
 		File summaryFile = new File(dirOut, SUMMARY_FILE_NAME);
-		File histogramFile = new File(dirOut, "histogram.tsv");
-		File serializedFile = new File(dirOut, "serialized.jso");
+		File histogramFile = new File(dirOut, HISTO_FILE_NAME);
+		File serializedFile = new File(dirOut, SERIAL_FILE_NAME);
 		dirOut.mkdir();
 		if (!dirOut.exists())
 			throw new IOException(
@@ -289,6 +289,8 @@ public class FragmentLengthSummary implements Serializable {
 
 		@Override
 		public long count() {
+			if (accu.length == 0)
+				return 0;
 			return this.accu[this.accu.length - 1];
 		}
 
@@ -403,7 +405,7 @@ public class FragmentLengthSummary implements Serializable {
 				ssum += Math.log(a * v * a * v);
 			}
 			mean = (int) Math.round((double) sum / (double) count);
-			var = (int) Math.abs(mean * mean - ssum / (double) count);
+			var = (int) Math.abs(mean * mean - ssum);
 			mode = values[bestMode];
 		}
 
