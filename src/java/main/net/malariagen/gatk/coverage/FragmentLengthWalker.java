@@ -27,6 +27,7 @@ import org.broadinstitute.sting.gatk.walkers.ReadFilters;
 import org.broadinstitute.sting.gatk.walkers.ReadWalker;
 import org.broadinstitute.sting.gatk.walkers.Requires;
 import org.broadinstitute.sting.gatk.walkers.TreeReducible;
+import org.broadinstitute.sting.gatk.walkers.Window;
 import org.broadinstitute.sting.utils.baq.BAQ;
 import org.broadinstitute.sting.utils.exceptions.UserException;
 import org.broadinstitute.sting.utils.sam.GATKSAMRecord;
@@ -66,6 +67,7 @@ public class FragmentLengthWalker extends ReadWalker<GATKSAMRecord,FragmentLengt
 	@Override
 	public void initialize() {
 		super.initialize();
+		Window w;
 		Collection<? extends Sample> samples = getToolkit().getSampleDB().getSamples();
 		SAMDataSource rds = getToolkit().getReadsDataSource();
 		Collection<? extends SAMReadGroupRecord> rgs = 

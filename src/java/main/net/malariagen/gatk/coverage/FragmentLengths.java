@@ -180,6 +180,8 @@ public abstract class FragmentLengths {
 			return false;
 		if (fragmentLength <= fm.length + length)
 			return false;
+		if (fragmentLength > maxLength)
+			return false;
 		addLengths(fragmentLength, insertLength, smIdx, rgIdx);
 		size++;
 		return true;
