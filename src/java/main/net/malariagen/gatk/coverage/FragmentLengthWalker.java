@@ -8,7 +8,6 @@ import java.util.Collection;
 import java.util.LinkedHashSet;
 import java.util.Set;
 
-import net.sf.samtools.BAMRecord;
 import net.sf.samtools.SAMReadGroupRecord;
 
 import org.broadinstitute.sting.commandline.Argument;
@@ -27,11 +26,9 @@ import org.broadinstitute.sting.gatk.walkers.ReadFilters;
 import org.broadinstitute.sting.gatk.walkers.ReadWalker;
 import org.broadinstitute.sting.gatk.walkers.Requires;
 import org.broadinstitute.sting.gatk.walkers.TreeReducible;
-import org.broadinstitute.sting.gatk.walkers.Window;
 import org.broadinstitute.sting.utils.baq.BAQ;
 import org.broadinstitute.sting.utils.exceptions.UserException;
 import org.broadinstitute.sting.utils.sam.GATKSAMRecord;
-import org.jets3t.service.model.S3Object;
 
 @ReadFilters({ BadMateFilter.class, UnmappedReadFilter.class,
 	NotPrimaryAlignmentFilter.class })
@@ -40,11 +37,10 @@ import org.jets3t.service.model.S3Object;
 @BAQMode(QualityMode = BAQ.QualityMode.DONT_MODIFY, ApplicationTime = BAQ.ApplicationTime.HANDLED_IN_WALKER)
 public class FragmentLengthWalker extends ReadWalker<GATKSAMRecord,FragmentLengths> implements TreeReducible<FragmentLengths> {
 
-
-	@Argument(shortName="maxfl", fullName="max_fragment_length", doc = "maximum admissible fragment length; mapped read pairs on the same cromosome that have a larger fragment size would be discarded", required = false)
+	@Argument(shortName="maxfl", fullName="max_fragment_length", 
+			  doc = "maximum admissible fragment length; mapped read pairs on the same chromosome that have a larger fragment size would be discarded. Large max-fragment length results in a increased need of memory to keep record of the first read until its mate is found", required = false)
 	public int maxLength = 10000;
 	
-	BAMRecord r;
 //	@Argument(fullName="overwrite", shortName="ow", doc = "allow the program to overwrite the content of the output directory if it already exists and is not empty",required = false)
 //	public boolean overwrite = false;
 	
@@ -52,11 +48,9 @@ public class FragmentLengthWalker extends ReadWalker<GATKSAMRecord,FragmentLengt
 	@Output(shortName="o", fullName="output_directory", doc = "directory where to show the output the fragment length summary stats",required = true)
 	public File outDir;
 	
-	
 	private Set<String> sampleIds;
 	
 	private Set<String> rgIds;
-	
 	
 	@Override
 	public GATKSAMRecord map(ReferenceContext ref, GATKSAMRecord read,
@@ -67,7 +61,7 @@ public class FragmentLengthWalker extends ReadWalker<GATKSAMRecord,FragmentLengt
 	@Override
 	public void initialize() {
 		super.initialize();
-		Window w;
+
 		Collection<? extends Sample> samples = getToolkit().getSampleDB().getSamples();
 		SAMDataSource rds = getToolkit().getReadsDataSource();
 		Collection<? extends SAMReadGroupRecord> rgs = 

@@ -177,7 +177,8 @@
 </target>
 
 
-<target name="build" depends="cpp.build,java.build" />
+<!--target name="build" depends="cpp.build,java.build" /-->
+<target name="build" depends="java.build" />
 
 <!-- cpp targets -->
 
