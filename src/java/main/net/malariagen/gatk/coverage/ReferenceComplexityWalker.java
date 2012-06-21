@@ -14,7 +14,11 @@ import org.broadinstitute.sting.commandline.Output;
 import org.broadinstitute.sting.gatk.contexts.AlignmentContext;
 import org.broadinstitute.sting.gatk.contexts.ReferenceContext;
 import org.broadinstitute.sting.gatk.refdata.RefMetaDataTracker;
+import org.broadinstitute.sting.gatk.walkers.By;
+import org.broadinstitute.sting.gatk.walkers.DataSource;
 import org.broadinstitute.sting.gatk.walkers.LocusWalker;
+import org.broadinstitute.sting.gatk.walkers.PartitionBy;
+import org.broadinstitute.sting.gatk.walkers.PartitionType;
 import org.broadinstitute.sting.utils.codecs.vcf.VCFHeader;
 import org.broadinstitute.sting.utils.codecs.vcf.VCFHeaderLine;
 import org.broadinstitute.sting.utils.codecs.vcf.VCFHeaderLineType;
@@ -24,7 +28,9 @@ import org.broadinstitute.sting.utils.variantcontext.Allele;
 import org.broadinstitute.sting.utils.variantcontext.VariantContext;
 import org.broadinstitute.sting.utils.variantcontext.VariantContextBuilder;
 
-public class ComplexityAnalysisWalker extends LocusWalker<ReferenceContext,SequenceComplexity> {
+@By(DataSource.REFERENCE)
+@PartitionBy(PartitionType.CONTIG)
+public class ReferenceComplexityWalker extends LocusWalker<ReferenceContext,SequenceComplexity> {
 
 	@Argument(shortName="W", fullName="windowSize", required=true, doc = "window-size to get stats on")
 	private int windowSize = 0;
@@ -49,7 +55,7 @@ public class ComplexityAnalysisWalker extends LocusWalker<ReferenceContext,Seque
 		Set<VCFHeaderLine> headerLines = new LinkedHashSet<VCFHeaderLine>();
 		headerLines.add(new VCFInfoHeaderLine("GCBias", 1, VCFHeaderLineType.Float, "GC bias expressed in a percentage from 0 to 100"));
 		headerLines.add(new VCFInfoHeaderLine("NucEnt",1, VCFHeaderLineType.Float,"Nucleotide entropy using Euler's e as base"));
-		headerLines.add(new VCFInfoHeaderLine("GCHet",1,VCFHeaderLineType.Float,"GC bias heterogeneity"));
+		headerLines.add(new VCFInfoHeaderLine("TriEnt",1,VCFHeaderLineType.Float,"Trinucleotide entropy using Euler's e as base"));
 		headerLines.add(new VCFInfoHeaderLine("END",1,VCFHeaderLineType.Float,"Stop positio of the interval considerde in complex INFO fields"));
 		VCFHeader header = new VCFHeader(headerLines);
 		writer.writeHeader(header);
@@ -75,13 +81,20 @@ public class ComplexityAnalysisWalker extends LocusWalker<ReferenceContext,Seque
 		Map<String,Object> attributes = new LinkedHashMap<String,Object>(4);
 		attributes.put("GCBias",lc.getGcBias());
 		attributes.put("NucEnt",lc.getNucEnt());
-		attributes.put("GCHet",lc.getGcHet());
-		attributes.put("END",lc.getLocus().getStart() + windowSize - 1);
+		attributes.put("TriEnt",lc.getTriEnt());
+		attributes.put("END",lc.getLocus().getStart() + lc.size() - 1);
 		vcb.loc(lc.getLocus());
 		vcb.attributes(attributes);
 		VariantContext vc = vcb.make();
 
 		writer.add(vc);
 	}
+
+
+	@Override
+	public boolean isReduceByInterval() {
+		return true;
+	}
+	
 
 }

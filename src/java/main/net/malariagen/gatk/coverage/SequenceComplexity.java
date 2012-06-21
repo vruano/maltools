@@ -1,6 +1,7 @@
 package net.malariagen.gatk.coverage;
 
-import java.util.Iterator;
+
+import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -21,6 +22,7 @@ public class SequenceComplexity {
 	int[] nucsCount;
 	int[] trinucsCount;
 	int nucsTotal;
+	int trinucsTotal;
 	private double[] prob;
 	private double[] inverseProbLog;
 	private double[] entropy;
@@ -29,64 +31,83 @@ public class SequenceComplexity {
 	public LocusComplexity count(ReferenceContext ref) {
 		GenomeLoc loc = ref.getLocus();
 		Nucleotide n = Nucleotide.fromByte(ref.getBase());
+		if (end != null && !loc.getContig().equals(end.getContig()))
+			clear();
 		int gap = (nucs.size() != 0) ? end.getStop() - loc.getStart() : 0;
 		while (gap++ > 0) {
 			if (nucs.size() == windowSize) {
 				Nucleotide n0 = nucs.remove(0);
 				Trinucleotide t0 = trinucs.remove(0);
 				locs.remove(0);
-				if (n0 != Nucleotide.NaN) {
+				if (n0 != Nucleotide.N) {
 					nucsCount[n0.ordinal()]--;
 					nucsTotal--;
 				}
-				if (t0 != Trinucleotide.NaT)
+				if (t0 != Trinucleotide.NNN) {
 					trinucsCount[t0.ordinal()]--;
+				    trinucsTotal--;
+				}
 			}
-			trinucs.add(Trinucleotide.NaT);
-			nucs.add(Nucleotide.NaN);
-			locs.add(null);
+			trinucs.add(Trinucleotide.NNN);
+			nucs.add(Nucleotide.N);
+			locs.add(loc);
 		}
 		if (nucs.size() == windowSize) {
 			Nucleotide n0 = nucs.remove(0);
 			Trinucleotide t0 = trinucs.remove(0);
 			locs.remove(0);
 			
-			if (n0 != Nucleotide.NaN) {
+			if (n0 != Nucleotide.N) {
 				nucsCount[n0.ordinal()]--;
 				nucsTotal--;
 			}
-			if (t0 != Trinucleotide.NaT)
+			if (t0 != Trinucleotide.NNN) {
 				trinucsCount[t0.ordinal()]--;
+			    trinucsTotal--;
+			}
 			
 		}
 		end = loc;
 		nucs.add(n);
-		if (n != Nucleotide.NaN) {
+		if (n != Nucleotide.N) {
 			locs.add(loc);
 			nucsCount[n.ordinal()]++;
 			nucsTotal++;
 		}
 		else 
-			locs.add(null);
+			locs.add(loc);
 
-		Trinucleotide t = Trinucleotide.NaT;
+		Trinucleotide t = Trinucleotide.NNN;
 		if (trinucs.size() > 0) {
 			Trinucleotide last = trinucs.getLast();
 			t = last.shift(n);
 		}
-		if (t == Trinucleotide.NaT && nucs.size() >= 3) {
+		if (t == Trinucleotide.NNN && nucs.size() >= 3) {
 			t = Trinucleotide.fromNucleotides(nucs.get(nucs.size() - 3),nucs.get(nucs.size() - 2), n);
 		}
 		trinucs.add(t);
-		if (t != Trinucleotide.NaT) 
+		if (t != Trinucleotide.NNN) { 
 			trinucsCount[t.ordinal()]++;
+			trinucsTotal++;
+		}
 	
 		
-		if (nucsTotal == windowSize)
+		if (nucs.size() == windowSize)
 			return emit();
 		else
 			return null;
 
+	}
+
+	private void clear() {
+		end = null;
+		nucs.clear();
+		trinucs.clear();
+		locs.clear();
+		nucsTotal = 0;
+		trinucsTotal = 0;
+		Arrays.fill(nucsCount, 0);
+		Arrays.fill(trinucsCount, 0);
 	}
 
 	private LocusComplexity emit() {
@@ -95,35 +116,30 @@ public class SequenceComplexity {
 		double gcBias = Double.NaN;
 		double nucEnt = 0;
 		double gcHet = Double.NaN;
+		double triEnt = 0;
 
-		gcBias = (nucsCount[1] + nucsCount[2]) * prob[1];
-		for (int i = 0; i < 4; i++)
-			nucEnt += entropy[nucsCount[i]];
-
-		double maxHet = 0.5 * ( windowSize * windowSize - windowSize);
-
-		int het = 0;
-		int gc = 0;
-		Iterator<Nucleotide> it = nucs.iterator();
-		for (int i = 0; i < windowSize; i++) {
-			Nucleotide n = it.next();
-			switch (n) {
-			case C:
-			case G:
-				gc++;
-			default:
-			}
-			double expected = gcBias * (i + 1);
-			if (expected > gc)
-				het += Math.floor(expected) - gc;
-			else
-				het += gc - Math.ceil(expected);
+		if (windowSize == nucsTotal) { 
+		  gcBias = (nucsCount[1] + nucsCount[2]) * prob[1];
+		  gcBias *= 100;
+		  for (int i = 0; i < 4; i++)
+			  nucEnt += entropy[nucsCount[i]];
+		  for (int i = 0; i < 64; i++)
+			  triEnt += entropyMinus2[trinucsCount[i]];
+		}	
+		else {
+		  double invNucsTotal =  1.0 / (double) nucsTotal;
+		  double logNucsTotal = Math.log(nucsTotal);
+		  gcBias = (nucsCount[1] + nucsCount[2]) * invNucsTotal;
+		  gcBias *= 100;
+		  for (int i = 0; i < 4; i++)
+			  nucEnt -= nucsCount[i] * invNucsTotal * (Math.log(nucsCount[i]) - logNucsTotal);
+		  double invTrinucsTotal = 1.0 / (double) trinucsTotal;
+		  double logTrinucsTotal = Math.log(trinucsTotal);
+		  for (int i = 0; i < 64; i++)
+			  triEnt -= trinucsCount[i] * invTrinucsTotal * (Math.log(trinucsCount[i]) - logTrinucsTotal);		  
 		}
-		gcHet = ((double)het) / (double) maxHet;
 
-		gcBias *= 100;
-
-		return new LocusComplexity(loc, nucs.get(0), gcBias, nucEnt, gcHet);
+		return new LocusComplexity(loc, nucsTotal, nucs.get(0), gcBias, nucEnt, gcHet, triEnt);
 	}
 
 	SequenceComplexity(int ws) {
@@ -136,6 +152,7 @@ public class SequenceComplexity {
 		entropy = new double[ws];
 		entropyMinus2 = new double[ws - 2];
 		nucs = new LinkedList<Nucleotide>();
+		trinucs = new LinkedList<Trinucleotide>();
 		nucsCount = new int[4];
 		trinucsCount = new int[64];
 		locs = new LinkedList<GenomeLoc>();
@@ -165,14 +182,22 @@ public class SequenceComplexity {
 		private double gcHet;
 		private GenomeLoc loc;
 		private Nucleotide refNuc;
+		private double triEnt;
+		private int size;
 
-		public LocusComplexity(GenomeLoc loc, Nucleotide n, double gcBias,
-				double nucEnt, double gcHet) {
+		public LocusComplexity(GenomeLoc loc, int size, Nucleotide n, double gcBias,
+				double nucEnt, double gcHet, double triEnt) {
 			this.loc = loc;
 			this.gcBias = gcBias;
 			this.nucEnt = nucEnt;
 			this.gcHet = gcHet;
 			this.refNuc = n;
+			this.triEnt = triEnt;
+			this.size = size;
+		}
+		
+		public int size() {
+			return size;
 		}
 
 		public GenomeLoc getLocus() {
@@ -193,6 +218,10 @@ public class SequenceComplexity {
 
 		public double getGcHet() {
 			return this.gcHet;
+		}
+
+		public double getTriEnt() {
+			return this.triEnt;
 		}
 
 	}
