@@ -328,8 +328,8 @@ public class FragmentLengthsTest {
 	
 	@Test
 	public void actualBamRun() throws IOException {
-		File testBam = new File(this.getClass().getClassLoader().getResource("/test/3D7.bam").getFile());
-		File refFasta = new File(this.getClass().getClassLoader().getResource("/test/3D7_pm.fa").getFile());
+		File testBam = new File(this.getClass().getClassLoader().getResource("3D7.bam").getFile());
+		File refFasta = new File(this.getClass().getClassLoader().getResource("3D7_pm.fa").getFile());
 		File outDir = File.createTempFile("flwtest", ".out");
 		outDir.delete();
 		outDir.mkdir();

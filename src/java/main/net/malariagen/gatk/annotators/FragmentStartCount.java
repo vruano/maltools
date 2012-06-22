@@ -26,6 +26,7 @@ public class FragmentStartCount extends InfoFieldAnnotation {
 			new VCFInfoHeaderLine(FORWARD_START_KEY,1,VCFHeaderLineType.Integer,"Number of fragment forward starts found"),
 			new VCFInfoHeaderLine(REVERSE_START_KEY,1,VCFHeaderLineType.Integer,"Number of fragmen reverse starts found")
 	);
+	
 	private final int minMappingQuality;
 	
 	public FragmentStartCount() {
