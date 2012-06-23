@@ -19,8 +19,8 @@ import org.broadinstitute.sting.utils.variantcontext.VariantContext;
 
 public class FragmentStartCount extends InfoFieldAnnotation {
 	
-	private static final String FORWARD_START_KEY = "FFS";
-	private static final String REVERSE_START_KEY = "FRS";
+	public static final String FORWARD_START_KEY = "FFS";
+	public static final String REVERSE_START_KEY = "FRS";
 	private static final List<String> KEY_NAMES = Arrays.asList(FORWARD_START_KEY,REVERSE_START_KEY);
 	private static final List<VCFInfoHeaderLine> DESCRIPTIONS = Arrays.asList(
 			new VCFInfoHeaderLine(FORWARD_START_KEY,1,VCFHeaderLineType.Integer,"Number of fragment forward starts found"),

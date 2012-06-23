@@ -72,10 +72,10 @@ public class FragmentLengthWalker extends ReadWalker<GATKSAMRecord,FragmentLengt
 			sampleIds.add(s.getID());
 		for (SAMReadGroupRecord r : rgs)
 			rgIds.add(r.getId());
-		checkOutDir();
+		checkOutDir(outDir);
 	}
 
-	private void checkOutDir() {
+	static void checkOutDir(File outDir) {
 		if (outDir == null)
 			throw new IllegalStateException("output directory paramer not set");
 		if (outDir.exists()) {

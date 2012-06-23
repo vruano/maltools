@@ -1,5 +1,7 @@
 package net.malariagen.gatk.coverage;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -9,6 +11,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 import net.malariagen.gatk.annotators.FragmentStartCount;
 import net.malariagen.gatk.annotators.UniquenessScore;
@@ -33,11 +36,13 @@ import org.broadinstitute.sting.gatk.walkers.annotator.MappingQualityZero;
 import org.broadinstitute.sting.gatk.walkers.annotator.RMSMappingQuality;
 import org.broadinstitute.sting.gatk.walkers.annotator.interfaces.AnnotatorCompatibleWalker;
 import org.broadinstitute.sting.gatk.walkers.annotator.interfaces.InfoFieldAnnotation;
+import org.broadinstitute.sting.utils.GenomeLoc;
 import org.broadinstitute.sting.utils.codecs.vcf.VCFFormatHeaderLine;
 import org.broadinstitute.sting.utils.codecs.vcf.VCFHeader;
 import org.broadinstitute.sting.utils.codecs.vcf.VCFHeaderLine;
 import org.broadinstitute.sting.utils.codecs.vcf.VCFInfoHeaderLine;
 import org.broadinstitute.sting.utils.codecs.vcf.VCFWriter;
+import org.broadinstitute.sting.utils.exceptions.StingException;
 import org.broadinstitute.sting.utils.exceptions.UserException;
 import org.broadinstitute.sting.utils.pileup.PileupElement;
 import org.broadinstitute.sting.utils.pileup.ReadBackedPileupImpl;
@@ -51,10 +56,15 @@ import org.broadinstitute.sting.utils.variantcontext.VariantContextBuilder;
 @PartitionBy(PartitionType.LOCUS)
 public class ConverageBiasWalker
 		extends
-		LocusWalker<VariantContext, net.malariagen.gatk.coverage.ConverageBiasWalker.MappingStatistics>
-		implements
-		AnnotatorCompatibleWalker,
-		TreeReducible<net.malariagen.gatk.coverage.ConverageBiasWalker.MappingStatistics> {
+		LocusWalker<net.malariagen.gatk.coverage.ConverageBiasWalker.LocusBias, CoverageBiasCovariateCounts>
+		implements AnnotatorCompatibleWalker,
+		TreeReducible<CoverageBiasCovariateCounts> {
+
+	static class LocusBias {
+		public VariantContext variantContext;
+		public VariantContext forwardComplexity;
+		public VariantContext reverseComplexity;
+	}
 
 	public enum GroupBy {
 		SM, RG, SMRG, NONE;
@@ -79,14 +89,19 @@ public class ConverageBiasWalker
 
 	@Argument(shortName = "groupBy", fullName = "genotypeGroupBy", doc = "Indicates wheter there should be one genotype column per sample (SM), read-group (RG), both (SMRG) or none (NONE)", required = false)
 	public GroupBy groupBy = GroupBy.RG;
+
+	@Argument(shortName = "complexity", doc = "VCF containing complexity stats per position on the reference (as produced by ReferenceComplexity tool)", required = true)
+	public RodBinding<VariantContext> complexity;
+
+	@Output(shortName = "vo", fullName = "vcfOutput", doc = "Name of the output vcf file", required = false)
+	public VCFWriter vcfOutput;
+
+	@Output(shortName = "o", fullName = "output", doc = "name of the directory where to generate the covariate count outputs", required = true)
+	public File outDir;
 	
-	@Argument(shortName = "complexity", doc = "VCF containing complexity stats per position on the reference (as produced by ReferenceComplexity tool)", required=true)
-	public RodBinding<VariantContext> complexity; 
-
-	@Output(shortName = "o", doc = "Name of the output vcf file", required = true)
-	public VCFWriter output;
-
 	private Set<String> groupNames;
+
+	private Map<GenomeLoc, VariantContext> reverseComplexity;
 
 	private Set<InfoFieldAnnotation> annotations;
 
@@ -96,19 +111,38 @@ public class ConverageBiasWalker
 		if (fsmmq < 0)
 			throw new UserException(
 					"the fragment start minimum mapping quality cannot be less than 0");
-		Set<VCFHeaderLine> headerLines = new LinkedHashSet<VCFHeaderLine>();
 		groupNames = buildGroupNames();
 		annotations = buildAnnotations();
-		for (InfoFieldAnnotation a : annotations)
-			headerLines.addAll(a.getDescriptions());
-		for (InfoFieldAnnotation a : annotations)
-			if (!(a instanceof UniquenessScore))
-				headerLines.addAll(convertInfoToFormatDescriptions(a
-						.getDescriptions()));
-		VCFHeader header = new VCFHeader(headerLines, groupNames);
-		output.writeHeader(header);
+		reverseComplexity = new ConcurrentHashMap<GenomeLoc, VariantContext>(
+				10000);
+		//TODO need to put this functionality in a common place, rather than borrow from
+		// a different walker:
+		FragmentLengthWalker.checkOutDir(outDir);
+		// .
+		
+		if (vcfOutput != null) {
+			Set<VCFHeaderLine> headerLines = new LinkedHashSet<VCFHeaderLine>();
+			for (InfoFieldAnnotation a : annotations)
+				headerLines.addAll(a.getDescriptions());
+			for (InfoFieldAnnotation a : annotations)
+				if (!(a instanceof UniquenessScore))
+					headerLines.addAll(convertInfoToFormatDescriptions(a
+							.getDescriptions()));
+			VCFHeader header = new VCFHeader(headerLines, groupNames);
+			vcfOutput.writeHeader(header);
+		}
 	}
-
+	
+	@Override
+	public void onTraversalDone(CoverageBiasCovariateCounts sum) {
+		super.onTraversalDone(sum);
+		try {
+			sum.saveIn(outDir);
+		} catch (IOException e) {
+			throw new StingException("could not save the counters due to and error",e);
+		}
+	}
+	
 	private Collection<VCFFormatHeaderLine> convertInfoToFormatDescriptions(
 			List<VCFInfoHeaderLine> descriptions) {
 		List<VCFFormatHeaderLine> result = new LinkedList<VCFFormatHeaderLine>();
@@ -151,25 +185,73 @@ public class ConverageBiasWalker
 	}
 
 	@Override
-	public MappingStatistics reduceInit() {
-		return new MappingStatistics();
+	public CoverageBiasCovariateCounts reduceInit() {
+		return new CoverageBiasCovariateCounts(groupNames);
 	}
 
 	@Override
-	public MappingStatistics reduce(VariantContext value, MappingStatistics sum) {
-		output.add(value);
+	public CoverageBiasCovariateCounts reduce(LocusBias value,
+			CoverageBiasCovariateCounts sum) {
+		if (vcfOutput != null) vcfOutput.add(value.variantContext);
+		double fGcBias, fNucEnt, fTrinucEnt, rGcBias, rNucEnt, rTrinucEnt;
+		if (value.forwardComplexity != null) {
+			fGcBias = value.forwardComplexity.getAttributeAsDouble("GCBias",
+					Double.NaN);
+			fNucEnt = value.forwardComplexity.getAttributeAsDouble("NucEnt",
+					Double.NaN);
+			fTrinucEnt = value.forwardComplexity.getAttributeAsDouble("TriEnt",
+					Double.NaN);
+		} else
+			fGcBias = fNucEnt = fTrinucEnt = Double.NaN;
+		if (value.reverseComplexity != null) {
+			rGcBias = value.reverseComplexity.getAttributeAsDouble("GCBias",
+					Double.NaN);
+			rNucEnt = value.reverseComplexity.getAttributeAsDouble("NucEnt",
+					Double.NaN);
+			rTrinucEnt = value.reverseComplexity.getAttributeAsDouble("TriEnt",
+					Double.NaN);
+		} else
+			rGcBias = rNucEnt = rTrinucEnt = Double.NaN;
+		if (Double.isNaN(rGcBias) && Double.isNaN(fGcBias))
+			return sum;
+
+		GenotypesContext gc = value.variantContext.getGenotypes();
+		for (Genotype g : gc) {
+			Map<String, Object> gAttr = g.getAttributes();
+			Object ofs = gAttr.get(FragmentStartCount.FORWARD_START_KEY);
+			int ffs = ofs instanceof Number ? ((Number) ofs).intValue()
+					: Integer.parseInt(ofs.toString());
+			Object ors = gAttr.get(FragmentStartCount.REVERSE_START_KEY);
+			int rfs = ofs instanceof Number ? ((Number) ors).intValue()
+					: Integer.parseInt(ors.toString());
+			if (!Double.isNaN(fGcBias))
+				sum.add(g.getSampleName(), fGcBias, fNucEnt, fTrinucEnt, 1, ffs);
+			if (!Double.isNaN(rGcBias))
+				sum.add(g.getSampleName(), rGcBias, rNucEnt, rTrinucEnt, 1, rfs);
+		}
 		return sum;
 	}
 
 	@Override
-	public MappingStatistics treeReduce(MappingStatistics lhs,
-			MappingStatistics rhs) {
+	public CoverageBiasCovariateCounts treeReduce(
+			CoverageBiasCovariateCounts lhs, CoverageBiasCovariateCounts rhs) {
+		lhs.mergeIn(rhs);
 		return lhs;
 	}
 
 	@Override
-	public VariantContext map(RefMetaDataTracker tracker, ReferenceContext ref,
+	public LocusBias map(RefMetaDataTracker tracker, ReferenceContext ref,
 			AlignmentContext context) {
+		VariantContext forwardComplexity = tracker
+				.getFirstValue(this.complexity);
+		GenomeLoc loc = ref.getLocus();
+		int reversePos = Integer.parseInt(forwardComplexity
+				.getAttributeAsString("END", "-1"));
+		if (reversePos != -1) {
+			GenomeLoc revLoc = ref.getGenomeLocParser().createGenomeLoc(
+					loc.getContig(), reversePos, reversePos);
+			reverseComplexity.put(revLoc, forwardComplexity);
+		}
 		VariantContextBuilder vcb = new VariantContextBuilder();
 		vcb.loc(ref.getLocus());
 		vcb.alleles(Collections.singletonList(Allele.create(ref.getBase(), true)));
@@ -182,7 +264,12 @@ public class ConverageBiasWalker
 		vcb.attributes(vcAttributes);
 		if (groupBy != GroupBy.NONE)
 			vcb.genotypes(buildGenotypes(tracker, ref, fooVc, stratifiedCtx));
-		return vcb.make();
+		LocusBias result = new LocusBias();
+
+		result.variantContext = vcb.make();
+		result.forwardComplexity = forwardComplexity;
+		result.reverseComplexity = reverseComplexity.remove(loc);
+		return result;
 	}
 
 	private GenotypesContext buildGenotypes(RefMetaDataTracker tracker,
@@ -202,6 +289,7 @@ public class ConverageBiasWalker
 							fooCtx, fooVc));
 			Genotype gt = new Genotype(groupName, noCalls, 1, noFilters,
 					gAttributes, false);
+
 			gc.add(gt);
 		}
 		return gc;
@@ -269,31 +357,6 @@ public class ConverageBiasWalker
 	@Override
 	public boolean alwaysAppendDbsnpId() {
 		return false;
-	}
-
-	public static class MappingStatistics {
-//		
-//		private Map<String,Set<LocusCovariates>> locusCovariates;
-//		
-//		
-//		MappingStatistics(Set<String> groupNames, int gbc) {
-//			this.groupNames = groupNames;
-//			this.gcBinCount = gbc;
-//		}
-//		
-//		class LocusCovariates {
-//			public final double gcBias;
-//			public final double nucEnt;
-//			public final double trinucEnt;
-//			private int hashCode;
-//			public long count;
-//			
-//			public int hashCode() {
-//				return hashCode;
-//			}
-//		}
-//		
-//
 	}
 
 }
