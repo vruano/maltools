@@ -132,13 +132,12 @@ public class SequenceComplexity {
 		  gcBias = (nucsCount[1] + nucsCount[2]) * invNucsTotal;
 		  gcBias *= 100;
 		  for (int i = 0; i < 4; i++)
-			  nucEnt -= nucsCount[i] * invNucsTotal * (Math.log(nucsCount[i]) - logNucsTotal);
+			  nucEnt -= nucsCount[i] == 0 ? 0 : nucsCount[i] * invNucsTotal * (Math.log(nucsCount[i]) - logNucsTotal);
 		  double invTrinucsTotal = 1.0 / (double) trinucsTotal;
 		  double logTrinucsTotal = Math.log(trinucsTotal);
 		  for (int i = 0; i < 64; i++)
-			  triEnt -= trinucsCount[i] * invTrinucsTotal * (Math.log(trinucsCount[i]) - logTrinucsTotal);		  
+			  triEnt -= trinucsCount[i] == 0 ? 0 : trinucsCount[i] * invTrinucsTotal * (Math.log(trinucsCount[i]) - logTrinucsTotal);		  
 		}
-
 		return new LocusComplexity(loc, nucsTotal, nucs.get(0), gcBias, nucEnt, gcHet, triEnt);
 	}
 
@@ -167,7 +166,7 @@ public class SequenceComplexity {
 			inverseProbLog[i] = Math.log(prob[i]);
 			entropy[i] = -prob[i] * inverseProbLog[i];
 			if (i < (ws - 2)) 
-				entropyMinus2[i] = i / (double) (ws - 2)  * (Math.log(i) - logWsMinus2); 
+				entropyMinus2[i] = - (((double) i) / (double) (ws - 2))  * (Math.log(i) - logWsMinus2); 
 		}
 	}
 

@@ -54,9 +54,9 @@ import org.broadinstitute.sting.utils.variantcontext.VariantContextBuilder;
 
 @By(DataSource.REFERENCE)
 @PartitionBy(PartitionType.LOCUS)
-public class ConverageBiasWalker
+public class CoverageBiasWalker
 		extends
-		LocusWalker<net.malariagen.gatk.coverage.ConverageBiasWalker.LocusBias, CoverageBiasCovariateCounts>
+		LocusWalker<net.malariagen.gatk.coverage.CoverageBiasWalker.LocusBias, CoverageBiasCovariateCounts>
 		implements AnnotatorCompatibleWalker,
 		TreeReducible<CoverageBiasCovariateCounts> {
 
@@ -245,7 +245,7 @@ public class ConverageBiasWalker
 		VariantContext forwardComplexity = tracker
 				.getFirstValue(this.complexity);
 		GenomeLoc loc = ref.getLocus();
-		int reversePos = Integer.parseInt(forwardComplexity
+		int reversePos = forwardComplexity == null ? -1 : Integer.parseInt(forwardComplexity
 				.getAttributeAsString("END", "-1"));
 		if (reversePos != -1) {
 			GenomeLoc revLoc = ref.getGenomeLocParser().createGenomeLoc(

@@ -86,7 +86,6 @@ public class CoverageBiasCovariateCounts implements Serializable {
 		TsvWriter tw = new TsvWriter(new FileWriter(tableFile));
 		TsvWriter scTw = new TsvWriter(new FileWriter(siteCountsFile));
 		TsvWriter stTw = new TsvWriter(new FileWriter(startCountsFile));
-		tw.close();
 		int nextIdx = 3;
 		for (String gn : groupNames)
 			header[nextIdx++] = gn;
@@ -99,8 +98,8 @@ public class CoverageBiasCovariateCounts implements Serializable {
 		for (CovariateCombination ck : allCC) {
 			String key = ck.key();
 			values[0] = siteCounts[0] = startCounts[0] = String.format("%.2f",ck.gcBias);
-			values[1] = siteCounts[1] = startCounts[0] = String.format("%.2f",ck.nucEnt);
-			values[2] = siteCounts[2] = startCounts[0] = String.format("%.2f",ck.trinucEnt);
+			values[1] = siteCounts[1] = startCounts[1] = String.format("%.2f",ck.nucEnt);
+			values[2] = siteCounts[2] = startCounts[2] = String.format("%.2f",ck.trinucEnt);
 			for (int i = 3; i < header.length; i++) {
 				CovariateCombination cc = locusCovariates.get(header[i]).get(key);
 				values[i] = cc == null ? "NA" : String.format("%.4f",(double) cc.startCount / (double) cc.siteCount);
