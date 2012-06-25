@@ -12,6 +12,7 @@ import net.sf.samtools.SAMRecord;
 import org.broadinstitute.sting.gatk.refdata.ReadMetaDataTracker;
 import org.broadinstitute.sting.gatk.refdata.RefMetaDataTracker;
 import org.broadinstitute.sting.gatk.refdata.utils.GATKFeature;
+import org.broadinstitute.sting.gatk.refdata.utils.RODRecordList;
 
 public enum LocusCategory {
 	CODING, NON_CODING, GENIC, INTER_GENIC, FEATURELESS;
@@ -27,18 +28,21 @@ public enum LocusCategory {
 	public static byte INTER_GENIC_MASK = INTER_GENIC.mask();
 
 	public static byte categoryMask(RefMetaDataTracker tracker) {
-		List<GATKFeature> tracks = tracker.getGATKFeatureMetaData(
-				Constants.FEATURES_ROD_NAME, true);
+		List<RODRecordList> rrll = tracker.getBoundRodTracks();
 		byte result = 0;
-		for (GATKFeature ft : tracks) {
-			Object o = ft.getUnderlyingObject();
-			if (o instanceof GFFFeature) {
-				switch (((GFFFeature) o).getType()) {
-				case CDS:
-					result |= CODING_MASK;
-				case EXON:
-				case GENE:
-					result |= GENIC_MASK;
+		for (RODRecordList rrl : rrll ) { 
+			if (rrl.getName().equals(Constants.FEATURES_ROD_NAME)) 
+				continue;
+			for (GATKFeature ft : rrl) {
+				Object o = ft.getUnderlyingObject();
+				if (o instanceof GFFFeature) {
+					switch (((GFFFeature) o).getType()) {
+					case CDS:
+						result |= CODING_MASK;
+					case EXON:
+					case GENE:
+						result |= GENIC_MASK;
+					}
 				}
 			}
 		}

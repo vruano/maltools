@@ -20,7 +20,7 @@ else {
   my $parent = dirname($dir);
   -e $parent or die "the parent of the destination directory '$dir' does not exists";
   -d $parent or die "the parent of the destination directory '$dir' is not in fact a directory";
-  print STDERR "svn co --revision $revision $new_url $dir\n";
+  print STDERR "svn co --trust-server-cert --non-interactive --revision $revision $new_url $dir\n";
   exec("svn co --revision $revision $new_url $dir");
 }
 

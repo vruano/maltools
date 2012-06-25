@@ -26,25 +26,24 @@
 package net.malariagen.gatk.genotyper;
 
 import net.malariagen.gatk.filters.SnpListReadFilter;
+import net.sf.picard.filter.NotPrimaryAlignmentFilter;
 import net.sf.samtools.SAMReadGroupRecord;
 
 import org.broadinstitute.sting.utils.codecs.vcf.*;
 import org.broadinstitute.sting.gatk.GenomeAnalysisEngine;
 import org.broadinstitute.sting.gatk.contexts.*;
 import org.broadinstitute.sting.gatk.filters.DuplicateReadFilter;
-import org.broadinstitute.sting.gatk.filters.NotPrimaryAlignmentReadFilter;
 import org.broadinstitute.sting.gatk.filters.UnmappedReadFilter;
 import org.broadinstitute.sting.gatk.refdata.RefMetaDataTracker;
-import org.broadinstitute.sting.gatk.refdata.utils.helpers.DbSNPHelper;
 import org.broadinstitute.sting.gatk.walkers.*;
+import org.broadinstitute.sting.gatk.samples.*;
 import org.broadinstitute.sting.gatk.walkers.annotator.VariantAnnotatorEngine;
+import org.broadinstitute.sting.gatk.walkers.annotator.interfaces.AnnotatorCompatibleWalker;
 import org.broadinstitute.sting.gatk.walkers.genotyper.GenotypeLikelihoodsCalculationModel;
 import org.broadinstitute.sting.gatk.walkers.genotyper.MetaGenotyperEngine;
 import org.broadinstitute.sting.gatk.walkers.genotyper.UnifiedGenotyperEngine;
 import org.broadinstitute.sting.gatk.walkers.genotyper.VariantCallContext;
 import org.broadinstitute.sting.gatk.datasources.reads.SAMReaderID;
-import org.broadinstitute.sting.gatk.datasources.rmd.ReferenceOrderedDataSource;
-import org.broadinstitute.sting.gatk.datasources.sample.Sample;
 import org.broadinstitute.sting.utils.*;
 import org.broadinstitute.sting.utils.baq.BAQ;
 import org.broadinstitute.sting.commandline.*;
@@ -52,6 +51,7 @@ import org.broadinstitute.sting.utils.codecs.vcf.VCFUtils;
 import org.broadinstitute.sting.utils.variantcontext.Allele;
 import org.broadinstitute.sting.utils.variantcontext.Genotype;
 import org.broadinstitute.sting.utils.variantcontext.VariantContext;
+import org.broadinstitute.sting.utils.variantcontext.VariantContextBuilder;
 
 import java.util.*;
 import java.io.PrintStream;
@@ -62,13 +62,13 @@ import java.io.PrintStream;
  * several different incorporated calculation models.
  */
 @BAQMode(QualityMode = BAQ.QualityMode.ADD_TAG, ApplicationTime = BAQ.ApplicationTime.HANDLED_IN_WALKER)
-@ReadFilters({ DuplicateReadFilter.class, NotPrimaryAlignmentReadFilter.class, UnmappedReadFilter.class, SnpListReadFilter.class })
+@ReadFilters({ DuplicateReadFilter.class, NotPrimaryAlignmentFilter.class, UnmappedReadFilter.class, SnpListReadFilter.class })
 //@Reference(window = @Window(start = -10, stop = 10))
 @By(DataSource.REFERENCE)
 //@Downsample(by = DownsampleType.BY_SAMPLE, toCoverage = 250)
 public class MetaGenotyper extends
 		LocusWalker<VariantCallContext, MetaGenotyper.UGStatistics> implements
-		TreeReducible<MetaGenotyper.UGStatistics> {
+		TreeReducible<MetaGenotyper.UGStatistics>, AnnotatorCompatibleWalker {
 
 	@ArgumentCollection
 	private MetaArgumentCollection UAC = new MetaArgumentCollection();
@@ -150,22 +150,22 @@ public class MetaGenotyper extends
 	 * Initialize the samples, output, and genotype calculation model
 	 * 
 	 **/
+	@SuppressWarnings("unchecked")
 	public void initialize() {
 		// get all of the unique sample names
 		// if we're supposed to assume a single sample, do so
 		Set<String> samples = new TreeSet<String>();
 		getToolkit().getFilters();
-		if (UAC.ASSUME_SINGLE_SAMPLE != null)
-			samples.add(UAC.ASSUME_SINGLE_SAMPLE);
-		else
-			samples = SampleUtils.getSAMFileSamples(getToolkit()
+		samples = SampleUtils.getSAMFileSamples(getToolkit()
 					.getSAMFileHeader());
+		getToolkit().getRodDataSources();
 		// initialize the verbose writer
 		if (verboseWriter != null)
 			verboseWriter
 					.println("AFINFO\tLOC\tREF\tALT\tMAF\tF\tAFprior\tAFposterior\tNormalizedPosterior");
-		annotationEngine = new VariantAnnotatorEngine(getToolkit(),
-				Arrays.asList(annotationClassesToUse), annotationsToUse);
+//		annotationEngine = new VariantAnnotatorEngine(getToolkit(),
+//				Arrays.asList(annotationClassesToUse), annotationsToUse);
+		annotationEngine = new VariantAnnotatorEngine(Arrays.asList(annotationClassesToUse), annotationsToUse, Collections.EMPTY_LIST,this,getToolkit());
 		MG_engine = new MetaGenotyperEngine(getToolkit(), UAC, logger,
 				verboseWriter, annotationEngine, samples);
 		if (UAC.parents.size() == 0)
@@ -182,11 +182,11 @@ public class MetaGenotyper extends
 	}
 	
 	private void checkParentSamples(List<String> parents) {
-		Collection<Sample> samples = getToolkit().getSamples();
+		Collection<Sample> samples = getToolkit().getSampleDB().getSamples();
 		Set<String> parentSoFar = new HashSet<String>(parents.size());
 		Set<String> sampleNames = new HashSet<String>(samples.size());
 		for (Sample sample : samples)
-			sampleNames.add(sample.getId());
+			sampleNames.add(sample.getID());
 		for (String parent : parents) 
 			if (!sampleNames.contains(parent)) 
 				throw new RuntimeException("Missing parent sample " +  parent);
@@ -265,23 +265,23 @@ public class MetaGenotyper extends
 						"Were any of the samples downsampled?"));
 
 		// also, check to see whether comp rods were included
-		List<ReferenceOrderedDataSource> dataSources = getToolkit()
-				.getRodDataSources();
-		for (ReferenceOrderedDataSource source : dataSources) {
-			if (source.getName().equals(DbSNPHelper.STANDARD_DBSNP_TRACK_NAME)) {
-				headerInfo.add(new VCFInfoHeaderLine(VCFConstants.DBSNP_KEY, 0,
-						VCFHeaderLineType.Flag, "dbSNP Membership"));
-			} else if (source.getName().startsWith(
-					VariantAnnotatorEngine.dbPrefix)) {
-				String name = source.getName().substring(
-						VariantAnnotatorEngine.dbPrefix.length());
-				headerInfo.add(new VCFInfoHeaderLine(name, 0,
-						VCFHeaderLineType.Flag, name + " Membership"));
-			}
-		}
+//		List<ReferenceOrderedDataSource> dataSources = getToolkit()
+//				.getRodDataSources();
+//		for (ReferenceOrderedDataSource source : dataSources) {
+//			if (source.getName().equals(DbSNPHelper.STANDARD_DBSNP_TRACK_NAME)) {
+//				headerInfo.add(new VCFInfoHeaderLine(VCFConstants.DBSNP_KEY, 0,
+//						VCFHeaderLineType.Flag, "dbSNP Membership"));
+//			} else if (source.getName().startsWith(
+//					VariantAnnotatorEngine.dbPrefix)) {
+//				String name = source.getName().substring(
+//						VariantAnnotatorEngine.dbPrefix.length());
+//				headerInfo.add(new VCFInfoHeaderLine(name, 0,
+//						VCFHeaderLineType.Flag, name + " Membership"));
+//			}
+//		}
 
 		// FORMAT and INFO fields
-		headerInfo.addAll(VCFUtils.getSupportedHeaderStrings());
+		headerInfo.addAll(VCFUtils.getHeaderFields(getToolkit()));
 
 		// FILTER fields
 		// if ( UAC.STANDARD_CONFIDENCE_FOR_EMITTING <
@@ -353,14 +353,17 @@ public class MetaGenotyper extends
 		return sb.toString();
 	}
 	
+	@Override
 	public VariantCallContext map(RefMetaDataTracker tracker,
 			ReferenceContext refContext, AlignmentContext rawContext) {
-		VariantCallContext vc = MG_engine.calculateLikelihoodsAndGenotypes(tracker, refContext,
+		List<VariantCallContext> vcl = MG_engine.calculateLikelihoodsAndGenotypes(tracker, refContext,
 				rawContext);
-		if (vc == null || parentSamples.size() == 0) 
-			return vc;
+		if (vcl == null || vcl.size() == 0 || parentSamples.size() == 0) 
+			return null;
 		
-		
+		VariantCallContext vc = vcl.get(0);
+		if (vc == null)
+			return null;
 		StringBuffer sb = new StringBuffer(10);
 		String previous = null;
 		boolean segregating = false;
@@ -384,8 +387,9 @@ public class MetaGenotyper extends
 		attrs.put("PGT", sb.toString());
 		if (segregating)
 			attrs.put("SEGREGATING",null);
-		VariantContext newVc = VariantContext.modifyAttributes(vc, attrs);
-		return MG_engine.newVariantCallContext(newVc,vc.refBase,confidentlyCalled(vc.getNegLog10PError()));
+		VariantContextBuilder vcb = new VariantContextBuilder(vc);
+		VariantContext newVc = vcb.attributes(attrs).make();;
+		return MG_engine.newVariantCallContext(newVc, (byte)-1,confidentlyCalled(-vc.getLog10PError()));
 	}
 	
 	protected boolean confidentlyCalled(double conf) {
@@ -426,7 +430,7 @@ public class MetaGenotyper extends
 		try {
 			// we are actually making a call
 			sum.nCallsMade++;
-			writer.add(value, value.refBase);
+			writer.add(value);
 		} catch (IllegalArgumentException e) {
 			throw new IllegalArgumentException(
 					e.getMessage()
@@ -483,5 +487,27 @@ public class MetaGenotyper extends
 					sum.nCallsMade));
 		}
 	}
+
+
+    /**
+     * If a call overlaps with a record from the provided comp track, the INFO field will be annotated
+     *  as such in the output with the track name (e.g. -comp:FOO will have 'FOO' in the INFO field).
+     *  Records that are filtered in the comp track will be ignored.
+     *  Note that 'dbSNP' has been special-cased (see the --dbsnp argument).
+     */
+    @Input(fullName="comp", shortName = "comp", doc="comparison VCF file", required=false)
+    public List<RodBinding<VariantContext>> comps = Collections.emptyList();
+    public List<RodBinding<VariantContext>> getCompRodBindings() { return comps; }
+
+    // The following are not used by the Unified Genotyper
+    public RodBinding<VariantContext> getSnpEffRodBinding() { return null; }
+    public List<RodBinding<VariantContext>> getResourceRodBindings() { return Collections.emptyList(); }
+    public boolean alwaysAppendDbsnpId() { return false; }
+
+	@Override
+	public RodBinding<VariantContext> getDbsnpRodBinding() {
+		return null;
+	}
+	
 
 }

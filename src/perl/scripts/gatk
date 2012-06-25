@@ -26,7 +26,7 @@ if ($tmp_dir) {
 
 if ($main_class eq 'org.broadinstitute.sting.gatk.CommandLineGATK') {
   my $jar_file = catfile($pgv_home,'lib','java','GenomeAnalysisTK.jar');
-  push @VMARGV , '-jar',$jar_file,'-et','NO_ET';
+  push @VMARGV , '-jar',$jar_file;
 }
 else {
   my $cp_dir = catfile($pgv_home,'lib','java');

@@ -8,13 +8,14 @@ import org.apache.commons.math.util.FastMath;
 import org.broadinstitute.sting.gatk.contexts.AlignmentContext;
 import org.broadinstitute.sting.gatk.contexts.ReferenceContext;
 import org.broadinstitute.sting.gatk.refdata.RefMetaDataTracker;
+import org.broadinstitute.sting.gatk.walkers.annotator.interfaces.AnnotatorCompatibleWalker;
 import org.broadinstitute.sting.gatk.walkers.annotator.interfaces.InfoFieldAnnotation;
 import org.broadinstitute.sting.utils.codecs.vcf.VCFHeaderLineType;
 import org.broadinstitute.sting.utils.codecs.vcf.VCFInfoHeaderLine;
 import org.broadinstitute.sting.utils.pileup.PileupElement;
 import org.broadinstitute.sting.utils.variantcontext.VariantContext;
 
-public class AverageBaseQuality implements InfoFieldAnnotation {
+public class AverageBaseQuality extends InfoFieldAnnotation {
 	public static final List<String> KEY_NAMES = Collections
 			.singletonList("ER");
 	public static final List<VCFInfoHeaderLine> DESCRIPTIONS = Collections
@@ -24,8 +25,9 @@ public class AverageBaseQuality implements InfoFieldAnnotation {
 
 	@Override
 	public Map<String, Object> annotate(RefMetaDataTracker tracker,
-			ReferenceContext ref,
+			AnnotatorCompatibleWalker walker, ReferenceContext ref,
 			Map<String, AlignmentContext> stratifiedContexts, VariantContext vc) {
+
 		int size = 0;
 		for (AlignmentContext ac : stratifiedContexts.values())
 			size += ac.size();
@@ -50,12 +52,9 @@ public class AverageBaseQuality implements InfoFieldAnnotation {
 			expSum += FastMath.pow(10, ((double) - quals[i]) / 10.0);
 		}
 		
-				
-		//double result = -10 * FastMath.log10(expSum) - c + 10 * FastMath.log10(quals.length);
 		double result = -10 * FastMath.log10(expSum/(double)quals.length);
 			
-		String resultString = String.format("%.2f", result);
-				
+		String resultString = String.format("%.2f", result);		
 		return Collections.singletonMap(KEY_NAMES.get(0), (Object) resultString);
 	}
 
@@ -68,4 +67,5 @@ public class AverageBaseQuality implements InfoFieldAnnotation {
 	public List<VCFInfoHeaderLine> getDescriptions() {
 		return DESCRIPTIONS;
 	}
+
 }

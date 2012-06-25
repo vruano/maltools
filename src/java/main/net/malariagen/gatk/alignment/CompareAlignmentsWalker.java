@@ -19,7 +19,7 @@ import org.broadinstitute.sting.gatk.contexts.ReferenceContext;
 import org.broadinstitute.sting.gatk.datasources.reads.SAMReaderID;
 import org.broadinstitute.sting.gatk.datasources.rmd.ReferenceOrderedDataSource;
 import org.broadinstitute.sting.gatk.filters.BadMateFilter;
-import org.broadinstitute.sting.gatk.filters.NotPrimaryAlignmentReadFilter;
+import org.broadinstitute.sting.gatk.filters.NotPrimaryAlignmentFilter;
 import org.broadinstitute.sting.gatk.filters.UnmappedReadFilter;
 import org.broadinstitute.sting.gatk.refdata.ReadMetaDataTracker;
 import org.broadinstitute.sting.gatk.walkers.By;
@@ -30,9 +30,10 @@ import org.broadinstitute.sting.gatk.walkers.ReadFilters;
 import org.broadinstitute.sting.gatk.walkers.ReadWalker;
 import org.broadinstitute.sting.gatk.walkers.Requires;
 import org.broadinstitute.sting.utils.exceptions.UserException;
+import org.broadinstitute.sting.utils.sam.GATKSAMRecord;
 
 @ReadFilters({ BadMateFilter.class, UnmappedReadFilter.class,
-		NotPrimaryAlignmentReadFilter.class })
+		NotPrimaryAlignmentFilter.class })
 @PartitionBy(PartitionType.CONTIG)
 @By(DataSource.READS)
 @Requires({ DataSource.READS, DataSource.REFERENCE, DataSource.REFERENCE_BASES, DataSource.REFERENCE_ORDERED_DATA })
@@ -104,13 +105,6 @@ public class CompareAlignmentsWalker extends
 		}
 	}
 
-	@Override
-	public SAMRecordInfo map(ReferenceContext ref, SAMRecord read,
-			ReadMetaDataTracker metaDataTracker) {
-		if (ref == null)
-			throw new IllegalArgumentException("");
-		return new SAMRecordInfo(read,ref,metaDataTracker,outputUniqueness,outputLocusCategory);
-	}
 
 	@Override
 	public AlignmentDifferencesBuffer reduceInit() {
@@ -128,6 +122,14 @@ public class CompareAlignmentsWalker extends
 	public void onTraversalDone(AlignmentDifferencesBuffer sum) {
 		super.onTraversalDone(sum);
 		sum.flush();
+	}
+
+	@Override
+	public SAMRecordInfo map(ReferenceContext ref, GATKSAMRecord read,
+			ReadMetaDataTracker metaDataTracker) {
+		if (ref == null)
+			throw new IllegalArgumentException("");
+		return new SAMRecordInfo(read,ref,metaDataTracker,outputUniqueness,outputLocusCategory);
 	}
 	
 	

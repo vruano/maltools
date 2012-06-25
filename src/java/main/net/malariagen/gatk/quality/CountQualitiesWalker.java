@@ -30,9 +30,10 @@ import org.broadinstitute.sting.commandline.Output;
 import org.broadinstitute.sting.gatk.contexts.ReferenceContext;
 
 import org.broadinstitute.sting.gatk.filters.BadMateFilter;
-import org.broadinstitute.sting.gatk.filters.NotPrimaryAlignmentReadFilter;
+import org.broadinstitute.sting.gatk.filters.NotPrimaryAlignmentFilter;
 import org.broadinstitute.sting.gatk.filters.UnmappedReadFilter;
 import org.broadinstitute.sting.gatk.refdata.ReadMetaDataTracker;
+import org.broadinstitute.sting.gatk.samples.Sample;
 import org.broadinstitute.sting.gatk.walkers.BAQMode;
 import org.broadinstitute.sting.gatk.walkers.By;
 import org.broadinstitute.sting.gatk.walkers.DataSource;
@@ -47,9 +48,10 @@ import org.broadinstitute.sting.utils.BaseUtils;
 import org.broadinstitute.sting.utils.baq.BAQ;
 import org.broadinstitute.sting.utils.baq.BAQ.CalculationMode;
 import org.broadinstitute.sting.utils.baq.BAQ.QualityMode;
+import org.broadinstitute.sting.utils.sam.GATKSAMRecord;
 
 @Requires({ DataSource.READS, DataSource.REFERENCE_BASES })
-@ReadFilters({ BadMateFilter.class, UnmappedReadFilter.class, NotPrimaryAlignmentReadFilter.class })
+@ReadFilters({ BadMateFilter.class, UnmappedReadFilter.class, NotPrimaryAlignmentFilter.class })
 @PartitionBy(PartitionType.INTERVAL)
 @By(DataSource.READS)
 @BAQMode(QualityMode = BAQ.QualityMode.ADD_TAG, ApplicationTime = BAQ.ApplicationTime.ON_INPUT)
@@ -105,9 +107,11 @@ public class CountQualitiesWalker extends
 	private CalculationMode cmode;
 	private QualityMode qmode;
 
-	// @Override
-	public QualityCountersIncrement map(ReferenceContext ref, SAMRecord read,
-			ReadMetaDataTracker tracker) {
+	
+
+	@Override
+	public QualityCountersIncrement map(ReferenceContext ref,
+			GATKSAMRecord read, ReadMetaDataTracker tracker) {
 
 		int mappingQuality = read.getMappingQuality();
 		if (mappingQuality < minimumMappingQualityForBaseCounting
@@ -215,10 +219,8 @@ public class CountQualitiesWalker extends
 			sampleIndices = Collections.emptyMap();
 		} else {
 			LinkedList<String> allNames = new LinkedList<String>();
-			for (Set<String> sampleSet : getToolkit().getSamplesByReaders()) {
-				for (String s : sampleSet) {
-					allNames.add(s);
-				}
+			for (Sample sample : getToolkit().getSampleDB().getSamples()) {
+				allNames.add(sample.getID());
 			}
 			sampleCount = allNames.size();
 			sampleNames = allNames.toArray(new String[sampleCount]);
@@ -289,5 +291,6 @@ public class CountQualitiesWalker extends
 		for (String line : reportLines)
 			logger.info(line);
 	}
+
 
 }

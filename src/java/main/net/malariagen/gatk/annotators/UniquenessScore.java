@@ -11,12 +11,14 @@ import org.broadinstitute.sting.gatk.contexts.AlignmentContext;
 import org.broadinstitute.sting.gatk.contexts.ReferenceContext;
 import org.broadinstitute.sting.gatk.refdata.RefMetaDataTracker;
 import org.broadinstitute.sting.gatk.refdata.utils.GATKFeature;
+import org.broadinstitute.sting.gatk.refdata.utils.RODRecordList;
+import org.broadinstitute.sting.gatk.walkers.annotator.interfaces.AnnotatorCompatibleWalker;
 import org.broadinstitute.sting.gatk.walkers.annotator.interfaces.InfoFieldAnnotation;
 import org.broadinstitute.sting.utils.codecs.vcf.VCFHeaderLineType;
 import org.broadinstitute.sting.utils.codecs.vcf.VCFInfoHeaderLine;
 import org.broadinstitute.sting.utils.variantcontext.VariantContext;
 
-public class UniquenessScore implements InfoFieldAnnotation {
+public class UniquenessScore extends InfoFieldAnnotation {
 
 	private static final Integer NO_SCORE = 99;
 	
@@ -34,11 +36,13 @@ public class UniquenessScore implements InfoFieldAnnotation {
 	private static List<VCFInfoHeaderLine> HEADER_LINES = Collections.singletonList(
 			new VCFInfoHeaderLine(Constants.UNIQUENESS_KEY, 1, VCFHeaderLineType.Integer, 
 					"Indicates the uniqueness of the genomic region where the variant is found"));
-	
+
+
 	@Override
 	public Map<String, Object> annotate(RefMetaDataTracker tracker,
-			ReferenceContext ref,
+			AnnotatorCompatibleWalker walker, ReferenceContext ref,
 			Map<String, AlignmentContext> stratifiedContexts, VariantContext vc) {
+
 		Integer score = score(tracker);
 		if (score == null)
 			return Collections.emptyMap();
@@ -47,13 +51,17 @@ public class UniquenessScore implements InfoFieldAnnotation {
 	}
 	
 	private Integer score(RefMetaDataTracker tracker) {
-		List<GATKFeature> tracks = tracker.getGATKFeatureMetaData(Constants.UNIQUENESS_ROD_NAME, true);
-		for (GATKFeature ft : tracks) {
-			Object o = ft.getUnderlyingObject();
-			if (o instanceof UQNFeature) {
-				UQNFeature u = (UQNFeature)o;
-				return SCORES[u.getScore()];
+		for (RODRecordList rrl : tracker.getBoundRodTracks()) {
+			if (!rrl.getName().equals(Constants.UNIQUENESS_ROD_NAME))
+				continue;
+			for (GATKFeature ft : rrl) {
+				Object o = ft.getUnderlyingObject();
+				if (o instanceof UQNFeature) {
+					UQNFeature u = (UQNFeature)o;
+					return SCORES[u.getScore()];
+				}
 			}
+			return NO_SCORE;
 		}
 		return NO_SCORE;
 	}
@@ -67,5 +75,4 @@ public class UniquenessScore implements InfoFieldAnnotation {
 	public List<VCFInfoHeaderLine> getDescriptions() {
 		return HEADER_LINES;
 	}
-
 }

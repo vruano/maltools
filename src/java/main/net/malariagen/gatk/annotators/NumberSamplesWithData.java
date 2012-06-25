@@ -7,12 +7,13 @@ import java.util.Map;
 import org.broadinstitute.sting.gatk.contexts.AlignmentContext;
 import org.broadinstitute.sting.gatk.contexts.ReferenceContext;
 import org.broadinstitute.sting.gatk.refdata.RefMetaDataTracker;
+import org.broadinstitute.sting.gatk.walkers.annotator.interfaces.AnnotatorCompatibleWalker;
 import org.broadinstitute.sting.gatk.walkers.annotator.interfaces.InfoFieldAnnotation;
 import org.broadinstitute.sting.utils.codecs.vcf.VCFHeaderLineType;
 import org.broadinstitute.sting.utils.codecs.vcf.VCFInfoHeaderLine;
 import org.broadinstitute.sting.utils.variantcontext.VariantContext;
 
-public class NumberSamplesWithData implements InfoFieldAnnotation {
+public class NumberSamplesWithData extends InfoFieldAnnotation {
 	public static final List<String> KEY_NAMES = Collections
 			.singletonList("NS");
 	public static final List<VCFInfoHeaderLine> DESCRIPTIONS = Collections
@@ -22,7 +23,7 @@ public class NumberSamplesWithData implements InfoFieldAnnotation {
 
 	@Override
 	public Map<String, Object> annotate(RefMetaDataTracker tracker,
-			ReferenceContext ref,
+			AnnotatorCompatibleWalker walker, ReferenceContext ref,
 			Map<String, AlignmentContext> stratifiedContexts, VariantContext vc) {
 		int coveredSamples = 0;
 		for (AlignmentContext ac : stratifiedContexts.values())
@@ -39,4 +40,5 @@ public class NumberSamplesWithData implements InfoFieldAnnotation {
 	public List<VCFInfoHeaderLine> getDescriptions() {
 		return DESCRIPTIONS;
 	}
+
 }

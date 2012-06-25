@@ -19,9 +19,7 @@ import org.broadinstitute.sting.utils.codecs.vcf.VCFHeaderLine;
 import org.broadinstitute.sting.utils.codecs.vcf.VCFHeaderLineType;
 import org.broadinstitute.sting.utils.variantcontext.Allele;
 import org.broadinstitute.sting.utils.variantcontext.Genotype;
-import org.broadinstitute.sting.utils.variantcontext.InferredGeneticContext;
-import org.broadinstitute.sting.utils.variantcontext.MutableGenotype;
-import org.broadinstitute.sting.utils.variantcontext.VariantContext;
+import org.broadinstitute.sting.utils.variantcontext.GenotypesContext;
 
 
 public abstract class AbstractGenotypingModel implements GenotypingModel {
@@ -35,7 +33,9 @@ public abstract class AbstractGenotypingModel implements GenotypingModel {
     public static final VCFFormatHeaderLine GENOTYPE_POSTERIORS_FORMAT_LINE = new VCFFormatHeaderLine(VCFConstants.GENOTYPE_POSTERIORS_KEY, -1, VCFHeaderLineType.Float, "Each possible genotype posterior probability, #0, #1, #2 ... #N");
 	
 	protected static final Collection<? extends VCFHeaderLine> HEADER_LINES = Collections.unmodifiableCollection(
-			Arrays.asList(ERROR_RATE_FORMAT_LINE,GENOTYPE_CONFIDENCE_FORMAT_LINE, GENOTYPE_POSTERIORS_FORMAT_LINE)); 
+			Arrays.asList(ERROR_RATE_FORMAT_LINE,GENOTYPE_CONFIDENCE_FORMAT_LINE, GENOTYPE_POSTERIORS_FORMAT_LINE));
+
+	public static final double NO_LOG10_ERROR = 1.0; 
 	
 	@Override
 	public Collection<? extends VCFHeaderLine> getHeaderLines() {
@@ -85,26 +85,26 @@ public abstract class AbstractGenotypingModel implements GenotypingModel {
 	protected abstract double calculatePosteriors(AlignmentContext ac, VariantPosteriors dest, int sample);
 
 	@Override
-	public Map<String, MutableGenotype> calculateGenotypes(Map<String, AlignmentContext> sc) {
+	public GenotypesContext calculateGenotypes(Map<String, AlignmentContext> sc) {
 		String[] samples = sc.keySet().toArray(new String [sc.size()]);
 		AlignmentContext[] acs = new AlignmentContext[samples.length];
 		for (int i = 0; i < samples.length; i++)
 			acs[i] = sc.get(samples[i]);
 		VariantPosteriors posteriors = calculatePosteriors(acs);
-		HashMap<String, MutableGenotype> result = new HashMap<String,MutableGenotype>(acs.length);
+		GenotypesContext result = GenotypesContext.create();
 		for (int i = 0; i < acs.length; i++)  
-			result.put(samples[i],calculateGenotype(samples[i],acs[i],posteriors,i));
+			result.add(calculateGenotype(samples[i],acs[i],posteriors,i));
 		return result;
 	}
 
-	public MutableGenotype calculateGenotype(String sample,
+	public Genotype calculateGenotype(String sample,
 			AlignmentContext ac, VariantPosteriors post, int i) {
 		double genotypeQuality =  post.getGenotypeQuality(i);
 		if (genotypeQuality > 99999) { genotypeQuality = 99999;  }
 		else if (genotypeQuality == -0.0) { genotypeQuality = 0.0; }
-		double negLog10PError = Double.isNaN(genotypeQuality) ? InferredGeneticContext.NO_NEG_LOG_10PERROR : genotypeQuality / 10.0;
-		return new MutableGenotype(sample, genotypeAlleles(ac, post, i),
-				negLog10PError,
+		double log10PError = Double.isNaN(genotypeQuality) ? NO_LOG10_ERROR : - genotypeQuality / 10.0;
+		return new Genotype(sample, genotypeAlleles(ac, post, i),
+				log10PError,
 				genotypeFilters(ac, post, i), genotypeAttributes(ac,
 						post, i), false);
 	}
@@ -143,9 +143,9 @@ public abstract class AbstractGenotypingModel implements GenotypingModel {
 	}
 	
 	@Override
-	public double calculateVariantPhredQuality(Map<String, AlignmentContext> ac, Map<String, Genotype> gt) {
+	public double calculateVariantPhredQuality(Map<String, AlignmentContext> ac, GenotypesContext gt) {
 		double value = 0;
-		for (Genotype g : gt.values()) {
+		for (Genotype g : gt) {
 			if (!g.isCalled()) continue;
 			int idx = this.getGenotypeIndex(g.getAlleles());
 			if (idx == -1)
@@ -154,7 +154,7 @@ public abstract class AbstractGenotypingModel implements GenotypingModel {
 			if (gp == null)
 				continue;
 			double v = gp.getPosterior(0);
-			if (!Double.isNaN(v) && v != InferredGeneticContext.NO_NEG_LOG_10PERROR)
+			if (!Double.isNaN(v) && v >= 0)
 				value += v;
 		}
 		if (value > 99999.99) value = 99999.99;

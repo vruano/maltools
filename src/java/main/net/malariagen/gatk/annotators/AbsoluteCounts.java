@@ -11,21 +11,26 @@ import java.util.Map;
 import org.broadinstitute.sting.gatk.contexts.AlignmentContext;
 import org.broadinstitute.sting.gatk.contexts.ReferenceContext;
 import org.broadinstitute.sting.gatk.refdata.RefMetaDataTracker;
+import org.broadinstitute.sting.gatk.walkers.annotator.interfaces.AnnotatorCompatibleWalker;
 import org.broadinstitute.sting.gatk.walkers.annotator.interfaces.InfoFieldAnnotation;
+import org.broadinstitute.sting.utils.codecs.vcf.VCFConstants;
 import org.broadinstitute.sting.utils.codecs.vcf.VCFHeaderLineType;
 import org.broadinstitute.sting.utils.codecs.vcf.VCFInfoHeaderLine;
 import org.broadinstitute.sting.utils.pileup.PileupElement;
 import org.broadinstitute.sting.utils.pileup.ReadBackedPileup;
+import org.broadinstitute.sting.utils.variantcontext.Allele;
 import org.broadinstitute.sting.utils.variantcontext.VariantContext;
 
-public class AbsoluteCounts extends AlleleCountsAnnotator implements InfoFieldAnnotation {
+public class AbsoluteCounts extends InfoFieldAnnotation {
 	
+
+	private static final int NO_ALLELE = -1;
 
 	private List<String> KEY_NAMES = Collections.unmodifiableList(Arrays.asList(ABSOLUTE_ALLELE_DEPTH_KEY,ABSOLUTE_TOTAL_DEPTH_KEY,MINOR_READ_ALLELE_KEY,MINOR_READ_ALLELE_FREQUENCY_KEY,"mAmaxSF"));
 
 	private List<VCFInfoHeaderLine> HEADER_LINES = Collections.unmodifiableList(Arrays.asList(
-	    new VCFInfoHeaderLine(ABSOLUTE_ALLELE_DEPTH_KEY, VCFInfoHeaderLine.UNBOUNDED, VCFHeaderLineType.Integer, "Non-filtered indel-free depth per allele"),
-	    new VCFInfoHeaderLine(ABSOLUTE_ALLELE_MAX_SAMPLE_DEPTH_KEY, VCFInfoHeaderLine.UNBOUNDED, VCFHeaderLineType.Integer, "Non-filtered indel-free depth maximum per sample depth"),
+	    new VCFInfoHeaderLine(ABSOLUTE_ALLELE_DEPTH_KEY, -1, VCFHeaderLineType.Integer, "Non-filtered indel-free depth per allele"),
+	    new VCFInfoHeaderLine(ABSOLUTE_ALLELE_MAX_SAMPLE_DEPTH_KEY, -1, VCFHeaderLineType.Integer, "Non-filtered indel-free depth maximum per sample depth"),
 		new VCFInfoHeaderLine(ABSOLUTE_TOTAL_DEPTH_KEY, 1, VCFHeaderLineType.Integer, "Non-filtered indel-free depth per allele"),
 		new VCFInfoHeaderLine(MINOR_READ_ALLELE_KEY, 1, VCFHeaderLineType.String, "Minor read Allele (considering absolute read depth)"),
 		new VCFInfoHeaderLine(MINOR_READ_ALLELE_TOTAL_DEPTH_KEY, 1, VCFHeaderLineType.Integer, "Minor read Allele depth of coverage"),
@@ -33,9 +38,10 @@ public class AbsoluteCounts extends AlleleCountsAnnotator implements InfoFieldAn
 		new VCFInfoHeaderLine(LOWEST_MAXIMUM_READ_SAMPLE_DEPTH_KEY, 1, VCFHeaderLineType.Integer, "Lowest maximum allele sample Depth: the lowest maximum depth of any particular allele in any sample"),
 		new VCFInfoHeaderLine(MINOR_READ_ALLELE_MAXIMUM_SAMPLE_DEPTH_KEY, 1, VCFHeaderLineType.Integer, "Minor read Allele maximum per Sample Depth: absolute depth of the MrA at the sample in which it is more frequently observed")));
 	
+
 	@Override
 	public Map<String, Object> annotate(RefMetaDataTracker tracker,
-			ReferenceContext ref,
+			AnnotatorCompatibleWalker walker, ReferenceContext ref,
 			Map<String, AlignmentContext> stratifiedContexts, VariantContext vc) {
 		
 		int[] alleleCounts;
@@ -99,6 +105,40 @@ public class AbsoluteCounts extends AlleleCountsAnnotator implements InfoFieldAn
 	@Override
 	public List<VCFInfoHeaderLine> getDescriptions() {
 		return HEADER_LINES;
+	}
+
+	
+	protected ThreadLocal<int[]> alleleIndeces = new ThreadLocal<int[]>();
+	protected ThreadLocal<char[]> alleleChars = new ThreadLocal<char[]>();
+
+	protected int initializeAlleleArrays(VariantContext vc, char[] ac, int[] ai) {
+		int nextIndex = 0;
+		Allele refAllele = vc.getReference();
+		ac[nextIndex] = refAllele.getBaseString().charAt(0);
+		ai[vc.getReference().getBases()[0] - Byte.MIN_VALUE] = nextIndex++;
+		for (Allele a : vc.getAlternateAlleles()) {
+			ac[nextIndex] = a.getBaseString().charAt(0);
+			ai[a.getBases()[0] - Byte.MIN_VALUE] = nextIndex++;
+		}
+		return nextIndex;
+	}
+
+	protected int[] initializeAlleleIndecesArray() {
+		int[] ai = alleleIndeces.get();
+		if (ai == null)
+			alleleIndeces
+					.set(ai = new int[Byte.MAX_VALUE - Byte.MIN_VALUE + 1]);
+		else
+			Arrays.fill(ai, NO_ALLELE);
+		return ai;
+	}
+
+	protected char[] initializeAlleleCharsArray() {
+		char[] ac = this.alleleChars.get();
+		if (ac == null)
+			this.alleleChars.set(ac = new char[Byte.MAX_VALUE - Byte.MIN_VALUE
+					+ 1]);
+		return ac;
 	}
 
 }

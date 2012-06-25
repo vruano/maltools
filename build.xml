@@ -177,7 +177,8 @@
 </target>
 
 
-<target name="build" depends="cpp.build,java.build" />
+<!--target name="build" depends="cpp.build,java.build" /-->
+<target name="build" depends="java.build" />
 
 <!-- cpp targets -->
 
@@ -210,8 +211,13 @@
 
 <target name="gatk.get" depends="init">
   <git-get url="${gatk.url}" dir="${gatk.dir}" commit="${gatk.commit}" branch="${gatk.branch}" patch="${gatk.patch}" />
-  <available file="${gatk.dir}/.patch_applied" property="${gatk.patched}" />
-  <fail message="Gatk was not patched (missing ${gatk.dir}/.patch_applied)" unless="${gatk.patched}"/>
+  <condition property="gatk.patched">
+   <or> 
+     <available file="${gatk.dir}/.patch_applied" property="${gatk.patched}" />
+     <equals arg1="${gatk.patch}" arg2="NONE" />
+   </or>
+  </condition>
+  <fail message="Gatk was not patched (missing ${gatk.dir}/.patch_applied)" unless="gatk.patched"/>
   <available file="${gatk.dir}/.built" property="${gatk.built}" />
 </target>
 
@@ -223,10 +229,11 @@
 <target name="gatk.init" depends="gatk.build" />
 
 
-<target name="java.init" depends="gatk.init">
+<target name="java.init" depends="gatk.init,ivy.init">
   <mkdir dir="${build.java.dir}" />
   <mkdir dir="${build.java.dir}/classes" />
   <mkdir dir="${build.java.dir}/jars" />
+  <ivy-retrieve conf="devel"/>
   <uptodate property="malariagen.jar.utd" targetfile="${build.java.dir}/jars/malariagen.jar">
     <srcfiles dir="${source.java.dir}/main" includes="**/*.java"/>
     <srcfiles dir="${gatk.dir}/dist" includes="**/*.jar"/>
@@ -252,7 +259,7 @@
 
 <target name="java.build" depends="java.lib" unless="Queue.jar.utd" >
   <mkdir dir="${build.java.dir}/dist" />
-  <ant dir="${gatk.dir}" target="queue" inheritAll="false">
+  <ant dir="${gatk.dir}" target="core" inheritAll="false">
     <property name="lib.dir" value="${build.java.dir}/lib" />
     <property name="dist.dir" value="${build.java.dir}/dist" />
   </ant>
@@ -289,7 +296,7 @@
   </junit> 
 </target>
 
-<target name="devel.layout">
+<target name="install-devel">
   <antcall target="dist.layout">
     <param name="dist.layout.dir" value="${dist.dir}/layout-devel" />
     <param name="install.config" value="${resources.dir}/devel.config" />
@@ -325,7 +332,7 @@
      </fileset>
      <fileset dir="${bwa.dir}" includes="**/bwa" />
   </copy>
-  <svn-info output="${dist.layout.dir}/svn-info.txt" />
+  <!--svn-info output="${dist.layout.dir}/svn-info.txt" /-->
 
   <move file="${dist.layout.dir}/bin/base" tofile="${dist.layout.dir}/bin/${install.name}" />
 
@@ -385,6 +392,21 @@
   </copy>
   <chmod perm="a+rx" type="file" dir="${install.dir}/bin" includes="**/*" />
   <chmod perm="a+rx" type="file" dir="${install.dir}/resources/pgv_pipeline/variation_filtering2" includes="**/*.pl" />
+</target>
+	
+<target name="java.clean">
+	<delete dir="${build.java.dir}" />
+</target>
+	
+<target name="dist.clean">
+    <delete dir="${dist.dir}" />
+</target>
+	
+<target name="dist.layout.clean">
+    <delete dir="${dist.layout.dir}" />
+</target>
+	
+<target name="clean" depends="java.clean,dist.layout.clean">
 </target>
 
 </project>

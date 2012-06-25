@@ -27,5 +27,6 @@
     <dependencies>
       <dependency org="junit" name="junit" rev="4.10" conf="test->default" />
       <dependency org="org.apache.ant" name="ant-junit" rev="1.8.2" conf="test->default" />
+      <dependency org="org.yaml" name="snakeyaml" rev="1.10" conf="devel->default,sources" />
     </dependencies>
 </ivy-module>

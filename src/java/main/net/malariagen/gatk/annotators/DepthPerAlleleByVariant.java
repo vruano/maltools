@@ -7,25 +7,27 @@ import java.util.Map;
 import org.broadinstitute.sting.gatk.contexts.AlignmentContext;
 import org.broadinstitute.sting.gatk.contexts.ReferenceContext;
 import org.broadinstitute.sting.gatk.refdata.RefMetaDataTracker;
+import org.broadinstitute.sting.gatk.walkers.annotator.interfaces.AnnotatorCompatibleWalker;
 import org.broadinstitute.sting.gatk.walkers.annotator.interfaces.InfoFieldAnnotation;
 import org.broadinstitute.sting.utils.codecs.vcf.VCFHeaderLineType;
 import org.broadinstitute.sting.utils.codecs.vcf.VCFInfoHeaderLine;
 import org.broadinstitute.sting.utils.pileup.PileupElement;
 import org.broadinstitute.sting.utils.variantcontext.VariantContext;
 
-public class DepthPerAlleleByVariant implements InfoFieldAnnotation {
+public class DepthPerAlleleByVariant extends InfoFieldAnnotation {
 
 	public static final List<String> KEY_NAMES = Collections
 			.singletonList("AD");
 	public static final List<VCFInfoHeaderLine> DESCRIPTIONS = Collections
 			.singletonList(new VCFInfoHeaderLine(KEY_NAMES.get(0),
-					VCFInfoHeaderLine.UNBOUNDED, VCFHeaderLineType.Integer,
+					-1, VCFHeaderLineType.Integer,
 					"Depth per allele across all samples"));
 
 	@Override
 	public Map<String, Object> annotate(RefMetaDataTracker tracker,
-			ReferenceContext ref,
+			AnnotatorCompatibleWalker walker, ReferenceContext ref,
 			Map<String, AlignmentContext> stratifiedContexts, VariantContext vc) {
+
 		if (!vc.isSNP())
 			return null;
 		byte[] bases = new byte[vc.getAlleles().size()];
@@ -56,5 +58,6 @@ public class DepthPerAlleleByVariant implements InfoFieldAnnotation {
 	public List<VCFInfoHeaderLine> getDescriptions() {
 		return DESCRIPTIONS;
 	}
+
 
 }

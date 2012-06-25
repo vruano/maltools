@@ -10,15 +10,11 @@ import net.malariagen.gatk.genotyper.GenotypingContext;
 import net.malariagen.gatk.genotyper.models.GModel;
 import net.malariagen.gatk.math.Beta;
 
-import org.apache.commons.math.MathException;
-import org.apache.commons.math.util.ContinuedFraction;
-import org.apache.commons.math.util.FastMath;
 import org.broadinstitute.sting.gatk.contexts.AlignmentContext;
 import org.broadinstitute.sting.gatk.walkers.genotyper.GenotypePriors;
 import org.broadinstitute.sting.utils.pileup.PileupElement;
 import org.broadinstitute.sting.utils.pileup.ReadBackedPileup;
 import org.broadinstitute.sting.utils.variantcontext.Allele;
-import org.broadinstitute.sting.utils.variantcontext.InferredGeneticContext;
 
 @GModel(fullName = "HaploidClonalBernoulliModel", shortName = "HCBM", aliases = { "Bernoulli" }, description = "Model for genotyping clonal haploid samples")
 public class BernoulliGenotypingModel extends AbstractGenotypingModel {
@@ -91,10 +87,8 @@ public class BernoulliGenotypingModel extends AbstractGenotypingModel {
 
 		if (this.getGenotypeCount() <= 1) {
 			dest.setGenotypePosterior(sample, 0, 0);
-			dest.setGenotypePosterior(sample, 1,
-					(int) InferredGeneticContext.NO_NEG_LOG_10PERROR);
-			dest.setGenotypeQuality(sample,
-					InferredGeneticContext.NO_NEG_LOG_10PERROR);
+			dest.setGenotypePosterior(sample, 1,-1);
+			dest.setGenotypeQuality(sample, -1);
 			return 0;
 		}
 		List<Integer> refQuals = new ArrayList<Integer>();
@@ -141,10 +135,8 @@ public class BernoulliGenotypingModel extends AbstractGenotypingModel {
 		double postRefLogProb = escale(1.0 / (1.0 + ratio));
 		double postNefLogProb = escale(1.0 / (1.0 + ratio2));
 		if ((nefCount == 0 && refCount == 0)) {
-			dest.setGenotypePosterior(sample, 0,
-					(int) InferredGeneticContext.NO_NEG_LOG_10PERROR);
-			dest.setGenotypePosterior(sample, 1,
-					(int) InferredGeneticContext.NO_NEG_LOG_10PERROR);
+			dest.setGenotypePosterior(sample, 0, -1);
+			dest.setGenotypePosterior(sample, 1, -1);
 			dest.setGenotypeQuality(sample, Double.NaN);
 			dest.setGenotypeConfidence(sample, Double.NaN);
 			dest.setAvgErrRate(sample, Double.NaN);
