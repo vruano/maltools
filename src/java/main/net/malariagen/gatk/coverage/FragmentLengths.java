@@ -34,9 +34,11 @@ public abstract class FragmentLengths {
 
 	public static long FREQ_SIZE_THR = 1000;
 
+	protected int minimumMappingQuality = 0; 
+
 	public static FragmentLengths create(Collection<String> samples,
-			Collection<String> rgs, int maxLength) {
-		return new FragmentLengthArrays(samples, rgs, maxLength);
+			Collection<String> rgs, int maxLength, int minimumMappingQuality) {
+		return new FragmentLengthArrays(samples, rgs, maxLength, minimumMappingQuality);
 	}
 	
 	public static FragmentLengths create(Collection<String> samples,
@@ -74,7 +76,7 @@ public abstract class FragmentLengths {
 		if (newSize > FREQ_SIZE_THR
 				&& !(fl1 instanceof FragmentLengthFrequencies)) {
 			FragmentLengthFrequencies result = new FragmentLengthFrequencies(
-					fl1.samples, fl1.readGroups, fl1.maxLength);
+					fl1.samples, fl1.readGroups, fl1.maxLength, fl1.minimumMappingQuality);
 			result.mergeIn(fl1);
 			result.mergeIn(fl2);
 			return result;
@@ -86,7 +88,7 @@ public abstract class FragmentLengths {
 			return fl1;
 		} else {
 			FragmentLengthFrequencies result = new FragmentLengthFrequencies(
-					fl1.samples, fl1.readGroups, fl1.maxLength);
+					fl1.samples, fl1.readGroups, fl1.maxLength, fl1.minimumMappingQuality);
 			result.mergeIn(fl1);
 			result.mergeIn(fl2);
 			return result;
@@ -94,11 +96,12 @@ public abstract class FragmentLengths {
 	}
 
 	protected FragmentLengths(Collection<String> samples,
-			Collection<String> rgs, int maxLength) {
+			Collection<String> rgs, int maxLength, int minimumMappingQuality) {
 		if (maxLength <= 0)
 			throw new IllegalArgumentException(
 					"max-fragment length must be more than 0");
 		this.maxLength = maxLength;
+		this.minimumMappingQuality = minimumMappingQuality;
 		this.samples = samples;
 		this.readGroups = rgs;
 		int nextSmIdx = 0;
@@ -127,6 +130,8 @@ public abstract class FragmentLengths {
 		if (read.getReadUnmappedFlag())
 			return false;
 		if (read.getMateUnmappedFlag())
+			return false;
+		if (read.getMappingQuality() < minimumMappingQuality)
 			return false;
 		String mateRef = read.getMateReferenceName();
 		if (!mateRef.equals("=") && !mateRef.equals(read.getReferenceName()))
@@ -161,6 +166,8 @@ public abstract class FragmentLengths {
 
 	protected boolean countSecond(SAMRecord read, FirstMate fm) {
 		if (!read.getReadNegativeStrandFlag())
+			return false;
+		if (read.getMappingQuality() < minimumMappingQuality)
 			return false;
 		int start = read.getAlignmentStart();
 		int end = read.getAlignmentEnd();
@@ -214,7 +221,7 @@ public abstract class FragmentLengths {
 		if (sum.add(value))
 			if (sum instanceof FragmentLengthArrays && sum.size > FREQ_SIZE_THR) {
 				FragmentLengthFrequencies result = new FragmentLengthFrequencies(
-						sum.samples, sum.readGroups, sum.maxLength);
+						sum.samples, sum.readGroups, sum.maxLength, sum.minimumMappingQuality);
 				result.mergeIn(sum);
 				return result;
 			}

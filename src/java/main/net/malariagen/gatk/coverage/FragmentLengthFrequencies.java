@@ -20,17 +20,18 @@ public class FragmentLengthFrequencies extends FragmentLengths {
 	long[][] smIlFreq;
 
 	FragmentLengthFrequencies(Collection<String> samples,
-			Collection<String> rgs, int maxLength) {
-		super(samples, rgs, maxLength);
+			Collection<String> rgs, int maxLength, int minimumMappingQuality) {
+		super(samples, rgs, maxLength, minimumMappingQuality);
 		int sampleCount = smIndex.size();
 		int rgCount = rgIndex.size();
-		hasInsertLength = new boolean[maxLength];
-		hasFragmentLength = new boolean[maxLength];
+		hasInsertLength = new boolean[maxLength + 1];
+		hasFragmentLength = new boolean[maxLength + 1];
 		rgFlFreq = new long[rgCount][maxLength + 1];
 		smFlFreq = new long[sampleCount][maxLength + 1];
 		rgIlFreq = new long[rgCount][maxLength + 1];
 		smIlFreq = new long[sampleCount][maxLength + 1];
 	}
+
 
 	@Override
 	protected void addLengths(int fragmentLength, int insertLength,

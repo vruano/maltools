@@ -35,11 +35,16 @@ import org.broadinstitute.sting.utils.sam.GATKSAMRecord;
 @By(DataSource.READS)
 @Requires(DataSource.READS)
 @BAQMode(QualityMode = BAQ.QualityMode.DONT_MODIFY, ApplicationTime = BAQ.ApplicationTime.HANDLED_IN_WALKER)
-public class FragmentLengthWalker extends ReadWalker<GATKSAMRecord,FragmentLengths> implements TreeReducible<FragmentLengths> {
+public class FragmentLengthsWalker extends ReadWalker<GATKSAMRecord,FragmentLengths> implements TreeReducible<FragmentLengths> {
 
 	@Argument(shortName="maxfl", fullName="max_fragment_length", 
 			  doc = "maximum admissible fragment length; mapped read pairs on the same chromosome that have a larger fragment size would be discarded. Large max-fragment length results in a increased need of memory to keep record of the first read until its mate is found", required = false)
-	public int maxLength = 10000;
+	public int maxLength = 1000;
+	
+	@Argument(shortName="mmq", fullName="min_mapping_quality",
+			doc = "minimum mapping quality")
+	public int minimumMappingQuality = 0;
+	
 	
 //	@Argument(fullName="overwrite", shortName="ow", doc = "allow the program to overwrite the content of the output directory if it already exists and is not empty",required = false)
 //	public boolean overwrite = false;
@@ -111,7 +116,7 @@ public class FragmentLengthWalker extends ReadWalker<GATKSAMRecord,FragmentLengt
 
 	@Override
 	public FragmentLengths reduceInit() {
-		return FragmentLengths.create(sampleIds, rgIds, maxLength);
+		return FragmentLengths.create(sampleIds, rgIds, maxLength, minimumMappingQuality);
 	}
 
 	@Override

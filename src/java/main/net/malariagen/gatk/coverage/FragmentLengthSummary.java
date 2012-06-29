@@ -141,9 +141,9 @@ public class FragmentLengthSummary implements Serializable {
 				int[] v = integerDistributions[d].values;
 				long[] a = integerDistributions[d].accu;
 				while (v.length > indeces[d] && v[indeces[d]] < len) indeces[d]++;
-				if (v.length < indeces[d])
-					continue;
-				if (v[indeces[d]] == len)
+				if (v.length <= indeces[d])
+					values[1+d] = 0;
+				else if (v[indeces[d]] == len)
 					values[1+d] = a[indeces[d]] - (indeces[d] == 0 ? 0 : a[indeces[d] - 1]);
 				else
 					values[1+d] = 0;
@@ -405,7 +405,7 @@ public class FragmentLengthSummary implements Serializable {
 				ssum += Math.log(a * v * a * v);
 			}
 			mean = (int) Math.round((double) sum / (double) count);
-			var = (int) Math.abs(mean * mean - ssum);
+			var = (int) Math.abs(mean * mean - ssum / (double) count);
 			mode = values[bestMode];
 		}
 

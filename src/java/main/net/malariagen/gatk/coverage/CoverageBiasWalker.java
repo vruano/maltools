@@ -30,6 +30,7 @@ import org.broadinstitute.sting.gatk.walkers.DataSource;
 import org.broadinstitute.sting.gatk.walkers.LocusWalker;
 import org.broadinstitute.sting.gatk.walkers.PartitionBy;
 import org.broadinstitute.sting.gatk.walkers.PartitionType;
+import org.broadinstitute.sting.gatk.walkers.ReadFilters;
 import org.broadinstitute.sting.gatk.walkers.TreeReducible;
 import org.broadinstitute.sting.gatk.walkers.annotator.DepthOfCoverage;
 import org.broadinstitute.sting.gatk.walkers.annotator.MappingQualityZero;
@@ -53,7 +54,8 @@ import org.broadinstitute.sting.utils.variantcontext.VariantContext;
 import org.broadinstitute.sting.utils.variantcontext.VariantContextBuilder;
 
 @By(DataSource.REFERENCE)
-@PartitionBy(PartitionType.LOCUS)
+@PartitionBy(PartitionType.CONTIG)
+@ReadFilters()
 public class CoverageBiasWalker
 		extends
 		LocusWalker<net.malariagen.gatk.coverage.CoverageBiasWalker.LocusBias, CoverageBiasCovariateCounts>
@@ -80,6 +82,9 @@ public class CoverageBiasWalker
 			return false;
 		}
 	}
+	
+	@Argument(shortName = "mmq0", doc = "Maximum fraction of reads with MQ = 0 for a site to be counted", required = false)
+	public double maximumMapQual0Fraction = 1.0;
 
 	@Argument(shortName = "uqn", doc = "Uniqueness file, in  provided the uniquenes score value will be added to the output", required = false)
 	public RodBinding<Feature> uniqueness = null;
@@ -105,6 +110,9 @@ public class CoverageBiasWalker
 
 	private Set<InfoFieldAnnotation> annotations;
 
+	@Argument(shortName = "mdp", fullName="minimumDepthOfCoverage", doc = "minimum depth of coverage in a sample for a site to be considered in the counts", required = false) 
+	public int minimumDepthOfCoverage = 1;
+
 	@Override
 	public void initialize() {
 		super.initialize();
@@ -117,7 +125,7 @@ public class CoverageBiasWalker
 				10000);
 		//TODO need to put this functionality in a common place, rather than borrow from
 		// a different walker:
-		FragmentLengthWalker.checkOutDir(outDir);
+		FragmentLengthsWalker.checkOutDir(outDir);
 		// .
 		
 		if (vcfOutput != null) {
@@ -193,41 +201,48 @@ public class CoverageBiasWalker
 	public CoverageBiasCovariateCounts reduce(LocusBias value,
 			CoverageBiasCovariateCounts sum) {
 		if (vcfOutput != null) vcfOutput.add(value.variantContext);
-		double fGcBias, fNucEnt, fTrinucEnt, rGcBias, rNucEnt, rTrinucEnt;
+		double fGcBias, rGcBias;
+		int fSize, rSize;
 		if (value.forwardComplexity != null) {
+			fSize = value.forwardComplexity.getAttributeAsInt("END", Integer.MIN_VALUE) - value.forwardComplexity.getStart() + 1;
 			fGcBias = value.forwardComplexity.getAttributeAsDouble("GCBias",
 					Double.NaN);
-			fNucEnt = value.forwardComplexity.getAttributeAsDouble("NucEnt",
-					Double.NaN);
-			fTrinucEnt = value.forwardComplexity.getAttributeAsDouble("TriEnt",
-					Double.NaN);
-		} else
-			fGcBias = fNucEnt = fTrinucEnt = Double.NaN;
+		} else {
+			fGcBias = Double.NaN;
+			fSize = -1;
+		}
 		if (value.reverseComplexity != null) {
 			rGcBias = value.reverseComplexity.getAttributeAsDouble("GCBias",
 					Double.NaN);
-			rNucEnt = value.reverseComplexity.getAttributeAsDouble("NucEnt",
-					Double.NaN);
-			rTrinucEnt = value.reverseComplexity.getAttributeAsDouble("TriEnt",
-					Double.NaN);
-		} else
-			rGcBias = rNucEnt = rTrinucEnt = Double.NaN;
+			rSize = value.reverseComplexity.getStart() - value.reverseComplexity.getAttributeAsInt("START", Integer.MAX_VALUE) + 1;
+		} else {
+			rGcBias = Double.NaN;
+			rSize = -1;
+		}
 		if (Double.isNaN(rGcBias) && Double.isNaN(fGcBias))
 			return sum;
 
 		GenotypesContext gc = value.variantContext.getGenotypes();
 		for (Genotype g : gc) {
 			Map<String, Object> gAttr = g.getAttributes();
+			Object dpo = gAttr.get("DP");
+			int dp = dpo instanceof Number ? ((Number) dpo).intValue() : Integer.parseInt(dpo.toString());
+			if (dp < minimumDepthOfCoverage) continue;
+			if (maximumMapQual0Fraction < 1.0) {
+			  Object mq0o = gAttr.get("MQ0");
+			  int mq0 = dpo instanceof Number ? ((Number) mq0o).intValue() : Integer.parseInt(mq0o.toString());
+			  if (maximumMapQual0Fraction * dp < mq0) continue;
+			}
 			Object ofs = gAttr.get(FragmentStartCount.FORWARD_START_KEY);
 			int ffs = ofs instanceof Number ? ((Number) ofs).intValue()
 					: Integer.parseInt(ofs.toString());
 			Object ors = gAttr.get(FragmentStartCount.REVERSE_START_KEY);
 			int rfs = ofs instanceof Number ? ((Number) ors).intValue()
 					: Integer.parseInt(ors.toString());
-			if (!Double.isNaN(fGcBias))
-				sum.add(g.getSampleName(), fGcBias, fNucEnt, fTrinucEnt, 1, ffs);
-			if (!Double.isNaN(rGcBias))
-				sum.add(g.getSampleName(), rGcBias, rNucEnt, rTrinucEnt, 1, rfs);
+			if (!Double.isNaN(fGcBias) && fSize > 0)
+				sum.add(g.getSampleName(), fGcBias, fSize, 1, ffs);
+			if (!Double.isNaN(rGcBias) && rSize > 0)
+				sum.add(g.getSampleName(), rGcBias, rSize, 1, rfs);
 		}
 		return sum;
 	}
@@ -250,7 +265,10 @@ public class CoverageBiasWalker
 		if (reversePos != -1) {
 			GenomeLoc revLoc = ref.getGenomeLocParser().createGenomeLoc(
 					loc.getContig(), reversePos, reversePos);
-			reverseComplexity.put(revLoc, forwardComplexity);
+			VariantContextBuilder vbc = new VariantContextBuilder(forwardComplexity);
+			vbc.attribute("START", loc.getStart());
+			vbc.loc(revLoc);
+			reverseComplexity.put(revLoc, vbc.make());
 		}
 		VariantContextBuilder vcb = new VariantContextBuilder();
 		vcb.loc(ref.getLocus());

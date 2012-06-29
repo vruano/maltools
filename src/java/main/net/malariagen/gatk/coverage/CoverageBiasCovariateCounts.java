@@ -14,6 +14,12 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 
+import org.broadinstitute.sting.gatk.walkers.By;
+import org.broadinstitute.sting.gatk.walkers.DataSource;
+import org.broadinstitute.sting.gatk.walkers.PartitionBy;
+import org.broadinstitute.sting.gatk.walkers.PartitionType;
+import org.broadinstitute.sting.gatk.walkers.ReadFilters;
+
 import net.malariagen.utils.io.TsvWriter;
 
 
@@ -35,14 +41,14 @@ public class CoverageBiasCovariateCounts implements Serializable {
 			locusCovariates.put(g,new HashMap<String,CoverageBiasCovariateCounts.CovariateCombination>());
 	}
 	
-	void add(String group, double gcBias, double nucEnt, double trinucEnt, long sites, long starts) {
+	void add(String group, double gcBias, int size, long sites, long starts) {
 		Map<String,CoverageBiasCovariateCounts.CovariateCombination> lcm = locusCovariates.get(group);
 		if (lcm == null)
 			throw new IllegalArgumentException("group " + group + " was not provided during contruction");
-		String key = CovariateCombination.keyFor(gcBias, nucEnt, trinucEnt);
+		String key = CovariateCombination.keyFor(gcBias, size);
 		CoverageBiasCovariateCounts.CovariateCombination lc = lcm.get(key);
 		if (lc == null)
-			lcm.put(key, lc = new CovariateCombination(gcBias,nucEnt,trinucEnt));
+			lcm.put(key, lc = new CovariateCombination(gcBias, size));
 		lc.increment(sites,starts);
 	}
 	
@@ -78,15 +84,15 @@ public class CoverageBiasCovariateCounts implements Serializable {
 		for (Map<String,CovariateCombination> cc : this.locusCovariates.values())
 			allCC.addAll(cc.values());
 		
-		String[] header = new String[groupNames.size() + 3];
-		header[0] = "GCBias"; header[1] = "NucEnt"; header[2] = "TrinucEnt";
+		String[] header = new String[groupNames.size() + 2];//+ 3];
+		header[0] = "GCBias"; header[1] = "Size";
 		File tableFile = new File(outDir,RATES_FILE_NAME);
 		File siteCountsFile = new File(outDir,SITE_COUNTS_FILE_NAME);
 		File startCountsFile = new File(outDir,STARTS_FILE_NAME);
 		TsvWriter tw = new TsvWriter(new FileWriter(tableFile));
 		TsvWriter scTw = new TsvWriter(new FileWriter(siteCountsFile));
 		TsvWriter stTw = new TsvWriter(new FileWriter(startCountsFile));
-		int nextIdx = 3;
+		int nextIdx = 2; //= 3;
 		for (String gn : groupNames)
 			header[nextIdx++] = gn;
 		tw.writeLine((Object[])header);
@@ -98,9 +104,8 @@ public class CoverageBiasCovariateCounts implements Serializable {
 		for (CovariateCombination ck : allCC) {
 			String key = ck.key();
 			values[0] = siteCounts[0] = startCounts[0] = String.format("%.2f",ck.gcBias);
-			values[1] = siteCounts[1] = startCounts[1] = String.format("%.2f",ck.nucEnt);
-			values[2] = siteCounts[2] = startCounts[2] = String.format("%.2f",ck.trinucEnt);
-			for (int i = 3; i < header.length; i++) {
+ 			values[1] = siteCounts[1] = startCounts[1] = "" + ck.size;
+			for (int i = 2; i < header.length; i++) {
 				CovariateCombination cc = locusCovariates.get(header[i]).get(key);
 				values[i] = cc == null ? "NA" : String.format("%.4f",(double) cc.startCount / (double) cc.siteCount);
 				siteCounts[i] = cc == null ? 0 : cc.siteCount;
@@ -138,11 +143,10 @@ public class CoverageBiasCovariateCounts implements Serializable {
 		 */
 		private static final long serialVersionUID = 1L;
 		public final double gcBias;
-		public final double nucEnt;
-		public final double trinucEnt;
 		public long siteCount;
 		public long startCount;
 		private int hashCode = -1;
+		public final int size;
 		
 		@Override
 		public CovariateCombination clone() {
@@ -165,7 +169,7 @@ public class CoverageBiasCovariateCounts implements Serializable {
 		}
 		
 		public String key() {
-			return keyFor(gcBias,nucEnt,trinucEnt);
+			return keyFor(gcBias, size);
 		}
 
 		@Override
@@ -173,9 +177,7 @@ public class CoverageBiasCovariateCounts implements Serializable {
 			int result = 0;
 			if ((result = Double.compare(other.gcBias,this.gcBias)) != 0)
 				return result;
-			if ((result = Double.compare(other.nucEnt,this.nucEnt)) != 0)
-				return result;
-			if ((result = Double.compare(other.trinucEnt,this.trinucEnt)) != 0)
+			if ((result = Integer.compare(other.size,this.size)) != 0)
 				return result;
 			return 0;
 		}
@@ -183,12 +185,13 @@ public class CoverageBiasCovariateCounts implements Serializable {
 		@Override
 		public int hashCode() {
 			if (hashCode == -1)
-				hashCode = keyFor(gcBias,nucEnt,trinucEnt).hashCode();
+				hashCode = keyFor(gcBias,size).hashCode();
 			return hashCode;
 		}
 		
-		public static String keyFor(double gcBias, double nucEnt, double trinucEnt) {
-			return String.format("%.2f %.2f %.2f",gcBias,nucEnt,trinucEnt);
+		public static String keyFor(double gcBias, int size) {
+//			return String.format("%.2f %.2f %.2f",gcBias,nucEnt,trinucEnt);
+			return String.format("%.2f %d",gcBias,size);
 		}
 		
 		public void increment(long sites, long starts) {
@@ -196,10 +199,9 @@ public class CoverageBiasCovariateCounts implements Serializable {
 			startCount += starts;
 		}
 
-		public CovariateCombination(double gcBias, double nucEnt, double trinucEnt) {
+		public CovariateCombination(double gcBias, int size) {
 			this.gcBias = gcBias;
-			this.nucEnt = nucEnt;
-			this.trinucEnt = trinucEnt;
+			this.size = size;
 			siteCount = 0;
 			startCount = 0;
 		}

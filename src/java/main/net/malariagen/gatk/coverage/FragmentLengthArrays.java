@@ -14,8 +14,8 @@ public class FragmentLengthArrays extends FragmentLengths {
 	
 	
 	FragmentLengthArrays(Collection<String> samples,
-			Collection<String> rgs, int maxLength) {
-		super(samples, rgs, maxLength);
+			Collection<String> rgs, int maxLength, int minimumMappingQuality) {
+		super(samples, rgs, maxLength, minimumMappingQuality);
 		int capacity = 10000;
 		int sampleCount = smIndex.size();
 		int rgCount = rgIndex.size();
@@ -24,6 +24,8 @@ public class FragmentLengthArrays extends FragmentLengths {
 		rgIlengths = new int[rgCount][capacity + 1];
 		rgFlengths = new int[rgCount][capacity + 1];	
 	}
+
+	
 
 	@Override
 	protected void addLengths(int fragmentLength, int insertLength,
@@ -106,7 +108,7 @@ public class FragmentLengthArrays extends FragmentLengths {
 	}
 
 	public FragmentLengthFrequencies frequencies() {
-		FragmentLengthFrequencies result = new FragmentLengthFrequencies(this.samples,this.readGroups,this.maxLength);
+		FragmentLengthFrequencies result = new FragmentLengthFrequencies(this.samples,this.readGroups,this.maxLength,this.minimumMappingQuality);
 		result.mergeIn(this);
 		return result;
 	}

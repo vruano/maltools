@@ -13,6 +13,7 @@
 <property name="resources.dir" value="${basedir}/resources" />
 <property name="installer.dir" value="${basedir}/installer" />
 <property name="conf.dir" value="${basedir}/conf" />
+<property name="debug" value="off" />
 
 <!-- tools && macros -->
 
@@ -177,8 +178,7 @@
 </target>
 
 
-<!--target name="build" depends="cpp.build,java.build" /-->
-<target name="build" depends="java.build" />
+<target name="build" depends="cpp.build,java.build" />
 
 <!-- cpp targets -->
 
@@ -243,7 +243,7 @@
 
 
 <target name="malariagen.jar" depends="java.init" unless="malariagen.jar.utd">
-  <javac srcdir="${source.java.dir}/main" destdir="${build.java.dir}/classes" classpathref="gatk.classpath" includeantruntime="false" />
+  <javac srcdir="${source.java.dir}/main" debug="${debug}" destdir="${build.java.dir}/classes" classpathref="gatk.classpath" includeantruntime="false" />
   <jar basedir="${build.java.dir}/classes" destfile="${build.java.dir}/jars/malariagen.jar" />
 </target>
 
@@ -267,7 +267,7 @@
 
 <target name="java.test.build" depends="java.lib, test.init">
   <mkdir dir="${build.java.dir}/test-classes" />
-  <javac srcdir="${source.java.dir}/main" destdir="${build.java.dir}/test-classes" includeantruntime="false">
+  <javac srcdir="${source.java.dir}/main" destdir="${build.java.dir}/test-classes" includeantruntime="false" debug="true">
     <classpath refid="gatk.classpath" />
     <classpath refid="ivy.cachepath.test" />
     <classpath>
@@ -359,8 +359,11 @@
 
   <copy todir="${dist.layout.dir}/resources">
      <fileset dir="${resources.dir}" >
-       <exclude name="scripts" />
-       <exclude name="**/P*.bam*" />
+       <exclude name="**/test/**" />
+       <exclude name="**/scripts/**" />
+       <exclude name="**/*.bam*" />
+       <exclude name="**/*.vcf*" />
+       <exclude name="**/*.fa*" />
      </fileset>
   </copy>
   
