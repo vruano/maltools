@@ -63,7 +63,7 @@ public class FragmentLengthsTest {
 	@Test
 	public void testCreate() {
 
-		FragmentLengths fl = FragmentLengths.create(smIds, rgIds, 100);
+		FragmentLengths fl = FragmentLengths.create(smIds, rgIds, 100,0);
 		assertNotNull(fl);
 		assert (fl.size() == 0);
 	}
@@ -92,7 +92,7 @@ public class FragmentLengthsTest {
 	public void addGappedPair() {
 		GATKSAMRecord[] pair = createMappedPair("ReadPair1", seq1Name, 10, 500,
 				"20S20M10I5D5M15S", "20S20M10I5D5M15S");
-		FragmentLengths fl = FragmentLengths.create(smIds, rgIds, 100000);
+		FragmentLengths fl = FragmentLengths.create(smIds, rgIds, 100000,0);
 		fl.add(pair[0]);
 		assertEquals(0, fl.size());
 		fl.add(pair[1]);
@@ -122,7 +122,7 @@ public class FragmentLengthsTest {
 	@Test
 	public void addBeyondMaxPair() {
 		GATKSAMRecord[] pair = createMappedPair("ReadPair1", seq1Name, 10, 500);
-		FragmentLengths fl = FragmentLengths.create(smIds, rgIds, 100);
+		FragmentLengths fl = FragmentLengths.create(smIds, rgIds, 100,0);
 		fl.add(pair[0]);
 		assertEquals(0, fl.size());
 		fl.add(pair[1]);
@@ -138,7 +138,7 @@ public class FragmentLengthsTest {
 	@Test
 	public void addMappedPair() {
 		GATKSAMRecord[] pair = createMappedPair("ReadPair1", seq1Name, 10, 500);
-		FragmentLengths fl = FragmentLengths.create(smIds, rgIds, 100000);
+		FragmentLengths fl = FragmentLengths.create(smIds, rgIds, 100000,0);
 		fl.add(pair[0]);
 		assertEquals(0, fl.size());
 		fl.add(pair[1]);
@@ -167,7 +167,7 @@ public class FragmentLengthsTest {
 	public void addInvertedMappedPair() {
 		GATKSAMRecord[] pair = createInvertedPair("ReadPair1", seq1Name, 10,
 				500);
-		FragmentLengths fl = FragmentLengths.create(smIds, rgIds, 100000);
+		FragmentLengths fl = FragmentLengths.create(smIds, rgIds, 100000,0);
 		fl.add(pair[0]);
 		assertEquals(0, fl.size());
 		fl.add(pair[1]);
@@ -195,7 +195,7 @@ public class FragmentLengthsTest {
 	@Test
 	public void addBeyondMaxLengthPair() {
 		GATKSAMRecord[] pair = createMappedPair("ReadPair1", seq1Name, 10, 500);
-		FragmentLengths fl = FragmentLengths.create(smIds, rgIds, 100);
+		FragmentLengths fl = FragmentLengths.create(smIds, rgIds, 100,0);
 		fl.add(pair[0]);
 		assertEquals(0, fl.size());
 		fl.add(pair[1]);
@@ -212,7 +212,7 @@ public class FragmentLengthsTest {
 	public void addHalfInvertedMappedPair() {
 		GATKSAMRecord[] pair = createHalfInvertedPair("ReadPair1", seq1Name,
 				10, 500);
-		FragmentLengths fl = FragmentLengths.create(smIds, rgIds, 100000);
+		FragmentLengths fl = FragmentLengths.create(smIds, rgIds, 100000,0);
 		fl.add(pair[0]);
 		assertEquals(0, fl.size());
 		fl.add(pair[1]);
@@ -229,7 +229,7 @@ public class FragmentLengthsTest {
 	public void addUnmappedPair() {
 		GATKSAMRecord[] pair = createUnmappedPair("ReadPair1", seq1Name, 10,
 				500, false, false);
-		FragmentLengths fl = FragmentLengths.create(smIds, rgIds, 100000);
+		FragmentLengths fl = FragmentLengths.create(smIds, rgIds, 100000,0);
 		fl.add(pair[0]);
 		assertEquals(0, fl.size());
 		fl.add(pair[1]);
@@ -271,7 +271,7 @@ public class FragmentLengthsTest {
 
 		GaussianRandomGenerator g = new GaussianRandomGenerator(
 				new MersenneTwister());
-		FragmentLengths fl = FragmentLengths.create(smIds, rgIds, 100000);
+		FragmentLengths fl = FragmentLengths.create(smIds, rgIds, 100000,0);
 		int count = 1000000;
 		for (int i = 0; i < count; i++) {
 			int delta = (int) Math.round(g.nextNormalizedDouble() * 10);
@@ -301,7 +301,7 @@ public class FragmentLengthsTest {
 
 		GaussianRandomGenerator g = new GaussianRandomGenerator(
 				new MersenneTwister());
-		FragmentLengths fl = FragmentLengths.create(smIds, rgIds, 100000);
+		FragmentLengths fl = FragmentLengths.create(smIds, rgIds, 100000,0);
 		int count = 1000000;
 		for (int i = 0; i < count; i++) {
 			int delta = (int) Math.round(g.nextNormalizedDouble() * 10);
@@ -333,7 +333,7 @@ public class FragmentLengthsTest {
 		File outDir = File.createTempFile("flwtest", ".out");
 		outDir.delete();
 		outDir.mkdir();
-		WalkerTest.executeTest("FragmentLength", String.format("-T FragmentLength -R %s -I %s -o %s",refFasta,testBam,outDir), null);
+		WalkerTest.executeTest("FragmentLength", String.format("-T FragmentLengths -R %s -I %s -o %s",refFasta,testBam,outDir), null);
 		assertTrue(new File(outDir,FragmentLengthSummary.SUMMARY_FILE_NAME).exists());
 		assertTrue(new File(outDir,FragmentLengthSummary.HISTO_FILE_NAME).exists());
 		assertTrue(new File(outDir,FragmentLengthSummary.SERIAL_FILE_NAME).exists());
