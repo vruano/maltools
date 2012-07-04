@@ -11,7 +11,9 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.SortedMap;
+import java.util.TreeMap;
+
 
 import net.malariagen.gatk.annotators.FragmentStartCount;
 import net.malariagen.gatk.annotators.UniquenessScore;
@@ -38,6 +40,7 @@ import org.broadinstitute.sting.gatk.walkers.annotator.RMSMappingQuality;
 import org.broadinstitute.sting.gatk.walkers.annotator.interfaces.AnnotatorCompatibleWalker;
 import org.broadinstitute.sting.gatk.walkers.annotator.interfaces.InfoFieldAnnotation;
 import org.broadinstitute.sting.utils.GenomeLoc;
+import org.broadinstitute.sting.utils.GenomeLocParser;
 import org.broadinstitute.sting.utils.codecs.vcf.VCFFormatHeaderLine;
 import org.broadinstitute.sting.utils.codecs.vcf.VCFHeader;
 import org.broadinstitute.sting.utils.codecs.vcf.VCFHeaderLine;
@@ -56,13 +59,12 @@ import org.broadinstitute.sting.utils.variantcontext.VariantContextBuilder;
 @By(DataSource.REFERENCE)
 @PartitionBy(PartitionType.CONTIG)
 @ReadFilters()
-public class CoverageBiasWalker
-		extends
-		LocusWalker<net.malariagen.gatk.coverage.CoverageBiasWalker.LocusBias, CoverageBiasCovariateCounts>
-		implements AnnotatorCompatibleWalker,
-		TreeReducible<CoverageBiasCovariateCounts> {
+public class CoverageBiasWalker extends
+		LocusWalker<CoverageBiasContext, CoverageBiasCovariateCounts> implements
+		AnnotatorCompatibleWalker, TreeReducible<CoverageBiasCovariateCounts> {
 
 	static class LocusBias {
+		public ReferenceContext refContext;
 		public VariantContext variantContext;
 		public VariantContext forwardComplexity;
 		public VariantContext reverseComplexity;
@@ -77,12 +79,12 @@ public class CoverageBiasWalker
 						"other group-by cannot be null");
 			if (o == this)
 				return true;
-			if (this == SMRG && o != NONE)
+			if (this == SMRG && o != NONE && o != WS)
 				return true;
 			return false;
 		}
 	}
-	
+
 	@Argument(shortName = "mmq0", doc = "Maximum fraction of reads with MQ = 0 for a site to be counted", required = false)
 	public double maximumMapQual0Fraction = 1.0;
 
@@ -95,22 +97,33 @@ public class CoverageBiasWalker
 	@Argument(shortName = "groupBy", fullName = "genotypeGroupBy", doc = "Indicates wheter there should be one genotype column per sample (SM), read-group (RG), both (SMRG) or none (NONE)", required = false)
 	public GroupBy groupBy = GroupBy.RG;
 
-	@Argument(shortName = "complexity", doc = "VCF containing complexity stats per position on the reference (as produced by ReferenceComplexity tool)", required = true)
-	public RodBinding<VariantContext> complexity;
+	@Argument(shortName = "W", fullName = "windowSize", required = false, doc = "window-size to get stats on")
+	protected Integer windowSize = null;
+
+	@Argument(shortName = "fs", fullName = "fragmentLenghts", required = false, doc = "fragment-length output for the samples under analysis. A genotype column will be output with the corresponding median window size")
+	protected File fragmentLengthsFile = null;
+
+	// @Argument(shortName = "complexity", doc =
+	// "VCF containing complexity stats per position on the reference (as produced by ReferenceComplexity tool)",
+	// required = true)
+	// public RodBinding<VariantContext> complexity;
 
 	@Output(shortName = "vo", fullName = "vcfOutput", doc = "Name of the output vcf file", required = false)
 	public VCFWriter vcfOutput;
 
 	@Output(shortName = "o", fullName = "output", doc = "name of the directory where to generate the covariate count outputs", required = true)
 	public File outDir;
-	
+
+	private final SortedMap<GenomeLoc, Complexity> complexityBuffer = new TreeMap<GenomeLoc, Complexity>();
+
 	private Set<String> groupNames;
 
-	private Map<GenomeLoc, VariantContext> reverseComplexity;
 
 	private Set<InfoFieldAnnotation> annotations;
 
-	@Argument(shortName = "mdp", fullName="minimumDepthOfCoverage", doc = "minimum depth of coverage in a sample for a site to be considered in the counts", required = false) 
+	private ReferenceComplexityWalker complexityWalker = new ReferenceComplexityWalker();
+
+	@Argument(shortName = "mdp", fullName = "minimumDepthOfCoverage", doc = "minimum depth of coverage in a sample for a site to be considered in the counts", required = false)
 	public int minimumDepthOfCoverage = 1;
 
 	@Override
@@ -121,13 +134,15 @@ public class CoverageBiasWalker
 					"the fragment start minimum mapping quality cannot be less than 0");
 		groupNames = buildGroupNames();
 		annotations = buildAnnotations();
-		reverseComplexity = new ConcurrentHashMap<GenomeLoc, VariantContext>(
-				10000);
-		//TODO need to put this functionality in a common place, rather than borrow from
+		if (groupBy == GroupBy.WS)
+			throw new UserException(
+					"grouping by window size (-groupBy WS) is not supported in this walker");
+		// TODO need to put this functionality in a common place, rather than
+		// borrow from
 		// a different walker:
 		FragmentLengthsWalker.checkOutDir(outDir);
 		// .
-		
+
 		if (vcfOutput != null) {
 			Set<VCFHeaderLine> headerLines = new LinkedHashSet<VCFHeaderLine>();
 			for (InfoFieldAnnotation a : annotations)
@@ -139,18 +154,71 @@ public class CoverageBiasWalker
 			VCFHeader header = new VCFHeader(headerLines, groupNames);
 			vcfOutput.writeHeader(header);
 		}
+		initializeComplexityWalker();
 	}
-	
+
+	private void initializeComplexityWalker() {
+		final GenomeLocParser locParser = this.getToolkit()
+				.getGenomeLocParser();
+		complexityWalker.setToolkit(this.getToolkit());
+		complexityWalker.groupBy = this.groupBy;
+		complexityWalker.rounding = 1;
+		complexityWalker.windowSize = this.windowSize;
+		complexityWalker.fragmentLengthsFile = this.fragmentLengthsFile;
+		complexityWalker.writer = new VCFWriter() {
+
+			@Override
+			public void writeHeader(VCFHeader header) {
+				// Ignore it.
+			}
+
+			@Override
+			public void close() {
+				// Ignore it.
+			}
+
+			@Override
+			public void add(VariantContext vc) {
+				
+				GenomeLoc loc = locParser.createGenomeLoc(vc.getChr(),
+						vc.getStart(), vc.getStart());
+				Complexity c = complexityBuffer.get(loc);
+				if (c == null) {
+					complexityBuffer.put(loc, c = new Complexity(loc, vc));
+				}
+				else 
+					c.forward = vc;
+				for (Genotype gt : vc.getGenotypes()) {
+					int end = gt.getAttributeAsInt("ED", -1);				
+					if (end == -1)
+						continue;
+					GenomeLoc rloc = locParser.createGenomeLoc(loc.getContig(),
+							end, end);
+					Complexity rc = complexityBuffer.get(rloc);
+					if (rc == null)
+						complexityBuffer.put(rloc,
+								rc = new Complexity(rloc, gt));
+					else
+						rc.addReverse(gt);
+				}
+			}
+
+		};
+		complexityWalker.initialize();
+
+	}
+
 	@Override
 	public void onTraversalDone(CoverageBiasCovariateCounts sum) {
 		super.onTraversalDone(sum);
 		try {
 			sum.saveIn(outDir);
 		} catch (IOException e) {
-			throw new StingException("could not save the counters due to and error",e);
+			throw new StingException(
+					"could not save the counters due to and error", e);
 		}
 	}
-	
+
 	private Collection<VCFFormatHeaderLine> convertInfoToFormatDescriptions(
 			List<VCFInfoHeaderLine> descriptions) {
 		List<VCFFormatHeaderLine> result = new LinkedList<VCFFormatHeaderLine>();
@@ -194,56 +262,71 @@ public class CoverageBiasWalker
 
 	@Override
 	public CoverageBiasCovariateCounts reduceInit() {
-		return new CoverageBiasCovariateCounts(groupNames);
+		return new CoverageBiasCovariateCounts(groupNames,
+				complexityWalker.reduceInit());
 	}
 
 	@Override
-	public CoverageBiasCovariateCounts reduce(LocusBias value,
+	public CoverageBiasCovariateCounts reduce(CoverageBiasContext value,
 			CoverageBiasCovariateCounts sum) {
-		if (vcfOutput != null) vcfOutput.add(value.variantContext);
-		double fGcBias, rGcBias;
-		int fSize, rSize;
-		if (value.forwardComplexity != null) {
-			fSize = value.forwardComplexity.getAttributeAsInt("END", Integer.MIN_VALUE) - value.forwardComplexity.getStart() + 1;
-			fGcBias = value.forwardComplexity.getAttributeAsDouble("GCBias",
-					Double.NaN);
-		} else {
-			fGcBias = Double.NaN;
-			fSize = -1;
-		}
-		if (value.reverseComplexity != null) {
-			rGcBias = value.reverseComplexity.getAttributeAsDouble("GCBias",
-					Double.NaN);
-			rSize = value.reverseComplexity.getStart() - value.reverseComplexity.getAttributeAsInt("START", Integer.MAX_VALUE) + 1;
-		} else {
-			rGcBias = Double.NaN;
-			rSize = -1;
-		}
-		if (Double.isNaN(rGcBias) && Double.isNaN(fGcBias))
-			return sum;
 
-		GenotypesContext gc = value.variantContext.getGenotypes();
-		for (Genotype g : gc) {
-			Map<String, Object> gAttr = g.getAttributes();
-			Object dpo = gAttr.get("DP");
-			int dp = dpo instanceof Number ? ((Number) dpo).intValue() : Integer.parseInt(dpo.toString());
-			if (dp < minimumDepthOfCoverage) continue;
-			if (maximumMapQual0Fraction < 1.0) {
-			  Object mq0o = gAttr.get("MQ0");
-			  int mq0 = dpo instanceof Number ? ((Number) mq0o).intValue() : Integer.parseInt(mq0o.toString());
-			  if (maximumMapQual0Fraction * dp < mq0) continue;
+		sum.complexity = complexityWalker.reduce(value.getReferenceContext(),
+				sum.complexity);
+
+		if (vcfOutput != null)
+			vcfOutput.add(value);
+
+		GenomeLoc loc = value.getReferenceContext().getLocus();
+		GenomeLoc toLoc = getToolkit().getGenomeLocParser().incPos(loc);
+
+		Map<GenomeLoc, Complexity> headBuffer = complexityBuffer.headMap(toLoc);
+		GenomeLoc stopLoc = null;
+		for (Complexity c : headBuffer.values()) {
+			VariantContext forwardComplexityVc = c.forward;
+			if (c.forward == null) {
+				stopLoc = c.locus;
+				break;
 			}
-			Object ofs = gAttr.get(FragmentStartCount.FORWARD_START_KEY);
-			int ffs = ofs instanceof Number ? ((Number) ofs).intValue()
-					: Integer.parseInt(ofs.toString());
-			Object ors = gAttr.get(FragmentStartCount.REVERSE_START_KEY);
-			int rfs = ofs instanceof Number ? ((Number) ors).intValue()
-					: Integer.parseInt(ors.toString());
-			if (!Double.isNaN(fGcBias) && fSize > 0)
-				sum.add(g.getSampleName(), fGcBias, fSize, 1, ffs);
-			if (!Double.isNaN(rGcBias) && rSize > 0)
-				sum.add(g.getSampleName(), rGcBias, rSize, 1, rfs);
+			VariantContext reverseComplexityVc = new VariantContextBuilder(
+					c.forward).genotypes(c.reverse).make();
+			GenotypesContext gc = value.getGenotypes();
+			for (Genotype g : gc) {
+				Genotype forwardComplexity = forwardComplexityVc == null ? null
+						: forwardComplexityVc.getGenotype(g.getSampleName());
+				Genotype reverseComplexity = reverseComplexityVc == null ? null
+						: reverseComplexityVc.getGenotype(g.getSampleName());
+
+				double fGcBias = forwardComplexity == null ? Double.NaN
+						: forwardComplexity.getAttributeAsDouble("GC",
+								Double.NaN);
+				double rGcBias = reverseComplexity == null ? Double.NaN
+						: reverseComplexity.getAttributeAsDouble("GC",
+								Double.NaN);
+
+				if (Double.isNaN(rGcBias) && Double.isNaN(fGcBias))
+					continue;
+				
+				int size = forwardComplexity != null ? forwardComplexity.getAttributeAsInt("ED",c.locus.getStart() + 1) - c.locus.getStart() : 1;
+				int dp = g.getAttributeAsInt("DP", -1);
+				if (dp < minimumDepthOfCoverage)
+					continue;
+				if (maximumMapQual0Fraction < 1.0) {
+					int mq0 = g.getAttributeAsInt("MQ0",-1);
+					if (maximumMapQual0Fraction * dp < mq0)
+						continue;
+				}
+				int ffs = g.getAttributeAsInt(FragmentStartCount.FORWARD_START_KEY,0);
+				int rfs = g.getAttributeAsInt(FragmentStartCount.REVERSE_START_KEY,0);
+				if (!Double.isNaN(fGcBias) && size > 0)
+					sum.add(g.getSampleName(), fGcBias, size, 1, ffs,true);
+				if (!Double.isNaN(rGcBias) && size > 0)
+					sum.add(g.getSampleName(), rGcBias, size, 1, rfs,false);
+			}
 		}
+		if (stopLoc == null)
+			headBuffer.clear();
+		else
+			complexityBuffer.headMap(stopLoc).clear();
 		return sum;
 	}
 
@@ -255,21 +338,9 @@ public class CoverageBiasWalker
 	}
 
 	@Override
-	public LocusBias map(RefMetaDataTracker tracker, ReferenceContext ref,
-			AlignmentContext context) {
-		VariantContext forwardComplexity = tracker
-				.getFirstValue(this.complexity);
-		GenomeLoc loc = ref.getLocus();
-		int reversePos = forwardComplexity == null ? -1 : Integer.parseInt(forwardComplexity
-				.getAttributeAsString("END", "-1"));
-		if (reversePos != -1) {
-			GenomeLoc revLoc = ref.getGenomeLocParser().createGenomeLoc(
-					loc.getContig(), reversePos, reversePos);
-			VariantContextBuilder vbc = new VariantContextBuilder(forwardComplexity);
-			vbc.attribute("START", loc.getStart());
-			vbc.loc(revLoc);
-			reverseComplexity.put(revLoc, vbc.make());
-		}
+	public CoverageBiasContext map(RefMetaDataTracker tracker,
+			ReferenceContext ref, AlignmentContext context) {
+		complexityWalker.map(tracker, ref, context);
 		VariantContextBuilder vcb = new VariantContextBuilder();
 		vcb.loc(ref.getLocus());
 		vcb.alleles(Collections.singletonList(Allele.create(ref.getBase(), true)));
@@ -282,12 +353,7 @@ public class CoverageBiasWalker
 		vcb.attributes(vcAttributes);
 		if (groupBy != GroupBy.NONE)
 			vcb.genotypes(buildGenotypes(tracker, ref, fooVc, stratifiedCtx));
-		LocusBias result = new LocusBias();
-
-		result.variantContext = vcb.make();
-		result.forwardComplexity = forwardComplexity;
-		result.reverseComplexity = reverseComplexity.remove(loc);
-		return result;
+		return new CoverageBiasContext(vcb.make(), ref);
 	}
 
 	private GenotypesContext buildGenotypes(RefMetaDataTracker tracker,
@@ -375,6 +441,51 @@ public class CoverageBiasWalker
 	@Override
 	public boolean alwaysAppendDbsnpId() {
 		return false;
+	}
+
+	private class Complexity {
+
+		public final GenomeLoc locus;
+		public VariantContext forward;
+		public GenotypesContext reverse;
+
+		Complexity(GenomeLoc l, VariantContext fwd) {
+			locus = l;
+			forward = fwd;
+			reverse = GenotypesContext.create();
+		}
+
+		Complexity(GenomeLoc l, Genotype gt) {
+			this(l, (VariantContext) null);
+			reverse.add(gt);
+		}
+
+		void addReverse(Genotype gt) {
+			reverse.add(gt);
+		}
+
+		double getGcBias(String name, boolean forward) {
+			if (forward)
+				return getForwardGcBias(name);
+			else
+				return getReverseGcBias(name);
+		}
+
+		private double getReverseGcBias(String name) {
+			Genotype gt = reverse.get(name);
+			if (gt == null)
+				return Double.NaN;
+			return gt.getAttributeAsDouble("GC", Double.NaN);
+		}
+
+		private double getForwardGcBias(String name) {
+			if (forward == null)
+				return Double.NaN;
+			Genotype gt = forward.getGenotype(name);
+			if (gt == null)
+				return Double.NaN;
+			return gt.getAttributeAsDouble("GC", Double.NaN);
+		}
 	}
 
 }

@@ -2,7 +2,6 @@ package net.malariagen.gatk.coverage;
 
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
@@ -10,20 +9,17 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.Serializable;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
-
-import org.broadinstitute.sting.gatk.walkers.By;
-import org.broadinstitute.sting.gatk.walkers.DataSource;
-import org.broadinstitute.sting.gatk.walkers.PartitionBy;
-import org.broadinstitute.sting.gatk.walkers.PartitionType;
-import org.broadinstitute.sting.gatk.walkers.ReadFilters;
 
 import net.malariagen.utils.io.TsvWriter;
 
 
 public class CoverageBiasCovariateCounts implements Serializable {
+
+
 
 	/**
 	 * 
@@ -33,15 +29,33 @@ public class CoverageBiasCovariateCounts implements Serializable {
 	public static final String RATES_FILE_NAME = "rates.tsv";
 	public static final String SITE_COUNTS_FILE_NAME = "sites.tsv";
 	public static final String STARTS_FILE_NAME = "starts.tsv";
+	public static final String GROUPS_FILE_NAME = "groups.tsv";
+	
+	
 	private Map<String,Map<String,CoverageBiasCovariateCounts.CovariateCombination>> locusCovariates;
 	
+	private Map<String,GroupCount> groupCounts;
+	
+	//TODO need to remove this reference here and get the CB walker to use a separate class that make reference
+	//to both the counts and the complexity.
+	public transient MultiWindowSequenceComplexity complexity;
+	
 	CoverageBiasCovariateCounts(Set<String> groupNames) {
-		locusCovariates = new HashMap<String,Map<String,CoverageBiasCovariateCounts.CovariateCombination>>(groupNames.size());
-		for (String g : groupNames)
+		locusCovariates = new LinkedHashMap<String,Map<String,CoverageBiasCovariateCounts.CovariateCombination>>(groupNames.size());
+		groupCounts = new LinkedHashMap<String,GroupCount>(groupNames.size());
+		for (String g : groupNames) {
 			locusCovariates.put(g,new HashMap<String,CoverageBiasCovariateCounts.CovariateCombination>());
+			groupCounts.put(g,new GroupCount());
+		}
 	}
 	
-	void add(String group, double gcBias, int size, long sites, long starts) {
+	public CoverageBiasCovariateCounts(Set<String> groupNames,
+			MultiWindowSequenceComplexity cplx) {
+		this(groupNames);
+		complexity = cplx;
+	}
+
+	void add(String group, double gcBias, int size, long sites, long starts, boolean forward) {
 		Map<String,CoverageBiasCovariateCounts.CovariateCombination> lcm = locusCovariates.get(group);
 		if (lcm == null)
 			throw new IllegalArgumentException("group " + group + " was not provided during contruction");
@@ -50,6 +64,16 @@ public class CoverageBiasCovariateCounts implements Serializable {
 		if (lc == null)
 			lcm.put(key, lc = new CovariateCombination(gcBias, size));
 		lc.increment(sites,starts);
+		
+		GroupCount gc = groupCounts.get(group);
+		if (forward) {
+			gc.fStarts += starts;
+			gc.fSites += sites;
+		}
+		else {
+			gc.rStarts += starts;
+			gc.rSites += sites;
+		}
 	}
 	
 	public void mergeIn(CoverageBiasCovariateCounts other) {
@@ -71,6 +95,15 @@ public class CoverageBiasCovariateCounts implements Serializable {
 					}
 				}
 			}
+		
+		for (Map.Entry<String,GroupCount> e : groupCounts.entrySet()) {
+			GroupCount ogc = other.groupCounts.get(e.getKey());
+			GroupCount gc = e.getValue();
+			gc.fSites += ogc.fSites;
+			gc.rSites += ogc.rSites;
+			gc.fStarts += ogc.fStarts;
+			gc.rStarts += ogc.rStarts;
+		}
 	}		
 	
 	public void saveIn(File outDir) throws IOException {
@@ -92,6 +125,7 @@ public class CoverageBiasCovariateCounts implements Serializable {
 		TsvWriter tw = new TsvWriter(new FileWriter(tableFile));
 		TsvWriter scTw = new TsvWriter(new FileWriter(siteCountsFile));
 		TsvWriter stTw = new TsvWriter(new FileWriter(startCountsFile));
+		saveGroupsFile(outDir);
 		int nextIdx = 2; //= 3;
 		for (String gn : groupNames)
 			header[nextIdx++] = gn;
@@ -118,6 +152,19 @@ public class CoverageBiasCovariateCounts implements Serializable {
 		scTw.close();
 		stTw.close();
 		tw.close();
+	}
+
+	private void saveGroupsFile(File outDir) throws IOException {
+		File groupsFile = new File(outDir,GROUPS_FILE_NAME);
+		TsvWriter grTw = new TsvWriter(new FileWriter(groupsFile));
+		grTw.writeLine((Object[]) new String[] {"NAME","TYPE","WSIZE","SITES","START","RATE"});
+		for (String gn : groupCounts.keySet()) {
+			GroupCount gc = groupCounts.get(gn);
+			long allSites = gc.fSites + gc.rSites;
+			grTw.writeLine(gn,"NA","NA",allSites,gc.fStarts + gc.rStarts,
+					allSites == 0 ? "NaN" : String.format("%.2f",(gc.fStarts + gc.rStarts)/(allSites)));
+		}
+		grTw.close();
 	}
 	
 	public static CoverageBiasCovariateCounts loadFrom(File outDir) throws IOException {
@@ -207,6 +254,17 @@ public class CoverageBiasCovariateCounts implements Serializable {
 		}
 		
 
+	}
+
+	static class GroupCount implements Serializable{
+		/**
+		 * 
+		 */
+		private static final long serialVersionUID = 1L;
+		long fStarts;
+		long rStarts;
+		long fSites;
+		long rSites;
 	}
 	
 

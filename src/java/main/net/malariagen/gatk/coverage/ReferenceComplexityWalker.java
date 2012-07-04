@@ -129,7 +129,7 @@ public class ReferenceComplexityWalker extends
 							"Stop positio of the interval considerde in complex INFO fields"));
 
 			Set<String> groupNames = new LinkedHashSet<String>(100);
-			if (groupBy.implies(GroupBy.RG) || groupBy == groupBy.WS) {
+			if (groupBy.implies(GroupBy.RG) || groupBy == GroupBy.WS) {
 				groupNames.addAll(fragmentLengthSummary.getReadGroups());
 				for (String name : groupNames) {
 					int ws = (int) Math.round(fragmentLengthSummary
