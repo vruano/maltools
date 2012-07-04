@@ -14,6 +14,7 @@ import java.util.Arrays;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Set;
 
 
 import net.malariagen.gatk.math.IntegerDistribution;
@@ -409,6 +410,14 @@ public class FragmentLengthSummary implements Serializable {
 			mode = values[bestMode];
 		}
 
+	}
+
+	public Set<String> getReadGroups() {
+		return this.rgFlDist.keySet();
+	}
+	
+	public Set<String> getSamples() {
+		return this.smFlDist.keySet();
 	}
 
 }

@@ -69,7 +69,7 @@ public class CoverageBiasWalker
 	}
 
 	public enum GroupBy {
-		SM, RG, SMRG, NONE;
+		SM, RG, SMRG, WS, NONE;
 
 		public boolean implies(GroupBy o) {
 			if (o == null)
