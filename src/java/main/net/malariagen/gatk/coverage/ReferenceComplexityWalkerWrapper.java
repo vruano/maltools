@@ -21,6 +21,7 @@ import org.broadinstitute.sting.utils.codecs.vcf.VCFWriter;
 import org.broadinstitute.sting.utils.variantcontext.Genotype;
 import org.broadinstitute.sting.utils.variantcontext.GenotypesContext;
 import org.broadinstitute.sting.utils.variantcontext.VariantContext;
+import org.broadinstitute.sting.utils.variantcontext.VariantContextBuilder;
 
 public class ReferenceComplexityWalkerWrapper {
 
@@ -45,7 +46,7 @@ public class ReferenceComplexityWalkerWrapper {
 		initialize();
 	}
 	
-	private class LocusComplexity {
+	class LocusComplexity {
 
 		public final GenomeLoc locus;
 		public VariantContext forward;
@@ -91,6 +92,16 @@ public class ReferenceComplexityWalkerWrapper {
 
 		public boolean isCompleted() {
 			return forward != null;
+		}
+
+		public VariantContext getForwardVariantContext() {
+			return forward;
+		}
+
+		public VariantContext getReverseVariantContext() {
+			if (forward == null)
+				throw new IllegalStateException("locus complexity not completed");
+			return new VariantContextBuilder(forward).genotypes(reverse).make();	
 		}
 	}
 	
@@ -163,6 +174,10 @@ public class ReferenceComplexityWalkerWrapper {
 
 		};
 		complexityWalker.initialize();
+	}
+
+	public MultiWindowSequenceComplexity reduceInit() {
+		return complexityWalker.reduceInit();
 	}
 
 }

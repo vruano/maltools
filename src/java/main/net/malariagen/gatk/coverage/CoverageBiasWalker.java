@@ -11,8 +11,6 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.SortedMap;
-import java.util.TreeMap;
 
 
 import net.malariagen.gatk.annotators.FragmentStartCount;
@@ -40,7 +38,6 @@ import org.broadinstitute.sting.gatk.walkers.annotator.RMSMappingQuality;
 import org.broadinstitute.sting.gatk.walkers.annotator.interfaces.AnnotatorCompatibleWalker;
 import org.broadinstitute.sting.gatk.walkers.annotator.interfaces.InfoFieldAnnotation;
 import org.broadinstitute.sting.utils.GenomeLoc;
-import org.broadinstitute.sting.utils.GenomeLocParser;
 import org.broadinstitute.sting.utils.codecs.vcf.VCFFormatHeaderLine;
 import org.broadinstitute.sting.utils.codecs.vcf.VCFHeader;
 import org.broadinstitute.sting.utils.codecs.vcf.VCFHeaderLine;
@@ -119,10 +116,8 @@ public class CoverageBiasWalker extends
 
 	private Set<InfoFieldAnnotation> annotations;
 
-	private final SortedMap<GenomeLoc, Complexity> complexityBuffer = new TreeMap<GenomeLoc, Complexity>();
-
-	private ReferenceComplexityWalker complexityWalker = new ReferenceComplexityWalker();
-
+	private ReferenceComplexityWalkerWrapper complexityWalkerWrapper;
+	
 	@Argument(shortName = "mdp", fullName = "minimumDepthOfCoverage", doc = "minimum depth of coverage in a sample for a site to be considered in the counts", required = false)
 	public int minimumDepthOfCoverage = 1;
 
@@ -158,54 +153,7 @@ public class CoverageBiasWalker extends
 	}
 
 	private void initializeComplexityWalker() {
-		final GenomeLocParser locParser = this.getToolkit()
-				.getGenomeLocParser();
-		complexityWalker.setToolkit(this.getToolkit());
-		complexityWalker.groupBy = this.groupBy;
-		complexityWalker.rounding = 1;
-		complexityWalker.windowSize = this.windowSize;
-		complexityWalker.fragmentLengthsFile = this.fragmentLengthsFile;
-		complexityWalker.writer = new VCFWriter() {
-
-			@Override
-			public void writeHeader(VCFHeader header) {
-				// Ignore it.
-			}
-
-			@Override
-			public void close() {
-				// Ignore it.
-			}
-
-			@Override
-			public void add(VariantContext vc) {
-				
-				GenomeLoc loc = locParser.createGenomeLoc(vc.getChr(),
-						vc.getStart(), vc.getStart());
-				Complexity c = complexityBuffer.get(loc);
-				if (c == null) {
-					complexityBuffer.put(loc, c = new Complexity(loc, vc));
-				}
-				else 
-					c.forward = vc;
-				for (Genotype gt : vc.getGenotypes()) {
-					int end = gt.getAttributeAsInt("ED", -1);				
-					if (end == -1)
-						continue;
-					GenomeLoc rloc = locParser.createGenomeLoc(loc.getContig(),
-							end, end);
-					Complexity rc = complexityBuffer.get(rloc);
-					if (rc == null)
-						complexityBuffer.put(rloc,
-								rc = new Complexity(rloc, gt));
-					else
-						rc.addReverse(gt);
-				}
-			}
-
-		};
-		complexityWalker.initialize();
-
+		complexityWalkerWrapper = new ReferenceComplexityWalkerWrapper(this.getToolkit(),groupBy,fragmentLengthsFile,windowSize);
 	}
 
 	@Override
@@ -263,14 +211,14 @@ public class CoverageBiasWalker extends
 	@Override
 	public CoverageBiasCovariateCounts reduceInit() {
 		return new CoverageBiasCovariateCounts(groupNames,
-				complexityWalker.reduceInit());
+				complexityWalkerWrapper.reduceInit());
 	}
 
 	@Override
 	public CoverageBiasCovariateCounts reduce(CoverageBiasContext value,
 			CoverageBiasCovariateCounts sum) {
 
-		sum.complexity = complexityWalker.reduce(value.getReferenceContext(),
+		sum.complexity = complexityWalkerWrapper.reduce(value.getReferenceContext(),
 				sum.complexity);
 
 		if (vcfOutput != null)
@@ -279,16 +227,10 @@ public class CoverageBiasWalker extends
 		GenomeLoc loc = value.getReferenceContext().getLocus();
 		GenomeLoc toLoc = getToolkit().getGenomeLocParser().incPos(loc);
 
-		Map<GenomeLoc, Complexity> headBuffer = complexityBuffer.headMap(toLoc);
-		GenomeLoc stopLoc = null;
-		for (Complexity c : headBuffer.values()) {
-			VariantContext forwardComplexityVc = c.forward;
-			if (c.forward == null) {
-				stopLoc = c.locus;
-				break;
-			}
-			VariantContext reverseComplexityVc = new VariantContextBuilder(
-					c.forward).genotypes(c.reverse).make();
+
+		for (net.malariagen.gatk.coverage.ReferenceComplexityWalkerWrapper.LocusComplexity c : complexityWalkerWrapper.removeCompleted()) {
+			VariantContext forwardComplexityVc = c.getForwardVariantContext();
+			VariantContext reverseComplexityVc = c.getReverseVariantContext();
 			GenotypesContext gc = value.getGenotypes();
 			for (Genotype g : gc) {
 				Genotype forwardComplexity = forwardComplexityVc == null ? null
@@ -323,10 +265,6 @@ public class CoverageBiasWalker extends
 					sum.add(g.getSampleName(), rGcBias, size, 1, rfs,false);
 			}
 		}
-		if (stopLoc == null)
-			headBuffer.clear();
-		else
-			complexityBuffer.headMap(stopLoc).clear();
 		return sum;
 	}
 
@@ -340,7 +278,7 @@ public class CoverageBiasWalker extends
 	@Override
 	public CoverageBiasContext map(RefMetaDataTracker tracker,
 			ReferenceContext ref, AlignmentContext context) {
-		complexityWalker.map(tracker, ref, context);
+		complexityWalkerWrapper.map(tracker, ref, context);
 		VariantContextBuilder vcb = new VariantContextBuilder();
 		vcb.loc(ref.getLocus());
 		vcb.alleles(Collections.singletonList(Allele.create(ref.getBase(), true)));
