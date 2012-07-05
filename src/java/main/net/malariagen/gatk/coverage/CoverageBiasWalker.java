@@ -114,12 +114,12 @@ public class CoverageBiasWalker extends
 	@Output(shortName = "o", fullName = "output", doc = "name of the directory where to generate the covariate count outputs", required = true)
 	public File outDir;
 
-	private final SortedMap<GenomeLoc, Complexity> complexityBuffer = new TreeMap<GenomeLoc, Complexity>();
-
 	private Set<String> groupNames;
 
 
 	private Set<InfoFieldAnnotation> annotations;
+
+	private final SortedMap<GenomeLoc, Complexity> complexityBuffer = new TreeMap<GenomeLoc, Complexity>();
 
 	private ReferenceComplexityWalker complexityWalker = new ReferenceComplexityWalker();
 
