@@ -69,9 +69,9 @@ public class ReadComposition extends ReadWalker<SAMRecord,net.malariagen.gatk.co
 		public int compareTo(Composition c) {
 			if (c == null)
 				throw new IllegalArgumentException("cannot compare to null");
-			int result = Integer.compare(this.gcCount, c.gcCount);
+			int result = this.gcCount - c.gcCount;
 			if (result != 0) return result;
-			return Integer.compare(this.readLength, c.readLength);
+			return this.readLength - c.readLength;
 		}
 		
 		public void mergeIn(Composition c) {

@@ -161,8 +161,8 @@ public class CoverageBiasCovariateCounts implements Serializable {
 		for (String gn : groupCounts.keySet()) {
 			GroupCount gc = groupCounts.get(gn);
 			long allSites = gc.fSites + gc.rSites;
-			grTw.writeLine(gn,"NA","NA",allSites,gc.fStarts + gc.rStarts,
-					allSites == 0 ? "NaN" : String.format("%.2f",(gc.fStarts + gc.rStarts)/(allSites)));
+			double rate = allSites == 0 ? Double.NaN : (double)(gc.fStarts + gc.rStarts) / (double) allSites;
+			grTw.writeLine(gn,"NA","NA",allSites,"" + (gc.fStarts + gc.rStarts), rate);
 		}
 		grTw.close();
 	}
@@ -224,7 +224,7 @@ public class CoverageBiasCovariateCounts implements Serializable {
 			int result = 0;
 			if ((result = Double.compare(other.gcBias,this.gcBias)) != 0)
 				return result;
-			if ((result = Integer.compare(other.size,this.size)) != 0)
+			if ((result = other.size - this.size) != 0)
 				return result;
 			return 0;
 		}
