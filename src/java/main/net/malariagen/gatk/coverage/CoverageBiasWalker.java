@@ -113,7 +113,6 @@ public class CoverageBiasWalker extends
 
 	private Set<String> groupNames;
 
-
 	private Set<InfoFieldAnnotation> annotations;
 
 	private ReferenceComplexityWalkerWrapper complexityWalkerWrapper;
@@ -153,7 +152,7 @@ public class CoverageBiasWalker extends
 	}
 
 	private void initializeComplexityWalker() {
-		complexityWalkerWrapper = new ReferenceComplexityWalkerWrapper(this.getToolkit(),groupBy,fragmentLengthsFile,windowSize);
+		complexityWalkerWrapper = new ReferenceComplexityWalkerWrapper(this.getToolkit(),groupBy,fragmentLengthsFile,windowSize,groupNames);
 	}
 
 	@Override
@@ -223,10 +222,6 @@ public class CoverageBiasWalker extends
 
 		if (vcfOutput != null)
 			vcfOutput.add(value);
-
-		GenomeLoc loc = value.getReferenceContext().getLocus();
-		GenomeLoc toLoc = getToolkit().getGenomeLocParser().incPos(loc);
-
 
 		for (net.malariagen.gatk.coverage.ReferenceComplexityWalkerWrapper.LocusComplexity c : complexityWalkerWrapper.removeCompleted()) {
 			VariantContext forwardComplexityVc = c.getForwardVariantContext();

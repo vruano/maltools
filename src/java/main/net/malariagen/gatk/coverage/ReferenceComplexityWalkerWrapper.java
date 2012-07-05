@@ -1,9 +1,11 @@
 package net.malariagen.gatk.coverage;
 
 import java.io.File;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.SortedMap;
 import java.util.TreeMap;
 
@@ -31,27 +33,35 @@ public class ReferenceComplexityWalkerWrapper {
 	
 	private File fragmentLengthFile;
 	
+	private Map<String,List<String>> windowSizeToGroup;
+	
 	private Integer windowSize;
 	
 	private final SortedMap<GenomeLoc, LocusComplexity> complexityBuffer = new TreeMap<GenomeLoc, net.malariagen.gatk.coverage.ReferenceComplexityWalkerWrapper.LocusComplexity>();
 
 	private ReferenceComplexityWalker complexityWalker = new ReferenceComplexityWalker();
 
+	private Set<String> groupNames;
+
 	
-	public ReferenceComplexityWalkerWrapper(GenomeAnalysisEngine gae, GroupBy gb, File fls, Integer windowSize) {
+	public ReferenceComplexityWalkerWrapper(GenomeAnalysisEngine gae, GroupBy gb, File fls, Integer windowSize, Set<String> groupNames) {
 		this.toolkit = gae;
 		this.groupBy = gb;
 		this.fragmentLengthFile = fls;
 		this.windowSize = windowSize;
+		this.groupNames = groupNames;
 		initialize();
+
 	}
-	
+
+
+
 	class LocusComplexity {
 
 		public final GenomeLoc locus;
 		public VariantContext forward;
 		public GenotypesContext reverse;
-
+		
 		LocusComplexity(GenomeLoc l, VariantContext fwd) {
 			locus = l;
 			forward = fwd;
@@ -65,6 +75,19 @@ public class ReferenceComplexityWalkerWrapper {
 
 		void addReverse(Genotype gt) {
 			reverse.add(gt);
+		}
+		
+		private VariantContext translateWsToGroupName(VariantContext vc) {
+			VariantContextBuilder vcb = new VariantContextBuilder(vc);
+			GenotypesContext gc = GenotypesContext.create();
+			for (Genotype gt : forward.getGenotypes()) {
+				List<String> names = windowSizeToGroup.get(gc);
+				for (String name : names) {
+					if (groupNames.contains(name)) gc.add(new Genotype(name, gt.getAlleles(), gt.getLog10PError(), gt.getFilters(), gt.getAttributes(), gt.isPhased()));
+				}
+			}
+			vcb.genotypes(gc);
+			return vcb.make();
 		}
 
 		double getGcBias(String name, boolean forward) {
@@ -95,13 +118,13 @@ public class ReferenceComplexityWalkerWrapper {
 		}
 
 		public VariantContext getForwardVariantContext() {
-			return forward;
+			return translateWsToGroupName(forward);
 		}
 
 		public VariantContext getReverseVariantContext() {
 			if (forward == null)
 				throw new IllegalStateException("locus complexity not completed");
-			return new VariantContextBuilder(forward).genotypes(reverse).make();	
+			return translateWsToGroupName(new VariantContextBuilder(forward).genotypes(reverse).make());	
 		}
 	}
 	
@@ -132,8 +155,8 @@ public class ReferenceComplexityWalkerWrapper {
 	private void initialize() {
 		final GenomeLocParser locParser = toolkit.getGenomeLocParser();
 		complexityWalker.setToolkit(toolkit);
-		complexityWalker.groupBy = this.groupBy;
-		complexityWalker.rounding = 1;
+		complexityWalker.groupBy = GroupBy.WS;
+		complexityWalker.rounding = 10;
 		complexityWalker.windowSize = this.windowSize;
 		complexityWalker.fragmentLengthsFile = this.fragmentLengthFile;
 		complexityWalker.writer = new VCFWriter() {
@@ -176,6 +199,15 @@ public class ReferenceComplexityWalkerWrapper {
 
 		};
 		complexityWalker.initialize();
+		windowSizeToGroup = new HashMap<String,List<String>>();
+		for (Map.Entry<String,Integer> e : this.complexityWalker.groupWindowSize.entrySet()) {
+			String wsStr = "" + e.getValue();
+			List<String> groupList = windowSizeToGroup.get(wsStr);
+			if (groupList == null)
+				windowSizeToGroup.put(wsStr,groupList = new LinkedList<String>());
+			groupList.add(e.getKey());
+		}
+		
 	}
 
 	public MultiWindowSequenceComplexity reduceInit() {

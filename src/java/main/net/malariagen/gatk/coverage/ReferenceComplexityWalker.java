@@ -69,7 +69,7 @@ public class ReferenceComplexityWalker extends
 
 	private FragmentLengthSummary fragmentLengthSummary;
 
-	private Map<String, Integer> groupWindowSize;
+	Map<String, Integer> groupWindowSize;
 
 	@Override
 	public void initialize() {
