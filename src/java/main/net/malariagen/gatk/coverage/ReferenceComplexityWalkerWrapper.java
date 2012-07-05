@@ -115,6 +115,8 @@ public class ReferenceComplexityWalkerWrapper {
 			toRemove.add(e.getKey());
 			result.add(lc);
 		}
+		for (GenomeLoc loc : toRemove)
+		  complexityBuffer.remove(loc);
 		return result;
 	}
 	
