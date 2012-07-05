@@ -81,7 +81,7 @@ public class ReferenceComplexityWalkerWrapper {
 			VariantContextBuilder vcb = new VariantContextBuilder(vc);
 			GenotypesContext gc = GenotypesContext.create();
 			for (Genotype gt : forward.getGenotypes()) {
-				List<String> names = windowSizeToGroup.get(gc);
+				List<String> names = windowSizeToGroup.get(gt.getSampleName());
 				for (String name : names) {
 					if (groupNames.contains(name)) gc.add(new Genotype(name, gt.getAlleles(), gt.getLog10PError(), gt.getFilters(), gt.getAttributes(), gt.isPhased()));
 				}
