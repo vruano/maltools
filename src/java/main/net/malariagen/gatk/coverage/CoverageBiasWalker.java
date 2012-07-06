@@ -279,7 +279,7 @@ public class CoverageBiasWalker extends
 		vcb.alleles(Collections.singletonList(Allele.create(ref.getBase(), true)));
 		VariantContext fooVc = vcb.make();
 		Map<String, Object> vcAttributes = new LinkedHashMap<String, Object>();
-		Map<String, AlignmentContext> stratifiedCtx = stratifyByGroupName(context);
+		Map<String, AlignmentContext> stratifiedCtx = stratifyByGroupName(context,groupNames,groupBy);
 		for (InfoFieldAnnotation anno : annotations)
 			vcAttributes.putAll(anno.annotate(tracker, this, ref,
 					stratifiedCtx, fooVc));
@@ -312,8 +312,8 @@ public class CoverageBiasWalker extends
 		return gc;
 	}
 
-	private Map<String, AlignmentContext> stratifyByGroupName(
-			AlignmentContext context) {
+	static Map<String, AlignmentContext> stratifyByGroupName(
+			AlignmentContext context, Set<String> groupNames, GroupBy groupBy) {
 		if (groupNames.size() == 0) // i.e. groupBy == NONE
 			return Collections.singletonMap("ALL", context);
 		Map<String, List<PileupElement>> lists = new LinkedHashMap<String, List<PileupElement>>(

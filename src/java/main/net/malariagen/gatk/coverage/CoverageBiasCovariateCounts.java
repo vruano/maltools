@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.Serializable;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -48,6 +49,11 @@ public class CoverageBiasCovariateCounts implements Serializable {
 			groupCounts.put(g,new GroupCount());
 		}
 	}
+	
+	public Set<String> getGroupNames() {
+		return Collections.unmodifiableSet(locusCovariates.keySet());
+	}
+	
 	
 	public CoverageBiasCovariateCounts(Set<String> groupNames,
 			MultiWindowSequenceComplexity cplx) {
