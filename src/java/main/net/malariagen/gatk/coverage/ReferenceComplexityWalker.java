@@ -70,6 +70,7 @@ public class ReferenceComplexityWalker extends
 	private FragmentLengthSummary fragmentLengthSummary;
 
 	Map<String, Integer> groupWindowSize;
+        Map<String, Integer> realGroupWindowSize;
 
 	@Override
 	public void initialize() {
@@ -146,11 +147,13 @@ public class ReferenceComplexityWalker extends
 							.round(fragmentLengthSummary
 									.getSampleFragmentLengths(name).median() / rounding) * rounding);
 			}
+			Set<String> realGroupNames = groupNames;
+			realGroupWindowSize = groupWindowSize;
 			if (groupBy == GroupBy.WS) {
-				Set<String> realGroupNames = groupNames;
-				groupNames = new HashSet<String>(realGroupNames.size());
+				groupNames = new LinkedHashSet<String>(realGroupNames.size());
+			        groupWindowSize = new LinkedHashMap<String,Integer>(realGroupWindowSize.size());	
 				for (String name : realGroupNames) {
-					int ws = groupWindowSize.remove(name);
+					int ws = realGroupWindowSize.get(name);
 					groupNames.add("" + ws);
 					groupWindowSize.put("" + ws,ws);
 				}
