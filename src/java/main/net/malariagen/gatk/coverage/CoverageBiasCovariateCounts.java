@@ -272,6 +272,15 @@ public class CoverageBiasCovariateCounts implements Serializable {
 		long fSites;
 		long rSites;
 	}
+
+	public double getStartRate(String gn, int size, double gcBias) {
+		GroupCount gc = this.groupCounts.get(gn);
+		String key = CovariateCombination.keyFor(gcBias, size);
+		CovariateCombination cc = locusCovariates.get(gn).get(key);
+		if (cc == null)
+			return Double.NaN;
+		return ((double ) cc.startCount * (gc.rSites + gc.fSites)) / (double) cc.siteCount * (gc.fStarts + gc.rStarts);
+	}
 	
 
 }

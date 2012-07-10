@@ -63,6 +63,8 @@ public class FragmentStartCount extends InfoFieldAnnotation {
 		result.put(REVERSE_START_KEY,reverseStarts);
 		return result;
 	}
+	
+	
 
 	@Override
 	public List<VCFInfoHeaderLine> getDescriptions() {

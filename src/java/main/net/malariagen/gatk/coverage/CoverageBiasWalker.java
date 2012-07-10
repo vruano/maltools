@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.LinkedList;
@@ -15,6 +16,7 @@ import java.util.Set;
 
 import net.malariagen.gatk.annotators.FragmentStartCount;
 import net.malariagen.gatk.annotators.UniquenessScore;
+import net.malariagen.gatk.utils.ReadGroupDB;
 import net.sf.samtools.SAMReadGroupRecord;
 
 import org.broad.tribble.Feature;
@@ -79,6 +81,17 @@ public class CoverageBiasWalker extends
 			if (this == SMRG && o != NONE && o != WS)
 				return true;
 			return false;
+		}
+		
+		public Set<String> buildGroupNameSet(ReadGroupDB db) {
+			Set<String> result = new HashSet<String>();
+			if (this.implies(RG)) {
+				result.addAll(db.getReadGroupIDs());
+			}
+			if (this.implies(SM)) {
+				result.addAll(db.getSampleDB().getSampleNames());
+			}
+			return result;
 		}
 	}
 
