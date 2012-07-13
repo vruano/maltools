@@ -7,13 +7,10 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.Set;
 import java.util.SortedMap;
-import java.util.SortedSet;
 import java.util.TreeMap;
 
 import net.malariagen.gatk.coverage.CoverageBiasWalker.GroupBy;
@@ -27,9 +24,15 @@ import org.broadinstitute.sting.commandline.Argument;
 import org.broadinstitute.sting.commandline.Output;
 import org.broadinstitute.sting.gatk.contexts.AlignmentContext;
 import org.broadinstitute.sting.gatk.contexts.ReferenceContext;
+import org.broadinstitute.sting.gatk.filters.NotPrimaryAlignmentFilter;
 import org.broadinstitute.sting.gatk.refdata.RefMetaDataTracker;
 import org.broadinstitute.sting.gatk.samples.Sample;
+import org.broadinstitute.sting.gatk.walkers.By;
+import org.broadinstitute.sting.gatk.walkers.DataSource;
 import org.broadinstitute.sting.gatk.walkers.LocusWalker;
+import org.broadinstitute.sting.gatk.walkers.PartitionBy;
+import org.broadinstitute.sting.gatk.walkers.PartitionType;
+import org.broadinstitute.sting.gatk.walkers.ReadFilters;
 import org.broadinstitute.sting.utils.GenomeLoc;
 import org.broadinstitute.sting.utils.codecs.vcf.VCFFormatHeaderLine;
 import org.broadinstitute.sting.utils.codecs.vcf.VCFHeader;
@@ -45,12 +48,26 @@ import org.broadinstitute.sting.utils.variantcontext.GenotypesContext;
 import org.broadinstitute.sting.utils.variantcontext.VariantContext;
 import org.broadinstitute.sting.utils.variantcontext.VariantContextBuilder;
 
+@By(DataSource.REFERENCE)
+@ReadFilters(NotPrimaryAlignmentFilter.class)
+@PartitionBy(PartitionType.CONTIG)
 public class CoverageBiasCorrectionWalker
 		extends
 		LocusWalker<net.malariagen.gatk.coverage.CoverageBiasCorrectionWalker.Locus, net.malariagen.gatk.coverage.CoverageBiasCorrectionWalker.Region> {
 
 	private ReferenceComplexityWalkerWrapper complexity;
 	private CoverageBiasCovariateCounts coverageBias;
+
+	@Override
+	public void onTraversalDone(Region result) {
+		super.onTraversalDone(result);
+	}
+
+	@Override
+	public boolean isReduceByInterval() {
+		super.isReduceByInterval();
+		return true;
+	}
 
 	@Argument(shortName = "groupBy", doc = "inidacate if the correction is per sample or read group", required = false)
 	public GroupBy groupBy = GroupBy.RG;
@@ -62,13 +79,20 @@ public class CoverageBiasCorrectionWalker
 	public File coverageBiasFile;
 
 	@Argument(shortName = "W", fullName = "windowSize", required = false, doc = "size of the depth median window to correct")
-	public int windowSize = 100;
+	public int windowSize = 500;
 
 	@Argument(shortName = "mmq", doc = "minimum mapping quality for a read to be considered to count depth", required = false)
-	public int minMappingQuality = 100;
+	public int minMappingQuality = 0;
 
 	@Output(shortName = "o", fullName ="ouput", doc= "VCF output file ", required = true)
 	private VCFWriter writer;
+	
+	@Argument(shortName = "skip", doc= "number of bp between every output locus generated", required = false)
+	private int skip = 1;
+	
+	@Argument(shortName = "burnIn", doc = "number of bp to skip at the beginning of each chromosome", required = false)
+	private int burnIn = 0;
+	
 	
 	
 	private File fragmentLengthsFile;
@@ -88,8 +112,18 @@ public class CoverageBiasCorrectionWalker
 			throw new IllegalArgumentException(
 					"only SMRG, RG or SM allowed for the groupBy option");
 		}
+		if (skip <= 0)
+			throw new UserException("skip cannot 0 or negative");
+		
+		if (burnIn < 0)
+			throw new UserException("burnIn cannot be negative");
+		
 		readGroupDb = new ReadGroupDB(getToolkit());
 		groupNames = groupBy.buildGroupNameSet(readGroupDb);
+		groupIndex = new HashMap<String,Integer>(groupNames.size());
+		int nextIdx = 0;
+		for (String gn : groupNames)
+			groupIndex.put(gn,nextIdx++);
 		initializeCoverageBiasCounter();
 		initializeFragmentLengths();
 
@@ -108,11 +142,10 @@ public class CoverageBiasCorrectionWalker
 		Set<VCFHeaderLine> headerLines = new LinkedHashSet<VCFHeaderLine>();
 		headerLines.add(new VCFFormatHeaderLine("FFS",1,VCFHeaderLineType.Integer,""));
 		headerLines.add(new VCFFormatHeaderLine("FFSr",1,VCFHeaderLineType.Float,""));
-		headerLines.add(new VCFFormatHeaderLine("RFS",1,VCFHeaderLineType.Integer,""));
-		headerLines.add(new VCFFormatHeaderLine("RFSr",1,VCFHeaderLineType.Float,""));
-		headerLines.add(new VCFFormatHeaderLine("WFS",1,VCFHeaderLineType.Integer,""));
-		headerLines.add(new VCFFormatHeaderLine("WFSr",1,VCFHeaderLineType.Float,""));
-		headerLines.add(new VCFFormatHeaderLine("WFSc",1,VCFHeaderLineType.Float,""));
+		headerLines.add(new VCFFormatHeaderLine("FFSc",1,VCFHeaderLineType.Float,""));
+		headerLines.add(new VCFFormatHeaderLine("FFSx",1,VCFHeaderLineType.Float,""));
+		headerLines.add(new VCFFormatHeaderLine("FGC",1,VCFHeaderLineType.Float,""));
+		headerLines.add(new VCFFormatHeaderLine("WS",1,VCFHeaderLineType.Integer,""));
 				VCFHeader header = new VCFHeader(headerLines,groupNames);
 
 		writer.writeHeader(header);
@@ -201,6 +234,7 @@ public class CoverageBiasCorrectionWalker
 	@Override
 	public Region reduce(Locus value, Region sum) {
 		sum.add(value);
+	
 		sum.complexity = complexity.reduce(value.refContext, sum.complexity);
 		List<LocusComplexity> completed = complexity.removeCompleted();
 		GenomeLoc lastLoc = null;
@@ -221,6 +255,8 @@ public class CoverageBiasCorrectionWalker
 
 
 		public void add(Locus value) {
+			if (locusBuffer.size() > 0 && locusBuffer.firstKey().getContig() != value.refContext.getLocus().getContig())
+				locusBuffer.clear();
 			locusBuffer.put(value.getLocation(), value);
 		}
 
@@ -235,12 +271,23 @@ public class CoverageBiasCorrectionWalker
 					break;
 				Iterator<Locus> it = locusBuffer.tailMap(loc).values()
 						.iterator();
+				if (burnIn > 0 && loc.getStart() <= burnIn)
+					continue;
+				if (skip > 1 && ((loc.getStart() - burnIn) % skip) != 1)
+					continue;
 				for (int i = 0; i < windowSize; i++) {
 					Locus m = it.next();
 					for (int j = 0; j < l.byGroupIndex.length; j++) {
+						if (Double.isNaN(m.byGroupIndex[j].windowForwardLambda) || Double.isNaN(m.byGroupIndex[j].forwardLambda))
+							continue;
+					//	if (m.byGroupIndex[j].depth < 5)
+					//		continue;
+						l.byGroupIndex[j].windowSize++;
+						l.byGroupIndex[j].windowForwardStartsCorrected += Math.max(m.byGroupIndex[j].forwardStarts,0.1) / m.byGroupIndex[j].forwardLambda;
+						l.byGroupIndex[j].windowForwardGcBias += m.byGroupIndex[j].forwardGcBias;
 						l.byGroupIndex[j].windowReverseStarts += m.byGroupIndex[j].reverseStarts;
 						l.byGroupIndex[j].windowForwardStarts += m.byGroupIndex[j].forwardStarts;
-						l.byGroupIndex[j].windowForwardCorrected += m.byGroupIndex[j].forwardStartCorrected;
+						l.byGroupIndex[j].windowForwardLambda += m.byGroupIndex[j].forwardLambda;
 						l.byGroupIndex[j].windowReverseCorrected += m.byGroupIndex[j].reverseStartCorrected;
 					}
 				}
@@ -263,14 +310,20 @@ public class CoverageBiasCorrectionWalker
 
 	public class LocusGenotype {
 
+		public int windowSize;
 		public int forwardStarts;
 		public int reverseStarts;
-		public double forwardStartCorrected;
+		public int depth;
+		public double forwardLambda;
 		public double reverseStartCorrected;
 		public int windowForwardStarts;
 		public int windowReverseStarts;
-		public double windowForwardCorrected;
+		public int windowForwardStartsCorrected;
+		public double windowForwardLambda;
 		public double windowReverseCorrected;
+		public double forwardGcBias;
+		public double reverseGcBias;
+		public double windowForwardGcBias;
 
 	}
 
@@ -296,14 +349,23 @@ public class CoverageBiasCorrectionWalker
 				int idx = groupIndex.get(gn);
 				Map<String,Object> attributes = new LinkedHashMap<String,Object>(10);
 				LocusGenotype lg = byGroupIndex[idx];
-				attributes.put("FFS",lg.forwardStarts);
-				attributes.put("FFSr",lg.forwardStartCorrected);
-				attributes.put("RFS",lg.reverseStarts);
-				attributes.put("RFSr",lg.reverseStartCorrected);
-				attributes.put("WFS",((double) lg.windowForwardStarts + lg.windowReverseStarts ) / (double) windowSize);
-				attributes.put("WFSr",((double) lg.windowReverseCorrected + lg.windowForwardCorrected ) / (double) windowSize);
-				attributes.put("WFSc",((double) lg.windowForwardStarts)  / lg.windowForwardCorrected 
-						  + ((double) lg.windowReverseStarts) / lg.windowReverseCorrected);
+				if (lg == null) {
+					gc.add(new Genotype(gn,noCall));
+					continue;
+				}
+				attributes.put("WS",lg.windowSize);
+				attributes.put("FGC",lg.windowForwardGcBias / (double) lg.windowSize);
+				attributes.put("RGC",lg.reverseGcBias);
+				attributes.put("FFS",2.0 * ((double) lg.windowForwardStarts) / (double) lg.windowSize);
+				attributes.put("FFSr",lg.windowForwardLambda / (double) lg.windowSize);
+				attributes.put("FFSc",2.0 * ((double)lg.windowForwardStarts) / (double) lg.windowForwardLambda);
+				attributes.put("FFSx",2.0 * ((double)lg.windowForwardStartsCorrected) / (double) lg.windowSize);
+				//attributes.put("RFS",lg.windowReverseStarts / (double) lg.windowSize);
+				//attributes.put("RFSr",lg.windowReverseCorrected / (double) lg.windowSize);
+				//attributes.put("RFSc",((double)lg.windowReverseStarts) / lg.windowReverseCorrected);
+				//attributes.put("BFS", ((double) lg.windowForwardStarts + lg.windowReverseStarts ) / (double) lg.windowSize);
+				//attributes.put("BFSc",(((double) lg.windowForwardStarts)  / lg.windowForwardCorrected 
+				//		  + ((double) lg.windowReverseStarts) / lg.windowReverseCorrected));
 				gc.add(new Genotype(gn,noCall,1.0,noFilters,attributes,false));
 			}
 			vcb.genotypes(gc);
@@ -317,9 +379,14 @@ public class CoverageBiasCorrectionWalker
 				String name = e.getKey();
 				int index = groupIndex.get(name);
 				LocusGenotype lg = byGroupIndex[index];
+				if (lg == null)
+					byGroupIndex[index] = lg = new LocusGenotype();
 				int forwardStarts = 0;
 				int reverseStarts = 0;
 				for (PileupElement pe : ac.getBasePileup()) {
+					if (pe.isDeletion() || pe.isInsertionAtBeginningOfRead())
+						continue;
+					lg.depth++;
 					if (pe.getMappingQual() < minMappingQuality)
 						continue;
 					SAMRecord read = pe.getRead();
@@ -335,7 +402,6 @@ public class CoverageBiasCorrectionWalker
 				}
 				lg.forwardStarts += forwardStarts;
 				lg.reverseStarts += reverseStarts;
-
 			}
 		}
 
@@ -343,14 +409,14 @@ public class CoverageBiasCorrectionWalker
 			for (String gn : groupNames) {
 				int i = groupIndex.get(gn);
 				LocusGenotype lg = byGroupIndex[i];
-				lg.forwardStartCorrected = lg.forwardStarts
-						* coverageBiasCounter.getStartRate(gn,
-								fragmentSizeByName.get(gn),
-								lc.getGcBias(gn, true));
-				lg.reverseStartCorrected = lg.reverseStarts
-						* coverageBiasCounter.getStartRate(gn,
-								fragmentSizeByName.get(gn),
-								lc.getGcBias(gn, false));
+				lg.forwardGcBias = lc.getGcBias(gn, true);
+				lg.reverseGcBias = lc.getGcBias(gn, false);
+				lg.forwardLambda = coverageBiasCounter.getStartRate(gn,
+								fragmentSizeByName.get(gn) -1,
+								lc.getGcBias(gn, true),true);
+				lg.reverseStartCorrected = coverageBiasCounter.getStartRate(gn,
+								fragmentSizeByName.get(gn) -1,
+								lc.getGcBias(gn, false),false);
 			}
 
 		}

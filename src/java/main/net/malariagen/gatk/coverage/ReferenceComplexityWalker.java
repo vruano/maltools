@@ -57,6 +57,8 @@ public class ReferenceComplexityWalker extends
 	@Output(shortName = "o", fullName = "output", doc = "File to which variants should be written", required = true)
 	protected VCFWriter writer = null;
 
+	@Argument(shortName = "exaustiveRefReads", fullName = "exaustiveRefereceReads", doc = "name of read-group or sample containing exaustive reference reads", required = false)
+	protected String exaustiveRefReadGroupOrSample = null;
 	
 	@Override
 	public ReferenceContext map(RefMetaDataTracker tracker,

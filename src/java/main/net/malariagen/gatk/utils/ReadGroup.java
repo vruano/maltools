@@ -30,4 +30,5 @@ public class ReadGroup {
 	public Sample getSample() {
 		return db.sampleDb.getSample(samRecord);
 	}
+	
 }

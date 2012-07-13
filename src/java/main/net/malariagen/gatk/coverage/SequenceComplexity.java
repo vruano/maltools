@@ -13,6 +13,7 @@ import org.broadinstitute.sting.utils.GenomeLoc;
 
 public class SequenceComplexity {
 
+	private static final boolean doTriEnt = false;
 	int windowSize;
 	int size;
 	List<GenomeLoc> locs;
@@ -144,6 +145,7 @@ public class SequenceComplexity {
 					}
 				if (i >= triDelta) continue; 
 				draw = rnd.nextDouble();
+				if (doTriEnt)
 				for (int j = 0; j < 64; j++)
 					if (j == 63
 							|| (draw -= invNucsTotal * this.trinucsCount[j]) <= 0) {
@@ -158,7 +160,7 @@ public class SequenceComplexity {
 		gcBias *= 100;
 		for (int i = 0; i < 4; i++)
 			nucEnt += entropy[nucsCount[i]];
-		for (int i = 0; i < 64; i++)
+		if (doTriEnt) for (int i = 0; i < 64; i++)
 			triEnt += entropyMinus2[trinucsCount[i]];
 		// }
 		// else {
