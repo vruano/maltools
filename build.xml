@@ -3,7 +3,6 @@
 <property file="${basedir}/project.properties"/>
 <property file="${basedir}/build.properties"/>
 
-
 <!-- Unmodifable properties (unless you know what you are doing) -->
 
 <property name="source.dir" value="${basedir}/src" />
@@ -106,30 +105,30 @@
   <get src="http://mirror.lividpenguin.com/pub/apache//commons/math/source/commons-math-2.2-src.zip" dest="${3rdparty.dir}/commons-math-2.2-src.zip" />
 </target>
 
-<target name="install.config" unless="install.config">
-   <input message="Select base command and configuration name"
-          addproperty="install.name"
-          defaultvalue="${install.name.default}" />
+<target name="install.config" depends="init" unless="install.config">
+  <input message="Select base command and configuration name"
+         addproperty="install.name"
+         defaultvalue="${install.name.default}" />
 
-   <condition property="install.name.fail">
-     <not>
-       <available file="${conf.dir}/${install.name}.json" />
-     </not>
-   </condition>
-   <fail if="install.name.fail">There is no configuration file available as ${conf.dir}/${install.name}.json for '${install.name}'</fail>
-   <input message="Installation root directory?" 
-          addproperty="install.dir" 
-          defaultvalue="${install.dir.default}" />
-   <property name="install.config" value="${install.config.default}" />
-   <propertyfile file="${install.config}">
-     <entry key="install.dir" value="${install.dir}" />
-     <entry key="install.name" value="${install.name}" />
-   </propertyfile>
+  <condition property="install.name.fail">
+    <not>
+      <available file="${conf.dir}/${install.name}.json" />
+    </not>
+  </condition>
+  <fail if="install.name.fail">There is no configuration file available as ${conf.dir}/${install.name}.json for '${install.name}'</fail>
+  <input message="Installation root directory?" 
+         addproperty="install.dir" 
+         defaultvalue="${install.dir.default}" />
+  <property name="install.config" value="${install.config.default}" />
+  <propertyfile file="${install.config}">
+    <entry key="install.dir" value="${install.dir}" />
+    <entry key="install.name" value="${install.name}" />
+  </propertyfile>
 </target>
 
 <target name="init">
- <mkdir dir="${build.dir}" />
- <mkdir dir="${3rdparty.dir}" />
+  <mkdir dir="${build.dir}" />
+  <mkdir dir="${3rdparty.dir}" />
 </target>
 
 <target name="ivy.init" depends="init">
@@ -186,18 +185,18 @@
 </target>
 
 <target name="cpp.build" depends="cpp.init, bwa.init">
- <mkdir dir="${build.cpp.dir}" />
- <mkdir dir="${build.cpp.dir}/obj" />
- <mkdir dir="${build.cpp.dir}/bin" />
- <make dir="${source.cpp.dir}" target="all" >
-   <options>
-     <env key="OBJDIR" value="${build.cpp.dir}/obj" />
-     <env key="BINDIR" value="${build.cpp.dir}/bin" />
-     <env key="SRCDIR" value="${source.cpp.dir}" />
-     <env key="SAMTOOLS_DIR" value="${samtools.dir}" />
-     <env key="CPP" value="g++" />
-   </options>
- </make>
+  <mkdir dir="${build.cpp.dir}" />
+  <mkdir dir="${build.cpp.dir}/obj" />
+  <mkdir dir="${build.cpp.dir}/bin" />
+  <make dir="${source.cpp.dir}" target="all" >
+    <options>
+      <env key="OBJDIR" value="${build.cpp.dir}/obj" />
+      <env key="BINDIR" value="${build.cpp.dir}/bin" />
+      <env key="SRCDIR" value="${source.cpp.dir}" />
+      <env key="SAMTOOLS_DIR" value="${samtools.dir}" />
+      <env key="CPP" value="g++" />
+    </options>
+  </make>
 </target>
 
 <!-- java targets -->
@@ -212,10 +211,10 @@
 <target name="gatk.get" depends="init">
   <git-get url="${gatk.url}" dir="${gatk.dir}" commit="${gatk.commit}" branch="${gatk.branch}" patch="${gatk.patch}" />
   <condition property="gatk.patched">
-   <or> 
-     <available file="${gatk.dir}/.patch_applied" property="${gatk.patched}" />
-     <equals arg1="${gatk.patch}" arg2="NONE" />
-   </or>
+    <or> 
+      <available file="${gatk.dir}/.patch_applied" property="${gatk.patched}" />
+      <equals arg1="${gatk.patch}" arg2="NONE" />
+    </or>
   </condition>
   <fail message="Gatk was not patched (missing ${gatk.dir}/.patch_applied)" unless="gatk.patched"/>
   <available file="${gatk.dir}/.built" property="${gatk.built}" />
@@ -398,15 +397,15 @@
 </target>
 	
 <target name="java.clean">
-	<delete dir="${build.java.dir}" />
+  <delete dir="${build.java.dir}" />
 </target>
 	
 <target name="dist.clean">
-    <delete dir="${dist.dir}" />
+  <delete dir="${dist.dir}" />
 </target>
 	
 <target name="dist.layout.clean">
-    <delete dir="${dist.layout.dir}" />
+  <delete dir="${dist.layout.dir}" />
 </target>
 	
 <target name="clean" depends="java.clean,dist.layout.clean">
