@@ -4,6 +4,8 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import java.io.FileWriter;
+import java.io.PrintWriter;
 import java.util.Collection;
 import java.util.LinkedHashSet;
 import java.util.Set;
@@ -27,6 +29,7 @@ import org.broadinstitute.sting.gatk.walkers.ReadWalker;
 import org.broadinstitute.sting.gatk.walkers.Requires;
 import org.broadinstitute.sting.gatk.walkers.TreeReducible;
 import org.broadinstitute.sting.utils.baq.BAQ;
+import org.broadinstitute.sting.utils.exceptions.StingException;
 import org.broadinstitute.sting.utils.exceptions.UserException;
 import org.broadinstitute.sting.utils.sam.GATKSAMRecord;
 
@@ -42,20 +45,20 @@ public class FragmentLengthsWalker extends ReadWalker<GATKSAMRecord,FragmentLeng
 	public int maxLength = 1000;
 	
 	@Argument(shortName="mmq", fullName="min_mapping_quality",
-			doc = "minimum mapping quality")
+			doc = "minimum mapping quality", required = false)
 	public int minimumMappingQuality = 0;
-	
-	
-//	@Argument(fullName="overwrite", shortName="ow", doc = "allow the program to overwrite the content of the output directory if it already exists and is not empty",required = false)
-//	public boolean overwrite = false;
-	
-	
+		
 	@Output(shortName="o", fullName="output_directory", doc = "directory where to show the output the fragment length summary stats",required = true)
 	public File outDir;
+	
+	@Output(shortName="ofc", fullName="fragmentCoordinates", doc = "output file for fragment choordinates", required = false)
+	public File fragmentCoordinatesOutFile;
 	
 	private Set<String> sampleIds;
 	
 	private Set<String> rgIds;
+	
+	private PrintWriter fragmentCoordinatesOutput;
 	
 	@Override
 	public GATKSAMRecord map(ReferenceContext ref, GATKSAMRecord read,
@@ -77,6 +80,13 @@ public class FragmentLengthsWalker extends ReadWalker<GATKSAMRecord,FragmentLeng
 			sampleIds.add(s.getID());
 		for (SAMReadGroupRecord r : rgs)
 			rgIds.add(r.getId());
+	
+		if (fragmentCoordinatesOutFile != null)
+			try {
+				fragmentCoordinatesOutput = new PrintWriter(new FileWriter(fragmentCoordinatesOutFile));
+			} catch (IOException e) {
+				throw new StingException(e.getMessage(),e);
+			}
 		checkOutDir(outDir);
 	}
 
@@ -88,17 +98,6 @@ public class FragmentLengthsWalker extends ReadWalker<GATKSAMRecord,FragmentLeng
 				throw new UserException("the output directory provided '" + outDir + "' is not in fact a directory ");
 			if (!outDir.canWrite())
 				throw new UserException("the output directory provided '" + outDir + "' is not writable");
-//			FileFilter ff = new FileFilter() {
-//				@Override
-//				public boolean accept(File pathname) {
-//					if (pathname.equals(".") || pathname.equals(".."))
-//						return false;
-//					return true;
-//				}
-//			};
-			
-//			if (!overwrite && outDir.listFiles(ff).length >= 0)
-//				throw new UserException("the output directory provided '" + outDir + "' is not empty but overwrite was not forced (option --overwrite or -ow) ");
 		}
 		else {
 			File parent = outDir.getParentFile();
@@ -116,7 +115,17 @@ public class FragmentLengthsWalker extends ReadWalker<GATKSAMRecord,FragmentLeng
 
 	@Override
 	public FragmentLengths reduceInit() {
-		return FragmentLengths.create(sampleIds, rgIds, maxLength, minimumMappingQuality);
+		FragmentLengths result = FragmentLengths.create(sampleIds, rgIds, maxLength, minimumMappingQuality);
+		
+		if (this.fragmentCoordinatesOutput != null) 
+			result.listeners.add(new FragmentLengths.Listener() {
+
+			@Override
+			public void fragmentFound(String chrom, String sample,
+					String readGroup, int start, int end) {
+				fragmentCoordinatesOutput.println(String.format("%s\t%s\t%s\t%d\t%d",chrom,sample,readGroup,start,end));
+			}});
+		return result;
 	}
 
 	@Override
@@ -157,6 +166,7 @@ public class FragmentLengthsWalker extends ReadWalker<GATKSAMRecord,FragmentLeng
 		catch (IOException e) {
 			throw new RuntimeException(e.getMessage(),e);
 		}
+		fragmentCoordinatesOutput.flush();
 	}
 
 	@Override

@@ -4,8 +4,10 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import net.sf.samtools.AlignmentBlock;
 import net.sf.samtools.SAMReadGroupRecord;
@@ -14,6 +16,10 @@ import net.sf.samtools.SAMRecord;
 import org.broadinstitute.sting.utils.sam.GATKSAMRecord;
 
 public abstract class FragmentLengths {
+
+	public interface Listener {
+		public void fragmentFound(String chrom, String sample, String readGroup, int start, int end);
+	}
 
 	public class FirstMate {
 		int start;
@@ -32,6 +38,8 @@ public abstract class FragmentLengths {
 	protected Map<String, FirstMate> firstMates = new HashMap<String, FirstMate>(
 			100);
 
+	Set<Listener> listeners = new HashSet<Listener>();
+	
 	public static long FREQ_SIZE_THR = 1000;
 
 	protected int minimumMappingQuality = 0; 
@@ -69,6 +77,7 @@ public abstract class FragmentLengths {
 		}
 		return result;
 	}
+	
 
 	public static FragmentLengths merge(FragmentLengths fl1, FragmentLengths fl2) {
 		long newSize = fl1.size + fl2.size;
@@ -79,22 +88,28 @@ public abstract class FragmentLengths {
 					fl1.samples, fl1.readGroups, fl1.maxLength, fl1.minimumMappingQuality);
 			result.mergeIn(fl1);
 			result.mergeIn(fl2);
+			result.listeners.addAll(fl1.listeners);
+			result.listeners.addAll(fl2.listeners);
 			return result;
 		} else if (fl1.getClass().equals(fl2.getClass())) {
 			fl1.mergeIn(fl2);
+			fl1.listeners.addAll(fl2.listeners);
 			return fl1;
 		} else if (fl1 instanceof FragmentLengthFrequencies) {
 			fl1.mergeIn(fl2);
+			fl1.listeners.addAll(fl2.listeners);
 			return fl1;
 		} else {
 			FragmentLengthFrequencies result = new FragmentLengthFrequencies(
 					fl1.samples, fl1.readGroups, fl1.maxLength, fl1.minimumMappingQuality);
 			result.mergeIn(fl1);
 			result.mergeIn(fl2);
+			result.listeners.addAll(fl1.listeners);
+			result.listeners.addAll(fl2.listeners);
 			return result;
 		}
 	}
-
+	
 	protected FragmentLengths(Collection<String> samples,
 			Collection<String> rgs, int maxLength, int minimumMappingQuality) {
 		if (maxLength <= 0)
@@ -169,6 +184,7 @@ public abstract class FragmentLengths {
 			return false;
 		if (read.getMappingQuality() < minimumMappingQuality)
 			return false;
+		String chrom = read.getReferenceName();
 		int start = read.getAlignmentStart();
 		int end = read.getAlignmentEnd();
 		int length = read.getReadLength();
@@ -185,6 +201,7 @@ public abstract class FragmentLengths {
 			return false;
 		if (rgIdx == null)
 			return false;
+		notifyListeners(chrom,rg.getSample(),rg.getId(),fm.start,end,!read.getFirstOfPairFlag());
 		if (fragmentLength <= fm.length + length)
 			return false;
 		if (fragmentLength > maxLength)
@@ -192,6 +209,17 @@ public abstract class FragmentLengths {
 		addLengths(fragmentLength, insertLength, smIdx, rgIdx);
 		size++;
 		return true;
+	}
+
+	private void notifyListeners(String chrom, String sample, String id,
+			int start, int end, boolean forward) {
+		if (!forward) {
+			int tmp = start;
+			start = end;
+			end = tmp;
+		}
+		for (Listener l : listeners) 
+			l.fragmentFound(chrom, sample, id, start, end);
 	}
 
 	protected abstract void addLengths(int fragmentLength, int insertLength,
@@ -223,6 +251,7 @@ public abstract class FragmentLengths {
 				FragmentLengthFrequencies result = new FragmentLengthFrequencies(
 						sum.samples, sum.readGroups, sum.maxLength, sum.minimumMappingQuality);
 				result.mergeIn(sum);
+				result.listeners.addAll(sum.listeners);
 				return result;
 			}
 		return sum;

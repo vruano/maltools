@@ -239,6 +239,9 @@ public class CoverageBiasCorrectionWalker
 		List<LocusComplexity> completed = complexity.removeCompleted();
 		GenomeLoc lastLoc = null;
 		for (LocusComplexity lc : completed) {
+			if (!lc.locus.getContig().equals(sum.getCurrentContig()))
+				continue;
+			//System.err.println(lc.locus);
 			Locus l = sum.get(lc.locus);
 			l.setComplexity(lc);
 			lastLoc = lc.locus;
@@ -249,15 +252,26 @@ public class CoverageBiasCorrectionWalker
 	}
 
 	public class Region {
+		
 		public MultiWindowSequenceComplexity complexity;
 
 		public SortedMap<GenomeLoc, Locus> locusBuffer = new TreeMap<GenomeLoc, Locus>();
 
 
 		public void add(Locus value) {
-			if (locusBuffer.size() > 0 && locusBuffer.firstKey().getContig() != value.refContext.getLocus().getContig())
+			if (locusBuffer.size() > 0 && !locusBuffer.firstKey().getContig().equals(value.refContext.getLocus().getContig())) {
+				System.err.println("CLEARED " + value.getLocation());
 				locusBuffer.clear();
+			}
 			locusBuffer.put(value.getLocation(), value);
+			//stem.err.println("ADDED " + value.getLocation());
+		}
+		
+		public String getCurrentContig() {
+			if (locusBuffer.isEmpty())
+				return null;
+			else 
+				return locusBuffer.firstKey().getContig();
 		}
 
 		public void emitTo(GenomeLoc toLoc) {
@@ -295,7 +309,6 @@ public class CoverageBiasCorrectionWalker
 				writer.add(vc);
 			}
 			locusBuffer.headMap(lastLoc).clear();
-
 		}
 
 		public Locus get(GenomeLoc loc) {

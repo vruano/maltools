@@ -9,7 +9,7 @@ import net.malariagen.gatk.test.WalkerTest;
 
 import org.junit.Test;
 
-public class CoverageBiasCorrectionTest {
+public class FragmentListWalkerTest {
 
 	@Test
 	public void test3D7Reference() throws IOException {
@@ -21,7 +21,7 @@ public class CoverageBiasCorrectionTest {
 			
 		File outDir = File.createTempFile("rctest", ".out");
 		outDir.delete();
-		WalkerTest.executeTest("MappabilityAnalisys", String.format("-T CoverageBiasCorrection -W 1000 -skip 1000 -R %s -L MAL14 -I %s -o %s -cb /tmp/PG0051-C.notrinuc -fl /home/valentin/Science/CoveragePf/FragmentLengths/gatk-out -groupBy RG",
+		WalkerTest.executeTest("MappabilityAnalisys", String.format("-T FragmentList -R %s -I %s -o %s.gz ",
 				refFasta,testBam2,outDir), null);
 		assertTrue(outDir.exists());
 //		outDir.delete();

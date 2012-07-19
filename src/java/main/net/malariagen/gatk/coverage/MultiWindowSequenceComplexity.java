@@ -22,7 +22,7 @@ public class MultiWindowSequenceComplexity {
 	protected Map<GenomeLoc, WindowSet> windowByLoc = new HashMap<GenomeLoc, WindowSet>(
 			100);
 
-	public List<Map<Integer, LocusComplexity>> count(ReferenceContext ref) {
+	public List<Map<Integer, LocusComplexity>> count(ReferenceContext ref, Integer exaustiveRef, int refMQ) {
 
 		GenomeLoc loc = ref.getLocus();
 		WindowSet ws = windowByLoc.get(loc);
@@ -36,7 +36,11 @@ public class MultiWindowSequenceComplexity {
 		}
 
 		for (Integer i : byWs.keySet()) {
-			LocusComplexity lc = byWs.get(i).count(ref);
+			LocusComplexity lc; 
+			if (exaustiveRef != null && exaustiveRef.intValue() == i) 
+				lc = byWs.get(i).count(ref,refMQ);
+			else
+				lc = byWs.get(i).count(ref,0);
 			if (lc == null)
 				continue;
 			ws = windowByLoc.get(lc.getLocus());

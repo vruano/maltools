@@ -14,19 +14,24 @@ import java.util.Set;
 
 import net.malariagen.gatk.coverage.CoverageBiasWalker.GroupBy;
 import net.malariagen.gatk.coverage.SequenceComplexity.LocusComplexity;
+import net.malariagen.gatk.utils.ReadGroup;
+import net.malariagen.gatk.utils.ReadGroupDB;
 import net.malariagen.vcf.VCFReadGroupHeaderLine;
+import net.sf.samtools.SAMReadGroupRecord;
 
 import org.broadinstitute.sting.commandline.Argument;
 import org.broadinstitute.sting.commandline.Output;
 import org.broadinstitute.sting.gatk.contexts.AlignmentContext;
 import org.broadinstitute.sting.gatk.contexts.ReferenceContext;
 import org.broadinstitute.sting.gatk.refdata.RefMetaDataTracker;
+import org.broadinstitute.sting.gatk.walkers.BAQMode;
 import org.broadinstitute.sting.gatk.walkers.By;
 import org.broadinstitute.sting.gatk.walkers.DataSource;
 import org.broadinstitute.sting.gatk.walkers.LocusWalker;
 import org.broadinstitute.sting.gatk.walkers.PartitionBy;
 import org.broadinstitute.sting.gatk.walkers.PartitionType;
 import org.broadinstitute.sting.utils.GenomeLoc;
+import org.broadinstitute.sting.utils.baq.BAQ;
 import org.broadinstitute.sting.utils.codecs.vcf.VCFFormatHeaderLine;
 import org.broadinstitute.sting.utils.codecs.vcf.VCFHeader;
 import org.broadinstitute.sting.utils.codecs.vcf.VCFHeaderLine;
@@ -34,6 +39,8 @@ import org.broadinstitute.sting.utils.codecs.vcf.VCFHeaderLineType;
 import org.broadinstitute.sting.utils.codecs.vcf.VCFInfoHeaderLine;
 import org.broadinstitute.sting.utils.codecs.vcf.VCFWriter;
 import org.broadinstitute.sting.utils.exceptions.UserException;
+import org.broadinstitute.sting.utils.pileup.PileupElement;
+import org.broadinstitute.sting.utils.sam.GATKSAMRecord;
 import org.broadinstitute.sting.utils.variantcontext.Allele;
 import org.broadinstitute.sting.utils.variantcontext.Genotype;
 import org.broadinstitute.sting.utils.variantcontext.GenotypesContext;
@@ -42,8 +49,14 @@ import org.broadinstitute.sting.utils.variantcontext.VariantContextBuilder;
 
 @By(DataSource.REFERENCE)
 @PartitionBy(PartitionType.CONTIG)
+@BAQMode(QualityMode = BAQ.QualityMode.DONT_MODIFY, ApplicationTime = BAQ.ApplicationTime.FORBIDDEN)
 public class ReferenceComplexityWalker extends
-		LocusWalker<ReferenceContext, MultiWindowSequenceComplexity> {
+		LocusWalker<net.malariagen.gatk.coverage.ReferenceComplexityWalker.Locus, MultiWindowSequenceComplexity> {
+
+	static class Locus {
+		ReferenceContext ref;
+		int refMQ;
+	}
 
 	@Argument(shortName = "W", fullName = "windowSize", required = false, doc = "window-size to get stats on")
 	protected Integer windowSize = null;
@@ -57,22 +70,61 @@ public class ReferenceComplexityWalker extends
 	@Output(shortName = "o", fullName = "output", doc = "File to which variants should be written", required = true)
 	protected VCFWriter writer = null;
 
-	@Argument(shortName = "exaustiveRefReads", fullName = "exaustiveRefereceReads", doc = "name of read-group or sample containing exaustive reference reads", required = false)
+	@Argument(shortName = "exaustiveRefReads", fullName = "exaustiveReferenceReads", doc = "name of read-group or sample containing exaustive reference reads", required = false)
 	protected String exaustiveRefReadGroupOrSample = null;
 	
 	@Override
-	public ReferenceContext map(RefMetaDataTracker tracker,
+	public Locus map(RefMetaDataTracker tracker,
 			ReferenceContext ref, AlignmentContext context) {
-		return ref;
+		Locus result = new Locus();
+		result.ref = ref;
+		if (exaustiveRef != null) {
+			for (PileupElement pe : context.getBasePileup())  {
+				GATKSAMRecord r = pe.getRead();
+				SAMReadGroupRecord rg = r.getReadGroup();
+				if (r.getAlignmentStart() != ref.getLocus().getStart()) 
+					continue;
+				if (!rg.getId().equals(this.exaustiveRefReadGroupOrSample) && !rg.getSample().equals(this.exaustiveRefReadGroupOrSample))
+					continue;
+				String contig = ref.getLocus().getContig();
+				String readName = r.getReadName();
+				if (!readName.startsWith(contig))
+					continue;
+				int idx = contig.length();
+				StringBuffer sb = new StringBuffer(10);
+				boolean numberFound = false;
+				while (idx < readName.length()) {
+					char c = readName.charAt(idx++);
+					if (Character.isDigit(c)) {
+						numberFound = true;
+						sb.append(c);
+					}
+					else if (numberFound) 
+						break;
+				}
+				if (!numberFound)
+					continue;
+				int num = Integer.parseInt(sb.toString());
+				if (num == ref.getLocus().getStart()) { 
+					result.refMQ = r.getMappingQuality();
+					break;
+				}
+			}
+		}
+		return result;
 	}
 
 	@Output(shortName = "groupBy", required = false)
-	protected GroupBy groupBy = null;
+	protected GroupBy groupBy = GroupBy.NONE;
 
 	private FragmentLengthSummary fragmentLengthSummary;
+	
+	private ReadGroupDB readGroupDb;
 
 	Map<String, Integer> groupWindowSize;
         Map<String, Integer> realGroupWindowSize;
+
+	private Integer exaustiveRef;
 
 	@Override
 	public void initialize() {
@@ -104,6 +156,9 @@ public class ReferenceComplexityWalker extends
 		if (rounding <= 0) 
 			throw new UserException("the window size rounding must be positive");
 
+		readGroupDb = new ReadGroupDB(this.getToolkit());
+
+		
 		Set<VCFHeaderLine> headerLines = new LinkedHashSet<VCFHeaderLine>();
 		VCFHeader header = null;
 		if (groupBy == null)
@@ -160,9 +215,14 @@ public class ReferenceComplexityWalker extends
 					groupWindowSize.put("" + ws,ws);
 				}
 			}
+
+
+
 			header = new VCFHeader(headerLines, groupNames);
 		}
-
+		initializeExaustiveReference();
+		if (exaustiveRef != null)
+			headerLines.add(new VCFInfoHeaderLine("RefMQ", 1, VCFHeaderLineType.Integer, "Mapping quality of the exact reference read"));
 		if (windowSize != null) {
 			headerLines.add(new VCFInfoHeaderLine("GCBias", 1,
 					VCFHeaderLineType.Float,
@@ -182,6 +242,30 @@ public class ReferenceComplexityWalker extends
 		writer.writeHeader(header);
 	}
 
+	private void initializeExaustiveReference() {
+		if (exaustiveRefReadGroupOrSample != null) {
+			Set<ReadGroup> exaustiveRefReadGroups = readGroupDb.getReadGroupsBySampleOrReadGroupID(exaustiveRefReadGroupOrSample);
+			if (exaustiveRefReadGroups.size() == 0)
+				throw new UserException("The exaustive reference sample or read-group provided is not found amongst the input data read-groups");
+			else if (exaustiveRefReadGroups.size() == 1) 
+				exaustiveRef = groupWindowSize.get(exaustiveRefReadGroups.iterator().next());
+			else {
+				for (ReadGroup rg : exaustiveRefReadGroups) {
+					Integer candidate = groupWindowSize.get(rg.getID());
+					if (candidate == null);
+					else if (exaustiveRef == null)
+						exaustiveRef = candidate;
+					else if (exaustiveRef.intValue() != candidate.intValue()) 
+						throw new UserException("the exaustive reference sample/ read-group maps to more than one windows-size");
+				}
+			}
+			if (exaustiveRef == null)
+				exaustiveRef = windowSize;
+			if (exaustiveRef == null)
+				throw new UserException("cannot resolve the window-size for the exaustive reference sample or read-group");
+		}
+	}
+
 	@Override
 	public MultiWindowSequenceComplexity reduceInit() {
 		Set<Integer> windowSizes = new HashSet<Integer>();
@@ -198,10 +282,10 @@ public class ReferenceComplexityWalker extends
 	}
 
 	@Override
-	public MultiWindowSequenceComplexity reduce(ReferenceContext value,
+	public MultiWindowSequenceComplexity reduce(Locus value,
 			MultiWindowSequenceComplexity sum) {
 		List<Map<Integer, SequenceComplexity.LocusComplexity>> lcm = sum
-				.count(value);
+				.count(value.ref,exaustiveRef,value.refMQ);
 		for (Map<Integer, SequenceComplexity.LocusComplexity> l : lcm)
 			if (l.size() != 0)
 				emit(l);
@@ -215,18 +299,21 @@ public class ReferenceComplexityWalker extends
 				example.getRefNuc().byteValue(), true));
 		vcb.alleles(alleles);
 		GenomeLoc loc = example.getLocus();
+		Map<String, Object> attributes = new LinkedHashMap<String, Object>(
+				4);
 		if (windowSize != null && lcm.containsKey(windowSize)) {
 			LocusComplexity lc = lcm.get(windowSize);
-			Map<String, Object> attributes = new LinkedHashMap<String, Object>(
-					4);
 			attributes.put("GCBias", lc.getGcBias());
 			attributes.put("NucEnt", lc.getNucEnt());
 			attributes.put("TriEnt", lc.getTriEnt());
 			attributes.put("END", lc.getLocus().getStart() + lc.size() - 1);
-			vcb.attributes(attributes);
 			if (lc.getLocus().compareTo(loc) < 0)
 				loc = lc.getLocus();
 		}
+		if (exaustiveRef != null) {
+			attributes.put("RefMQ", lcm.get(exaustiveRef).getRefMQ());
+		}
+		vcb.attributes(attributes);
 		List<Allele> noCall = Collections.singletonList(Allele.NO_CALL);
 		Set<String> noFilters = Collections.emptySet();
 		GenotypesContext gc = GenotypesContext.create();
@@ -254,6 +341,16 @@ public class ReferenceComplexityWalker extends
 	@Override
 	public boolean isReduceByInterval() {
 		return true;
+	}
+
+	public MultiWindowSequenceComplexity reduce(ReferenceContext rc,
+			MultiWindowSequenceComplexity sum) {
+		List<Map<Integer, SequenceComplexity.LocusComplexity>> lcm = sum
+				.count(rc,null,0);
+		for (Map<Integer, SequenceComplexity.LocusComplexity> l : lcm)
+			if (l.size() != 0)
+				emit(l);
+		return sum;
 	}
 
 }

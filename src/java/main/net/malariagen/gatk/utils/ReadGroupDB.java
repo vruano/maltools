@@ -3,6 +3,7 @@ package net.malariagen.gatk.utils;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -20,11 +21,17 @@ public class ReadGroupDB {
 	SampleDB sampleDb;
 	Map<String,ReadGroup> readGroupsByID;
 	Map<String,Set<ReadGroup>> readGroupsBySampleID;
-	
+
+	public ReadGroupDB(Map<String,Set<String>> samplesAndReadGroupIDs) {
+		this(new MapSampleDB(samplesAndReadGroupIDs),srgrList(samplesAndReadGroupIDs));
+	}
+
 	public ReadGroupDB(GenomeAnalysisEngine gae) {
-		sampleDb = gae.getSampleDB();
-		
-		List<SAMReadGroupRecord> srgrList = gae.getReadsDataSource().getHeader().getReadGroups();
+		this(gae.getSampleDB(), gae.getReadsDataSource().getHeader().getReadGroups());
+	}
+	public ReadGroupDB(SampleDB sdb,List<SAMReadGroupRecord> srgrList) {
+		sampleDb = sdb;
+
 		readGroupsByID = new HashMap<String,ReadGroup>();
 		readGroupsBySampleID = new HashMap<String,Set<ReadGroup>>();
 		for (Sample s : sampleDb.getSamples()) { 
@@ -104,4 +111,31 @@ public class ReadGroupDB {
 		else
 			return Collections.emptySet();
 	}
+	
+	// Simulates a sample DB from a map from sample name to read-group ids.
+	private static class MapSampleDB extends SampleDB {
+		public MapSampleDB(Map<String, Set<String>> samplesAndReadGroupIDs) {
+			super();
+			for (Map.Entry<String, Set<String>> e : samplesAndReadGroupIDs.entrySet()) {
+				Sample s = new Sample(e.getKey(),this);
+				this.addSample(s);
+			}
+		}
+	}
+	private static List<SAMReadGroupRecord> srgrList(
+			Map<String, Set<String>> samplesAndReadGroupIDs) {
+		
+		List<SAMReadGroupRecord> result = new LinkedList<SAMReadGroupRecord>();
+		for (Map.Entry<String,Set<String>> rgs : samplesAndReadGroupIDs.entrySet()) 
+			for (String rg : rgs.getValue()) {
+				SAMReadGroupRecord srgr = new SAMReadGroupRecord(rg);
+				srgr.setSample(rgs.getKey());
+			}
+		return result;
+	}
+
+	public Set<String> getSampleIDs() {
+		return Collections.unmodifiableSet(readGroupsBySampleID.keySet()); 
+	}
+
 }

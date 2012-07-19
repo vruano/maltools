@@ -110,6 +110,7 @@ public class FragmentLengthArrays extends FragmentLengths {
 	public FragmentLengthFrequencies frequencies() {
 		FragmentLengthFrequencies result = new FragmentLengthFrequencies(this.samples,this.readGroups,this.maxLength,this.minimumMappingQuality);
 		result.mergeIn(this);
+		result.listeners.addAll(this.listeners);
 		return result;
 	}
 

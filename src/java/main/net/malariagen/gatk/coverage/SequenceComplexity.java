@@ -11,6 +11,8 @@ import net.malariagen.utils.Trinucleotide;
 import org.broadinstitute.sting.gatk.contexts.ReferenceContext;
 import org.broadinstitute.sting.utils.GenomeLoc;
 
+import scala.reflect.generic.Trees.This;
+
 public class SequenceComplexity {
 
 	private static final boolean doTriEnt = false;
@@ -20,6 +22,7 @@ public class SequenceComplexity {
 	GenomeLoc end;
 	LinkedList<Nucleotide> nucs;
 	LinkedList<Trinucleotide> trinucs;
+	LinkedList<Integer> refMQs;
 	int[] nucsCount;
 	int[] trinucsCount;
 	int nucsTotal;
@@ -30,7 +33,7 @@ public class SequenceComplexity {
 	private double[] entropyMinus2;
 	private boolean emited = false;
 
-	public LocusComplexity count(ReferenceContext ref) {
+	public LocusComplexity count(ReferenceContext ref,int refMQ) {
 		GenomeLoc loc = ref.getLocus();
 		Nucleotide n = Nucleotide.fromByte(ref.getBase());
 		if (end != null && !loc.getContig().equals(end.getContig()))
@@ -41,6 +44,7 @@ public class SequenceComplexity {
 				Nucleotide n0 = nucs.remove(0);
 				Trinucleotide t0 = trinucs.remove(0);
 				locs.remove(0);
+				refMQs.remove(0);
 				if (n0 != Nucleotide.N) {
 					nucsCount[n0.ordinal()]--;
 					nucsTotal--;
@@ -51,6 +55,7 @@ public class SequenceComplexity {
 				}
 			}
 			trinucs.add(Trinucleotide.NNN);
+			refMQs.add(refMQ);
 			nucs.add(Nucleotide.N);
 			locs.add(loc);
 			loc = ref.getGenomeLocParser().createGenomeLoc(loc.getContig(), loc.getStart() + 1, loc.getStart() + 1);
@@ -58,6 +63,7 @@ public class SequenceComplexity {
 		if (nucs.size() == windowSize) {
 			Nucleotide n0 = nucs.remove(0);
 			Trinucleotide t0 = trinucs.remove(0);
+			refMQs.remove(0);
 			locs.remove(0);
 
 			if (n0 != Nucleotide.N) {
@@ -72,6 +78,7 @@ public class SequenceComplexity {
 		}
 		end = loc;
 		nucs.add(n);
+		refMQs.add(refMQ);
 		if (n != Nucleotide.N) {
 			locs.add(loc);
 			nucsCount[n.ordinal()]++;
@@ -89,6 +96,7 @@ public class SequenceComplexity {
 					nucs.get(nucs.size() - 2), n);
 		}
 		trinucs.add(t);
+
 		if (t != Trinucleotide.NNN) {
 			trinucsCount[t.ordinal()]++;
 			trinucsTotal++;
@@ -177,8 +185,10 @@ public class SequenceComplexity {
 		// triEnt -= trinucsCount[i] == 0 ? 0 : trinucsCount[i] *
 		// invTrinucsTotal * (Math.log(trinucsCount[i]) - logTrinucsTotal);
 		// }
-		return new LocusComplexity(loc, nucsTotal, nucs.get(0), gcBias, nucEnt,
+		LocusComplexity result = new LocusComplexity(loc, nucsTotal, nucs.get(0), gcBias, nucEnt,
 				gcHet, triEnt);
+		result.setRefMQ(refMQs.get(0));
+		return result;
 	}
 
 	SequenceComplexity(int ws) {
@@ -191,6 +201,7 @@ public class SequenceComplexity {
 		entropy = new double[ws];
 		entropyMinus2 = new double[ws - 2];
 		nucs = new LinkedList<Nucleotide>();
+		refMQs = new LinkedList<Integer>();
 		trinucs = new LinkedList<Trinucleotide>();
 		nucsCount = new int[4];
 		trinucsCount = new int[64];
@@ -224,6 +235,7 @@ public class SequenceComplexity {
 		private Nucleotide refNuc;
 		private double triEnt;
 		private int size;
+		private int refMQ;
 
 		public LocusComplexity(GenomeLoc loc, int size, Nucleotide n,
 				double gcBias, double nucEnt, double gcHet, double triEnt) {
@@ -262,6 +274,14 @@ public class SequenceComplexity {
 
 		public double getTriEnt() {
 			return this.triEnt;
+		}
+
+		public int getRefMQ() {
+			return this.refMQ;
+		}
+		
+		public void setRefMQ(int value) {
+			this.refMQ = value;
 		}
 
 	}
