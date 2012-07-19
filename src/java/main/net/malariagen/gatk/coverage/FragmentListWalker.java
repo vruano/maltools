@@ -66,7 +66,6 @@ public class FragmentListWalker extends FragmentWalker<FragmentRecord,net.malari
 		}
 	}
 	
-	
 	@Override
 	public Statistics reduceFragmentInit() {
 		return new Statistics();
