@@ -21,6 +21,7 @@ public class MultiWindowSequenceComplexity {
 	protected Map<GenomeLoc, WindowSet> windowByLoc = new HashMap<GenomeLoc, WindowSet>(
 			100);
 
+	
 	public List<Map<Integer, SequenceComplexity.LocusComplexity>> count(ReferenceContext ref, Integer exaustiveRef, int refMQ) {
 
 		GenomeLoc loc = ref.getLocus();
@@ -33,9 +34,13 @@ public class MultiWindowSequenceComplexity {
 			windowByLoc.put(loc, ws = new WindowSet(loc));
 			windows.add(ws);
 		}
-
+		
+		int seqLength = ref.getGenomeLocParser().getContigInfo(loc.getContig()).getSequenceLength();
+		int currentPos = loc.getStart();
+		int trailingLength = seqLength - currentPos + 1;
+		
 		for (Integer i : byWs.keySet()) {
-			SequenceComplexity.LocusComplexity lc; 
+			SequenceComplexity.LocusComplexity lc;
 			if (exaustiveRef != null && exaustiveRef.intValue() == i) 
 				lc = byWs.get(i).count(ref,refMQ);
 			else
@@ -47,6 +52,10 @@ public class MultiWindowSequenceComplexity {
 				throw new RuntimeException("complexity at locus " + loc
 						+ " seen before locus being visited!!!");
 			ws.bySize.put(i, lc);
+			boolean flush = trailingLength < i;
+			if (flush)
+				for (SequenceComplexity.LocusComplexity slc : byWs.get(i).flush()) 
+					windowByLoc.get(slc.getLocus()).bySize.put(i,slc);
 		}
 		if (windows.element().bySize.size() == byWs.size()) {
 			List<Map<Integer, SequenceComplexity.LocusComplexity>> result = new LinkedList<Map<Integer, SequenceComplexity.LocusComplexity>>();

@@ -1,5 +1,6 @@
 package net.malariagen.gatk.walker;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
@@ -32,49 +33,37 @@ public class SequenceComplexity {
 	private double[] entropy;
 	private double[] entropyMinus2;
 
+	public List<LocusComplexity> flush() {
+		List<LocusComplexity> result = new ArrayList<LocusComplexity>(nucs.size());
+		while (nucs.size() > 0) {
+			result.add(emit());
+			removeNucleotide();
+		}
+		return result;
+	}
+
+	
 	public LocusComplexity count(ReferenceContext ref,int refMQ) {
+		return count(ref,refMQ,false);
+	}
+	
+	public LocusComplexity count(ReferenceContext ref,int refMQ, boolean forceEmit) {
 		GenomeLoc loc = ref.getLocus();
 		Nucleotide n = Nucleotide.fromByte(ref.getBase());
 		if (end != null && !loc.getContig().equals(end.getContig()))
 			clear();
 		int gap = (nucs.size() != 0) ? end.getStop() - loc.getStart() : 0;
 		while (gap++ > 0) {
-			if (nucs.size() == windowSize) {
-				Nucleotide n0 = nucs.remove(0);
-				Trinucleotide t0 = trinucs.remove(0);
-				locs.remove(0);
-				refMQs.remove(0);
-				if (n0 != Nucleotide.N) {
-					nucsCount[n0.ordinal()]--;
-					nucsTotal--;
-				}
-				if (t0 != Trinucleotide.NNN) {
-					trinucsCount[t0.ordinal()]--;
-					trinucsTotal--;
-				}
-			}
+			if (nucs.size() == windowSize) 
+				removeNucleotide();
 			trinucs.add(Trinucleotide.NNN);
 			refMQs.add(refMQ);
 			nucs.add(Nucleotide.N);
 			locs.add(loc);
 			loc = ref.getGenomeLocParser().createGenomeLoc(loc.getContig(), loc.getStart() + 1, loc.getStart() + 1);
 		}
-		if (nucs.size() == windowSize) {
-			Nucleotide n0 = nucs.remove(0);
-			Trinucleotide t0 = trinucs.remove(0);
-			refMQs.remove(0);
-			locs.remove(0);
-
-			if (n0 != Nucleotide.N) {
-				nucsCount[n0.ordinal()]--;
-				nucsTotal--;
-			}
-			if (t0 != Trinucleotide.NNN) {
-				trinucsCount[t0.ordinal()]--;
-				trinucsTotal--;
-			}
-
-		}
+		if (nucs.size() == windowSize) 
+			removeNucleotide();
 		end = loc;
 		nucs.add(n);
 		refMQs.add(refMQ);
@@ -101,13 +90,30 @@ public class SequenceComplexity {
 			trinucsTotal++;
 		}
 
-		if (nucs.size() == windowSize)
+		if (forceEmit || nucs.size() == windowSize)
 			return emit();
 		else if (nucs.size() > windowSize)
 			throw new RuntimeException("cannot be " + windowSize + "  "  + nucs.size());
 		else
 			return null;
 
+	}
+
+
+	private void removeNucleotide() {
+		Nucleotide n0 = nucs.remove(0);
+		Trinucleotide t0 = trinucs.remove(0);
+		refMQs.remove(0);
+		locs.remove(0);
+
+		if (n0 != Nucleotide.N) {
+			nucsCount[n0.ordinal()]--;
+			nucsTotal--;
+		}
+		if (t0 != Trinucleotide.NNN) {
+			trinucsCount[t0.ordinal()]--;
+			trinucsTotal--;
+		}
 	}
 
 	private void clear() {
@@ -286,5 +292,6 @@ public class SequenceComplexity {
 		}
 
 	}
+
 
 }

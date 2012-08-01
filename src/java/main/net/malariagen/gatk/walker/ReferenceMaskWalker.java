@@ -21,7 +21,6 @@ import org.broadinstitute.sting.gatk.contexts.AlignmentContext;
 import org.broadinstitute.sting.gatk.contexts.ReferenceContext;
 import org.broadinstitute.sting.gatk.refdata.RefMetaDataTracker;
 import org.broadinstitute.sting.gatk.walkers.DataSource;
-import org.broadinstitute.sting.gatk.walkers.LocusWalker;
 import org.broadinstitute.sting.gatk.walkers.PartitionBy;
 import org.broadinstitute.sting.gatk.walkers.PartitionType;
 import org.broadinstitute.sting.gatk.walkers.Requires;
@@ -121,7 +120,6 @@ public class ReferenceMaskWalker extends RodWalker<ReferenceMaskWalker.Locus, Re
 				variantCollection.variants, context.getLocation());
 		}
 		catch(RuntimeException e) {
-			
 			throw e;
 		}
 		boolean maskIt = false;
