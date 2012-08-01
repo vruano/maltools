@@ -20,11 +20,29 @@ public class MultiWindowSequenceComplexity {
 	protected PriorityQueue<WindowSet> windows = new PriorityQueue<WindowSet>();
 	protected Map<GenomeLoc, WindowSet> windowByLoc = new HashMap<GenomeLoc, WindowSet>(
 			100);
+	private GenomeLoc lastLocus;
 
+	
+	public List<Map<Integer, SequenceComplexity.LocusComplexity>> flush() {
+		for (Integer i : byWs.keySet()) 
+			for (SequenceComplexity.LocusComplexity slc : byWs.get(i).flush()) 
+					windowByLoc.get(slc.getLocus()).bySize.put(i,slc);
+		List<Map<Integer, SequenceComplexity.LocusComplexity>> result = new LinkedList<Map<Integer, SequenceComplexity.LocusComplexity>>();
+		while (!windows.isEmpty()) {
+			WindowSet ws2 = windows.remove();
+			if (ws2.bySize.size() < byWs.size())
+				throw new IllegalStateException("some window size did not flush to the end");
+			result.add(ws2.bySize);
+			windowByLoc.remove(ws2.start);
+		}
+		return result;
+		
+	}
 	
 	public List<Map<Integer, SequenceComplexity.LocusComplexity>> count(ReferenceContext ref, Integer exaustiveRef, int refMQ) {
 
 		GenomeLoc loc = ref.getLocus();
+		lastLocus = loc;
 		WindowSet ws = windowByLoc.get(loc);
 		if (ws == null) {
 			if (!windows.isEmpty() && !windows.element().start.getContig().equals(loc.getContig())) {
@@ -34,10 +52,6 @@ public class MultiWindowSequenceComplexity {
 			windowByLoc.put(loc, ws = new WindowSet(loc));
 			windows.add(ws);
 		}
-		
-		int seqLength = ref.getGenomeLocParser().getContigInfo(loc.getContig()).getSequenceLength();
-		int currentPos = loc.getStart();
-		int trailingLength = seqLength - currentPos + 1;
 		
 		for (Integer i : byWs.keySet()) {
 			SequenceComplexity.LocusComplexity lc;
@@ -52,10 +66,6 @@ public class MultiWindowSequenceComplexity {
 				throw new RuntimeException("complexity at locus " + loc
 						+ " seen before locus being visited!!!");
 			ws.bySize.put(i, lc);
-			boolean flush = trailingLength < i;
-			if (flush)
-				for (SequenceComplexity.LocusComplexity slc : byWs.get(i).flush()) 
-					windowByLoc.get(slc.getLocus()).bySize.put(i,slc);
 		}
 		if (windows.element().bySize.size() == byWs.size()) {
 			List<Map<Integer, SequenceComplexity.LocusComplexity>> result = new LinkedList<Map<Integer, SequenceComplexity.LocusComplexity>>();
@@ -122,6 +132,11 @@ public class MultiWindowSequenceComplexity {
 			return start.compareTo(o.start);
 		}
 
+	}
+
+	public GenomeLoc lastLocus() {
+		// TODO Auto-generated method stub
+		return lastLocus;
 	}
 
 }

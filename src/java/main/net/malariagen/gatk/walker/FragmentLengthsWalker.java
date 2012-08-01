@@ -91,7 +91,7 @@ public class FragmentLengthsWalker extends ReadWalker<GATKSAMRecord,FragmentLeng
 		checkOutDir(outDir);
 	}
 
-	static void checkOutDir(File outDir) {
+	public static void checkOutDir(File outDir) {
 		if (outDir == null)
 			throw new IllegalStateException("output directory paramer not set");
 		if (outDir.exists()) {

@@ -322,12 +322,22 @@ public class ReferenceComplexityWalker
 	@Override
 	public MultiWindowSequenceComplexity reduce(Locus value,
 			MultiWindowSequenceComplexity sum) {
+		if (sum.lastLocus() != null & value.ref.getLocus().compareContigs(sum.lastLocus()) != 0) 
+			for (Map<Integer, SequenceComplexity.LocusComplexity> l : sum.flush())
+				if (l.size() != 0) emit(l);
 		List<Map<Integer, SequenceComplexity.LocusComplexity>> lcm = sum.count(
 				value.ref, exaustiveRef, value.refMQ);
 		for (Map<Integer, SequenceComplexity.LocusComplexity> l : lcm)
 			if (l.size() != 0)
 				emit(l);
 		return sum;
+	}
+	
+	@Override
+	public void onTraversalDone(MultiWindowSequenceComplexity sum) {
+		super.onTraversalDone(sum);
+		for (Map<Integer, SequenceComplexity.LocusComplexity> l : sum.flush())
+			if (l.size() != 0) emit(l);
 	}
 
 	private void emit(Map<Integer, LocusComplexity> lcm) {
