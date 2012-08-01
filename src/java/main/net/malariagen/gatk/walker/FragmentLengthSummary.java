@@ -1,4 +1,4 @@
-package net.malariagen.gatk.coverage;
+package net.malariagen.gatk.walker;
 
 import java.io.File;
 import java.io.FileInputStream;

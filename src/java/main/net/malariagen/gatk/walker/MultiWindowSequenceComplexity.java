@@ -1,4 +1,4 @@
-package net.malariagen.gatk.coverage;
+package net.malariagen.gatk.walker;
 
 import java.util.Collections;
 import java.util.HashMap;
@@ -7,7 +7,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.PriorityQueue;
 
-import net.malariagen.gatk.coverage.SequenceComplexity.LocusComplexity;
 
 import org.broadinstitute.sting.gatk.contexts.ReferenceContext;
 import org.broadinstitute.sting.utils.GenomeLoc;
@@ -22,7 +21,7 @@ public class MultiWindowSequenceComplexity {
 	protected Map<GenomeLoc, WindowSet> windowByLoc = new HashMap<GenomeLoc, WindowSet>(
 			100);
 
-	public List<Map<Integer, LocusComplexity>> count(ReferenceContext ref, Integer exaustiveRef, int refMQ) {
+	public List<Map<Integer, SequenceComplexity.LocusComplexity>> count(ReferenceContext ref, Integer exaustiveRef, int refMQ) {
 
 		GenomeLoc loc = ref.getLocus();
 		WindowSet ws = windowByLoc.get(loc);
@@ -36,7 +35,7 @@ public class MultiWindowSequenceComplexity {
 		}
 
 		for (Integer i : byWs.keySet()) {
-			LocusComplexity lc; 
+			SequenceComplexity.LocusComplexity lc; 
 			if (exaustiveRef != null && exaustiveRef.intValue() == i) 
 				lc = byWs.get(i).count(ref,refMQ);
 			else
@@ -50,7 +49,7 @@ public class MultiWindowSequenceComplexity {
 			ws.bySize.put(i, lc);
 		}
 		if (windows.element().bySize.size() == byWs.size()) {
-			List<Map<Integer, LocusComplexity>> result = new LinkedList<Map<Integer, LocusComplexity>>();
+			List<Map<Integer, SequenceComplexity.LocusComplexity>> result = new LinkedList<Map<Integer, SequenceComplexity.LocusComplexity>>();
 			while (!windows.isEmpty()) {
 				WindowSet ws2 = windows.element();
 				if (ws2.bySize.size() < byWs.size())
@@ -85,11 +84,11 @@ public class MultiWindowSequenceComplexity {
 
 	protected class WindowSet implements Comparable<WindowSet> {
 		GenomeLoc start;
-		Map<Integer, LocusComplexity> bySize;
+		Map<Integer, SequenceComplexity.LocusComplexity> bySize;
 
 		public WindowSet(GenomeLoc loc) {
 			start = loc;
-			bySize = new HashMap<Integer, LocusComplexity>();
+			bySize = new HashMap<Integer, SequenceComplexity.LocusComplexity>();
 		}
 
 		public boolean equal(Object o) {

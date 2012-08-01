@@ -1,4 +1,4 @@
-package net.malariagen.gatk.coverage;
+package net.malariagen.gatk.walker;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;

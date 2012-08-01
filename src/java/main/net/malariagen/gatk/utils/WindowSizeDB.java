@@ -6,7 +6,7 @@ import java.util.Map;
 
 import org.broadinstitute.sting.commandline.Argument;
 
-import net.malariagen.gatk.coverage.FragmentLengthSummary;
+import net.malariagen.gatk.walker.FragmentLengthSummary;
 
 public class WindowSizeDB {
 	

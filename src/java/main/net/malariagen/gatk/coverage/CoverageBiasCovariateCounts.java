@@ -15,6 +15,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 
+import net.malariagen.gatk.walker.MultiWindowSequenceComplexity;
 import net.malariagen.utils.io.TsvWriter;
 
 public class CoverageBiasCovariateCounts implements Serializable {

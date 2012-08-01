@@ -1,4 +1,4 @@
-package net.malariagen.gatk.coverage;
+package net.malariagen.gatk.walker;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -10,6 +10,7 @@ import java.util.Collection;
 import java.util.LinkedHashSet;
 import java.util.Set;
 
+import net.malariagen.gatk.walker.FragmentLengths.Listener;
 import net.sf.samtools.SAMReadGroupRecord;
 
 import org.broadinstitute.sting.commandline.Argument;
@@ -166,7 +167,7 @@ public class FragmentLengthsWalker extends ReadWalker<GATKSAMRecord,FragmentLeng
 		catch (IOException e) {
 			throw new RuntimeException(e.getMessage(),e);
 		}
-		fragmentCoordinatesOutput.flush();
+		if (fragmentCoordinatesOutput != null) fragmentCoordinatesOutput.flush();
 	}
 
 	@Override

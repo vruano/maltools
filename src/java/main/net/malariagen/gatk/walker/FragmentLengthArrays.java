@@ -1,4 +1,4 @@
-package net.malariagen.gatk.coverage;
+package net.malariagen.gatk.walker;
 
 import java.util.Arrays;
 import java.util.Collection;

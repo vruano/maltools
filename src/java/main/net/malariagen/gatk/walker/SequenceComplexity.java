@@ -1,4 +1,4 @@
-package net.malariagen.gatk.coverage;
+package net.malariagen.gatk.walker;
 
 import java.util.Arrays;
 import java.util.LinkedList;
@@ -31,7 +31,6 @@ public class SequenceComplexity {
 	private double[] inverseProbLog;
 	private double[] entropy;
 	private double[] entropyMinus2;
-	private boolean emited = false;
 
 	public LocusComplexity count(ReferenceContext ref,int refMQ) {
 		GenomeLoc loc = ref.getLocus();
@@ -113,7 +112,6 @@ public class SequenceComplexity {
 
 	private void clear() {
 		end = null;
-		emited = false;
 		nucs.clear();
 		trinucs.clear();
 		locs.clear();
@@ -134,7 +132,6 @@ public class SequenceComplexity {
 		double triEnt = 0;
 		int[] nucsCount = this.nucsCount;
 		int[] trinucsCount = this.trinucsCount;
-		emited = true;
 		// if there is some ambiguous nucs in the window we adjust the counts up as to emulate the missing one
 		// keeping the proportion seen in the others.
 		if (windowSize != nucsTotal) {
@@ -196,10 +193,10 @@ public class SequenceComplexity {
 			throw new IllegalArgumentException(
 					"invalid window size must be greater than 0");
 		this.windowSize = ws;
-		prob = new double[ws];
-		inverseProbLog = new double[ws];
-		entropy = new double[ws];
-		entropyMinus2 = new double[ws - 2];
+		prob = new double[ws + 1];
+		inverseProbLog = new double[ws + 1];
+		entropy = new double[ws + 1];
+		entropyMinus2 = new double[ws - 1];
 		nucs = new LinkedList<Nucleotide>();
 		refMQs = new LinkedList<Integer>();
 		trinucs = new LinkedList<Trinucleotide>();
@@ -212,11 +209,11 @@ public class SequenceComplexity {
 		entropyMinus2[0] = 0;
 		double logWsMinus2 = Math.log(ws - 2);
 
-		for (int i = 1; i < ws; i++) {
+		for (int i = 1; i <= ws; i++) {
 			prob[i] = i / (double) ws;
 			inverseProbLog[i] = Math.log(prob[i]);
 			entropy[i] = -prob[i] * inverseProbLog[i];
-			if (i < (ws - 2))
+			if (i <= (ws - 2))
 				entropyMinus2[i] = -(((double) i) / (double) (ws - 2))
 						* (Math.log(i) - logWsMinus2);
 		}
@@ -282,6 +279,10 @@ public class SequenceComplexity {
 		
 		public void setRefMQ(int value) {
 			this.refMQ = value;
+		}
+
+		public int getNucCount() {
+			return nucsTotal;
 		}
 
 	}

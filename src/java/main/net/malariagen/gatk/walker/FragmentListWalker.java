@@ -1,4 +1,4 @@
-package net.malariagen.gatk.coverage;
+package net.malariagen.gatk.walker;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -19,7 +19,7 @@ import org.broadinstitute.sting.utils.GenomeLoc;
 import org.broadinstitute.sting.utils.exceptions.StingException;
 import org.broadinstitute.sting.utils.exceptions.UserException;
 
-public class FragmentListWalker extends FragmentWalker<FragmentRecord,net.malariagen.gatk.coverage.FragmentListWalker.Statistics> {
+public class FragmentListWalker extends FragmentWalker<FragmentRecord,net.malariagen.gatk.walker.FragmentListWalker.Statistics> {
 
 	@Output(shortName="o", fullName="output", doc="", required = true)
 	protected File output;

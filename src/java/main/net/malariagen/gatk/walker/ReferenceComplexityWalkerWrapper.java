@@ -1,4 +1,4 @@
-package net.malariagen.gatk.coverage;
+package net.malariagen.gatk.walker;
 
 import java.io.File;
 import java.util.HashMap;
@@ -10,6 +10,7 @@ import java.util.SortedMap;
 import java.util.TreeMap;
 
 
+import net.malariagen.gatk.coverage.CoverageBiasWalker;
 import net.malariagen.gatk.coverage.CoverageBiasWalker.GroupBy;
 
 import org.broadinstitute.sting.gatk.GenomeAnalysisEngine;
@@ -37,7 +38,7 @@ public class ReferenceComplexityWalkerWrapper {
 	
 	private Integer windowSize;
 	
-	private final SortedMap<GenomeLoc, LocusComplexity> complexityBuffer = new TreeMap<GenomeLoc, net.malariagen.gatk.coverage.ReferenceComplexityWalkerWrapper.LocusComplexity>();
+	private final SortedMap<GenomeLoc, LocusComplexity> complexityBuffer = new TreeMap<GenomeLoc, net.malariagen.gatk.walker.ReferenceComplexityWalkerWrapper.LocusComplexity>();
 
 	private ReferenceComplexityWalker complexityWalker = new ReferenceComplexityWalker();
 
@@ -56,7 +57,7 @@ public class ReferenceComplexityWalkerWrapper {
 
 
 
-	class LocusComplexity {
+	public class LocusComplexity {
 
 		public final GenomeLoc locus;
 		public VariantContext forward;
@@ -91,7 +92,7 @@ public class ReferenceComplexityWalkerWrapper {
 //			return vcb.make();
 //		}
 
-		double getGcBias(String name, boolean forward) {
+		public double getGcBias(String name, boolean forward) {
 			if (forward)
 				return getForwardGcBias(name);
 			else

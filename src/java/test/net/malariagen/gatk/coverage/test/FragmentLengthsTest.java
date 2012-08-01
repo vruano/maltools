@@ -8,10 +8,10 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import net.malariagen.gatk.coverage.FragmentLengths;
-import net.malariagen.gatk.coverage.FragmentLengthSummary;
 import net.malariagen.gatk.math.IntegerDistribution;
 import net.malariagen.gatk.test.WalkerTest;
+import net.malariagen.gatk.walker.FragmentLengthSummary;
+import net.malariagen.gatk.walker.FragmentLengths;
 import net.sf.samtools.SAMFileHeader;
 import net.sf.samtools.SAMSequenceDictionary;
 import net.sf.samtools.SAMSequenceRecord;

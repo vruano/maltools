@@ -14,10 +14,13 @@ import java.util.SortedMap;
 import java.util.TreeMap;
 
 import net.malariagen.gatk.coverage.CoverageBiasWalker.GroupBy;
-import net.malariagen.gatk.coverage.ReferenceComplexityWalkerWrapper.LocusComplexity;
 import net.malariagen.gatk.math.IntegerDistribution;
 import net.malariagen.gatk.utils.ReadGroup;
 import net.malariagen.gatk.utils.ReadGroupDB;
+import net.malariagen.gatk.walker.FragmentLengthSummary;
+import net.malariagen.gatk.walker.MultiWindowSequenceComplexity;
+import net.malariagen.gatk.walker.ReferenceComplexityWalkerWrapper;
+import net.malariagen.gatk.walker.ReferenceComplexityWalkerWrapper.LocusComplexity;
 import net.sf.samtools.SAMRecord;
 
 import org.broadinstitute.sting.commandline.Argument;

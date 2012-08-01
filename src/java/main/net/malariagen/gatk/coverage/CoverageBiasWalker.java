@@ -17,6 +17,8 @@ import java.util.Set;
 import net.malariagen.gatk.annotators.FragmentStartCount;
 import net.malariagen.gatk.annotators.UniquenessScore;
 import net.malariagen.gatk.utils.ReadGroupDB;
+import net.malariagen.gatk.walker.FragmentLengthsWalker;
+import net.malariagen.gatk.walker.ReferenceComplexityWalkerWrapper;
 import net.sf.samtools.SAMReadGroupRecord;
 
 import org.broad.tribble.Feature;
@@ -236,7 +238,7 @@ public class CoverageBiasWalker extends
 		if (vcfOutput != null)
 			vcfOutput.add(value);
 
-		for (net.malariagen.gatk.coverage.ReferenceComplexityWalkerWrapper.LocusComplexity c : complexityWalkerWrapper.removeCompleted()) {
+		for (net.malariagen.gatk.walker.ReferenceComplexityWalkerWrapper.LocusComplexity c : complexityWalkerWrapper.removeCompleted()) {
 			VariantContext forwardComplexityVc = c.getForwardVariantContext();
 			VariantContext reverseComplexityVc = c.getReverseVariantContext();
 			GenotypesContext gc = value.getGenotypes();
