@@ -322,7 +322,7 @@ public class ReferenceComplexityWalker
 	@Override
 	public MultiWindowSequenceComplexity reduce(Locus value,
 			MultiWindowSequenceComplexity sum) {
-		if (sum.lastLocus() != null & value.ref.getLocus().compareContigs(sum.lastLocus()) != 0) 
+		if (sum.lastLocus() != null && value.ref.getLocus().compareContigs(sum.lastLocus()) != 0) 
 			for (Map<Integer, SequenceComplexity.LocusComplexity> l : sum.flush())
 				if (l.size() != 0) emit(l);
 		List<Map<Integer, SequenceComplexity.LocusComplexity>> lcm = sum.count(

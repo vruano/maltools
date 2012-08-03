@@ -12,8 +12,6 @@ import net.malariagen.utils.Trinucleotide;
 import org.broadinstitute.sting.gatk.contexts.ReferenceContext;
 import org.broadinstitute.sting.utils.GenomeLoc;
 
-import scala.reflect.generic.Trees.This;
-
 public class SequenceComplexity {
 
 	private static final boolean doTriEnt = false;
@@ -35,10 +33,11 @@ public class SequenceComplexity {
 
 	public List<LocusComplexity> flush() {
 		List<LocusComplexity> result = new ArrayList<LocusComplexity>(nucs.size());
-		while (nucs.size() > 0) {
-			result.add(emit());
-			removeNucleotide();
+		while (nucs.size() > 1) {
+		  removeNucleotide();
+                  result.add(emit());
 		}
+                if (nucs.size() > 0) removeNucleotide();
 		return result;
 	}
 
@@ -53,7 +52,7 @@ public class SequenceComplexity {
 		if (end != null && !loc.getContig().equals(end.getContig()))
 			clear();
 		int gap = (nucs.size() != 0) ? end.getStop() - loc.getStart() : 0;
-		while (gap++ > 0) {
+		while (gap-- > 0) {
 			if (nucs.size() == windowSize) 
 				removeNucleotide();
 			trinucs.add(Trinucleotide.NNN);
@@ -67,12 +66,11 @@ public class SequenceComplexity {
 		end = loc;
 		nucs.add(n);
 		refMQs.add(refMQ);
+		locs.add(loc);
 		if (n != Nucleotide.N) {
-			locs.add(loc);
 			nucsCount[n.ordinal()]++;
 			nucsTotal++;
-		} else
-			locs.add(loc);
+		} 
 
 		Trinucleotide t = Trinucleotide.NNN;
 		if (trinucs.size() > 0) {
@@ -171,23 +169,9 @@ public class SequenceComplexity {
 		gcBias *= 100;
 		for (int i = 0; i < 4; i++)
 			nucEnt += entropy[nucsCount[i]];
-		if (doTriEnt) for (int i = 0; i < 64; i++)
-			triEnt += entropyMinus2[trinucsCount[i]];
-		// }
-		// else {
-		// double invNucsTotal = 1.0 / (double) nucsTotal;
-		// double logNucsTotal = Math.log(nucsTotal);
-		// gcBias = (nucsCount[1] + nucsCount[2]) * invNucsTotal;
-		// gcBias *= 100;
-		// for (int i = 0; i < 4; i++)
-		// nucEnt -= nucsCount[i] == 0 ? 0 : nucsCount[i] * invNucsTotal *
-		// (Math.log(nucsCount[i]) - logNucsTotal);
-		// double invTrinucsTotal = 1.0 / (double) trinucsTotal;
-		// double logTrinucsTotal = Math.log(trinucsTotal);
-		// for (int i = 0; i < 64; i++)
-		// triEnt -= trinucsCount[i] == 0 ? 0 : trinucsCount[i] *
-		// invTrinucsTotal * (Math.log(trinucsCount[i]) - logTrinucsTotal);
-		// }
+		if (doTriEnt) 
+			for (int i = 0; i < 64; i++)
+			  triEnt += entropyMinus2[trinucsCount[i]];
 		LocusComplexity result = new LocusComplexity(loc, nucsTotal, nucs.get(0), gcBias, nucEnt,
 				gcHet, triEnt);
 		result.setRefMQ(refMQs.get(0));
@@ -288,7 +272,7 @@ public class SequenceComplexity {
 		}
 
 		public int getNucCount() {
-			return nucsTotal;
+			return size;
 		}
 
 	}

@@ -21,12 +21,16 @@ public class MultiWindowSequenceComplexity {
 	protected Map<GenomeLoc, WindowSet> windowByLoc = new HashMap<GenomeLoc, WindowSet>(
 			100);
 	private GenomeLoc lastLocus;
-
+        private GenomeLoc lastEmited;
 	
 	public List<Map<Integer, SequenceComplexity.LocusComplexity>> flush() {
 		for (Integer i : byWs.keySet()) 
-			for (SequenceComplexity.LocusComplexity slc : byWs.get(i).flush()) 
-					windowByLoc.get(slc.getLocus()).bySize.put(i,slc);
+			for (SequenceComplexity.LocusComplexity slc : byWs.get(i).flush()) {
+				GenomeLoc loc = slc.getLocus();
+                                if (windowByLoc.get(loc) == null)
+                                   System.err.println(" " + lastLocus + " " + lastEmited + " " + loc);
+				windowByLoc.get(loc).bySize.put(i,slc);
+                        }
 		List<Map<Integer, SequenceComplexity.LocusComplexity>> result = new LinkedList<Map<Integer, SequenceComplexity.LocusComplexity>>();
 		while (!windows.isEmpty()) {
 			WindowSet ws2 = windows.remove();
@@ -46,7 +50,8 @@ public class MultiWindowSequenceComplexity {
 		WindowSet ws = windowByLoc.get(loc);
 		if (ws == null) {
 			if (!windows.isEmpty() && !windows.element().start.getContig().equals(loc.getContig())) {
-				windowByLoc.clear();
+		                if (true) throw new IllegalArgumentException("what tha");
+     		                windowByLoc.clear();
 				windows.clear();
 			}
 			windowByLoc.put(loc, ws = new WindowSet(loc));
@@ -76,6 +81,7 @@ public class MultiWindowSequenceComplexity {
 				result.add(ws2.bySize);
 				windowByLoc.remove(ws2.start);
 				windows.remove();
+                                lastEmited = ws2.start;
 			}
 			return result;
 		}
