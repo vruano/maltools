@@ -19,7 +19,7 @@ public class FragmentListWalkerTest {
 			
 		File outDir = File.createTempFile("rctest", ".out.gz");
 		outDir.delete();
-		WalkerTest.executeTest("MappabilityAnalisys", String.format("-T FragmentList -R %s -I %s -o %s -sort FRAGMENT_START ",
+		WalkerTest.executeTest("MappabilityAnalisys", String.format("-T FragmentList -R %s -I %s -o %s -sort REFERENCE_START -mmq 20 -filter NONE -wf -readGC -mq",
 				refFasta,testBam,outDir), null);
 		assertTrue(outDir.exists());
 //		outDir.delete();

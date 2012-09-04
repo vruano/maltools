@@ -105,7 +105,7 @@ public class FragmentWalkerReduceType<ReduceType> {
 		int end = read.getAlignmentEnd();
 		int length = read.getReadLength();
 		int trim = ((end - start + 1 == length) ? 0 : calculateTrim(read));
-		int fragmentLength = end - fm.start + 1 + fm.trim + trim;
+		int fragmentLength = (read.getReadUnmappedFlag() || fm.record.getReadUnmappedFlag()) || (read.getReferenceIndex() != fm.record.getReferenceIndex()) ? -1 : end - fm.start + 1 + fm.trim + trim;
 		SAMReadGroupRecord rg = read.getReadGroup();
 		if (rg == null)
 			throw new IllegalArgumentException(

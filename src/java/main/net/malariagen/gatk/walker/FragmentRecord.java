@@ -32,6 +32,7 @@ public class FragmentRecord {
 	private GATKSAMRecord second;
 	private boolean swapped;
 	private int fragmentLength;
+	private Boolean isProperFragment;
 	
 	FragmentRecord(GATKSAMRecord r1, GATKSAMRecord r2, int fl) {
 		if (r1.getFirstOfPairFlag()) {
@@ -48,7 +49,7 @@ public class FragmentRecord {
 	}
 	
 	public int getLength() {
-		return fragmentLength;
+		return isProperFragment() ? fragmentLength : -1;
 	}
 	
 	public boolean getPositiveStrand() {
@@ -126,15 +127,30 @@ public class FragmentRecord {
 	}
 	
 	public int getInsertStart() {
-		return lastReferencePosition(getReferenceFirstRead()) + 1;
+		return isProperFragment() ? getReferenceFirstRead().getAlignmentEnd() + 1 : -1;
 	}
 	
+	private boolean isProperFragment$build() {
+		if (first.getReadUnmappedFlag()) return false;
+		if (second.getReadUnmappedFlag()) return false;
+		if (first.getReferenceIndex() != second.getReferenceIndex()) return false;
+		if (this.getReferenceFirstRead().getReadNegativeStrandFlag() || !this.getReferenceLastRead().getReadNegativeStrandFlag()) return false;
+		return true;
+	}
+	
+	public boolean isProperFragment() {
+		if (isProperFragment != null)
+			return isProperFragment;
+		else 
+			return isProperFragment = isProperFragment$build();
+	}
+
 	public int getInsertEnd() {
-		return getReferenceLastRead().getAlignmentStart() - 1;			
+		return isProperFragment() ? getReferenceLastRead().getAlignmentStart() - 1 : -1 ;			
 	}
 	
 	public int getInsertLength() {
-		return getInsertEnd() - getInsertStart() + 1;
+		return isProperFragment() ? getInsertEnd() - getInsertStart() + 1 : -9999;
 	}
 
 	public boolean isTranslocation(long maxLength) {
