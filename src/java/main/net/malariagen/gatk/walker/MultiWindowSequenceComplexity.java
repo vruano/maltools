@@ -43,27 +43,22 @@ public class MultiWindowSequenceComplexity {
 		
 	}
 	
-	public List<Map<Integer, SequenceComplexity.LocusComplexity>> count(ReferenceContext ref, Integer exaustiveRef, int refMQ) {
+	public List<Map<Integer, SequenceComplexity.LocusComplexity>> count(ReferenceContext ref) {
 
 		GenomeLoc loc = ref.getLocus();
 		lastLocus = loc;
 		WindowSet ws = windowByLoc.get(loc);
 		if (ws == null) {
 			if (!windows.isEmpty() && !windows.element().start.getContig().equals(loc.getContig())) {
-		                if (true) throw new IllegalArgumentException("what tha");
-     		                windowByLoc.clear();
-				windows.clear();
+		        throw new IllegalArgumentException("what tha");
+//				windows.clear();
 			}
 			windowByLoc.put(loc, ws = new WindowSet(loc));
 			windows.add(ws);
 		}
 		
 		for (Integer i : byWs.keySet()) {
-			SequenceComplexity.LocusComplexity lc;
-			if (exaustiveRef != null && exaustiveRef.intValue() == i) 
-				lc = byWs.get(i).count(ref,refMQ);
-			else
-				lc = byWs.get(i).count(ref,0);
+			SequenceComplexity.LocusComplexity lc = byWs.get(i).count(ref);
 			if (lc == null)
 				continue;
 			ws = windowByLoc.get(lc.getLocus());

@@ -39,13 +39,17 @@ public enum Trinucleotide {
 	public Trinucleotide shift(Nucleotide n) {
 		if (n == Nucleotide.N)
 			return NNN;
+		if (this == NNN)
+			return NNN;
 		int o = ordinal();
-		o = ((o << 2) + n.ordinal()) & 0x4F;
+		o = ((o << 2) + n.ordinal()) & 0x3F;
 		return values()[o];
 	}
 	
 	public Trinucleotide unshift(Nucleotide n) {
 		if (n == Nucleotide.N)
+			return NNN;
+		if (this == NNN)
 			return NNN;
 		int o = ordinal();
 		o = (o >> 2) + (n.ordinal() << 4);

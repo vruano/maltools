@@ -162,7 +162,6 @@ public class ReferenceComplexityWalkerWrapper {
 		complexityWalker.groupBy = this.groupBy;
 		complexityWalker.rounding = 1;
 		complexityWalker.windowSize = this.windowSize;
-		complexityWalker.fragmentLengthsFile = this.fragmentLengthFile;
 		complexityWalker.writer = new VCFWriter() {
 
 			@Override
