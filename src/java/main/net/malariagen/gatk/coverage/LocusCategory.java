@@ -1,6 +1,5 @@
 package net.malariagen.gatk.coverage;
 
-
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -9,10 +8,13 @@ import net.malariagen.gatk.annotators.Constants;
 import net.malariagen.gatk.gff.GFFFeature;
 import net.sf.samtools.SAMRecord;
 
+import org.broad.tribble.Feature;
+import org.broadinstitute.sting.commandline.RodBinding;
 import org.broadinstitute.sting.gatk.refdata.ReadMetaDataTracker;
 import org.broadinstitute.sting.gatk.refdata.RefMetaDataTracker;
 import org.broadinstitute.sting.gatk.refdata.utils.GATKFeature;
 import org.broadinstitute.sting.gatk.refdata.utils.RODRecordList;
+import org.broadinstitute.sting.utils.exceptions.UserException;
 
 public enum LocusCategory {
 	CODING, NON_CODING, GENIC, INTER_GENIC, FEATURELESS;
@@ -27,26 +29,20 @@ public enum LocusCategory {
 	public static byte FEATURELESS_MASK = FEATURELESS.mask();
 	public static byte INTER_GENIC_MASK = INTER_GENIC.mask();
 
-	public static byte categoryMask(RefMetaDataTracker tracker) {
-		List<RODRecordList> rrll = tracker.getBoundRodTracks();
+	public static byte categoryMask(RefMetaDataTracker tracker,
+			RodBinding<GFFFeature> binding) {
 		byte result = 0;
-		for (RODRecordList rrl : rrll ) { 
-			if (rrl.getName().equals(Constants.FEATURES_ROD_NAME)) 
-				continue;
-			for (GATKFeature ft : rrl) {
-				Object o = ft.getUnderlyingObject();
-				if (o instanceof GFFFeature) {
-					switch (((GFFFeature) o).getType()) {
-					case CDS:
-						result |= CODING_MASK;
-					case EXON:
-					case GENE:
-						result |= GENIC_MASK;
-					}
+		if (binding != null) {
+			for (GFFFeature ft : tracker.getValues(binding)) {
+				switch (ft.getType()) {
+				case CDS:
+					result |= CODING_MASK;
+				case EXON:
+				case GENE:
+					result |= GENIC_MASK;
 				}
 			}
-		}
-		if (result == 0)
+		} else
 			result |= FEATURELESS_MASK;
 		if ((result & GENIC_MASK) == 0)
 			result |= INTER_GENIC_MASK;
@@ -81,8 +77,10 @@ public enum LocusCategory {
 					}
 				}
 			}
-			if (isCoding) codingPositions++;
-			if (isGenic) genicPositions++;
+			if (isCoding)
+				codingPositions++;
+			if (isGenic)
+				genicPositions++;
 		}
 		int halfPositions = totalPositions >> 1;
 		result |= (codingPositions >= halfPositions) ? CODING_MASK

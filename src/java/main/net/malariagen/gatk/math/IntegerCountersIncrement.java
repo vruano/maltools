@@ -1,5 +1,7 @@
 package net.malariagen.gatk.math;
 
+import java.util.Arrays;
+
 import net.malariagen.gatk.coverage.LocusCategory;
 
 
@@ -18,7 +20,7 @@ public class IntegerCountersIncrement {
 	public int sequence;
 
 	//depth per sample. could be null if we are not recording per sample counters.
-	public int[] sampleValues;
+	public int[] groupValues;
 	
 	//generates the mask given a set of locus categories
 	public static byte categoryMask(LocusCategory ... categories) {
@@ -32,6 +34,12 @@ public class IntegerCountersIncrement {
 
 	public void addCategory(LocusCategory c) {
 		categories |= 1 << c.ordinal();
+	}
+
+	public void clear() {
+		if (groupValues != null)
+			Arrays.fill(groupValues, 0);
+		depth = 0;
 	}
 	
 }

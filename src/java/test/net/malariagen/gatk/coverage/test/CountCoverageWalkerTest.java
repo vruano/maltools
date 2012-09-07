@@ -1,6 +1,6 @@
 package net.malariagen.gatk.coverage.test;
 
-import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.*;
 
 import java.io.File;
 import java.io.FileReader;
@@ -23,20 +23,26 @@ import net.malariagen.gatk.test.WalkerTest;
 public class CountCoverageWalkerTest extends WalkerTest {
 
 	@Test
-	public void testCountCoverageWalker() throws IOException {
-		File reference = new File (getClass().getResource("/testdata/reference.fa").getFile());
-		File features = new File (getClass().getResource("/testdata/reference.gff").getFile());
-		File sampleOne = new File (getClass().getResource("/testdata/sampleOne.bam").getFile());
-		File sampleTwo = new File (getClass().getResource("/testdata/sampleTwo.bam").getFile());
+	public void testCoverageDistributionWalker() throws IOException {
+		File reference = new File (getClass().getResource("/cases/cctest/reference.fa").getFile());
+		File features = new File (getClass().getResource("/cases/cctest/reference.gff").getFile());
+		File sampleOne = new File (getClass().getResource("/cases/cctest/sampleOne.bam").getFile());
+		File sampleTwo = new File (getClass().getResource("/cases/cctest/sampleTwo.bam").getFile());
 		File output = File.createTempFile("AGVTest", ".json");
         Formatter formatter = new Formatter();
-        Formatter cmdSpec = formatter.format("-nt 4 -R %s -T CountCoverage -cs -B:features,GFF %s -I %s -I %s -o %s",
+        Formatter cmdSpec = formatter.format("-R %s -T CoverageDistribution -groupBy SM -features %s -I %s -I %s -o %s",
         		reference,features,sampleOne,sampleTwo,output);
         // No md5s for now.
         List<String> md5s = Collections.emptyList();
 		WalkerTest.WalkerTestSpec spec = new WalkerTest.WalkerTestSpec(cmdSpec.toString(),md5s);
-        executeTest("testCoverageCounting", spec);
-	}
+        try {
+		   executeTest("testCoverageCounting", spec);
+        }
+        catch (Throwable t) {
+        	t.printStackTrace();
+        	fail(t.getMessage());
+        }
+     }
 
 	@Test
 	public void testCountCoverageWalkerLongData() throws IOException {
@@ -80,11 +86,9 @@ public class CountCoverageWalkerTest extends WalkerTest {
 		File[] covFiles = covDir.listFiles(jsonFilter);
 		IntegerDistributionSetGatherer gatherer = new IntegerDistributionSetGatherer();		
 		gatherer.gather(Arrays.asList(covFiles),outFile);
-		//outFile.deleteOnExit();
 	}
 	public static void main(String[] args) throws IOException {
 		CountCoverageWalkerTest test = new CountCoverageWalkerTest();
 		test.testCountCoverageWalkerGathererLoad();
-		//org.junit.runner.JUnitCore.runClasses(CountCoverageWalkerTest.class);
 	}
 }

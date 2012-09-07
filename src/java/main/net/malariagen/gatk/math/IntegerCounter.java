@@ -50,6 +50,7 @@ public class IntegerCounter {
 //		}
 		distribution = null;
 		count++;
+
 		if (frequencies.length <= value) 
 			frequencies = Arrays.copyOf(frequencies, value << 1);
 		if (frequencies[value]++ == 0) depthCount++;

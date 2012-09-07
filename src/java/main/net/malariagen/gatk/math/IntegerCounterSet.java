@@ -42,14 +42,6 @@ public class IntegerCounterSet  {
 	public void addValue(int value, int sample, byte categories, int sequence) {
 		samples[sample].addValue(value, categories, sequence);
 	}
-	
-	@Deprecated
-	public void applyIncrement(IntegerCountersIncrement ci) {
-		if (ci.depth > 0) all.addValue(ci.depth,ci.categories,ci.sequence);
-		for (int i = 0; i < sampleCount; i++) {
-			if (ci.sampleValues[i] > 0) samples[i].addValue(ci.sampleValues[i],ci.categories,ci.sequence);
-		}
-	}
 
 	public void applyCounterSet(IntegerCounterSet rhs) {
 		all.applyCounterSet(rhs.all);
@@ -69,6 +61,5 @@ public class IntegerCounterSet  {
 			pw.println("Covarage in sample " + e.getKey() + ":");
 			e.getValue().printReport("  ",pw);
 		}
-		
 	}
 }
