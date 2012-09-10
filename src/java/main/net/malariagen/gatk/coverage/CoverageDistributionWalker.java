@@ -60,7 +60,7 @@ import org.broadinstitute.sting.gatk.walkers.PartitionType;
 @PartitionBy(PartitionType.LOCUS)
 @By(DataSource.READS)
 @Requires({ DataSource.READS, DataSource.REFERENCE_ORDERED_DATA })
-@BAQMode(QualityMode = BAQ.QualityMode.ADD_TAG, ApplicationTime = BAQ.ApplicationTime.ON_INPUT)
+@BAQMode(QualityMode = BAQ.QualityMode.ADD_TAG, ApplicationTime = BAQ.ApplicationTime.HANDLED_IN_WALKER)
 public class CoverageDistributionWalker extends
 		LocusWalker<IntegerCountersIncrement, IntegerCounterSet> implements
 		TreeReducible<IntegerCounterSet> {
@@ -162,7 +162,7 @@ public class CoverageDistributionWalker extends
 		initializeCoverageCounterSets();
 		initializeBAQCalculatingEngine();
 		pileupFilter = initializePileupFilter(excludeAmbigousBase,
-				excludeAmbigousBase, groupCount, groupCount, groupCount,
+				excludeAmbigousBase, minimumBaseQuality, minimumMappingQuality, minimumBAQ,
 				baqHMM, reference, cmode, qmode);
 	}
 

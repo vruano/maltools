@@ -68,5 +68,13 @@ public class GFFCodec extends AbstractFeatureCodec<GFFFeature> {
 	public Object readHeader(LineReader reader) {
 		return null;
 	}
+	
+	@Override
+	public boolean canDecode(String path) {
+		if (path.endsWith("gff"))
+			return true;
+		else 
+			return false;
+	}
 
 }
