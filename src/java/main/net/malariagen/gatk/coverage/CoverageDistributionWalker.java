@@ -27,7 +27,6 @@ import net.sf.samtools.SAMRecord;
 import net.sf.samtools.SAMSequenceDictionary;
 import net.sf.samtools.SAMSequenceRecord;
 
-import org.broad.tribble.Feature;
 import org.broadinstitute.sting.commandline.Argument;
 import org.broadinstitute.sting.commandline.Gather;
 import org.broadinstitute.sting.commandline.Output;
@@ -38,7 +37,6 @@ import org.broadinstitute.sting.gatk.contexts.ReferenceContext;
 import org.broadinstitute.sting.gatk.filters.NotPrimaryAlignmentFilter;
 import org.broadinstitute.sting.gatk.filters.UnmappedReadFilter;
 import org.broadinstitute.sting.gatk.refdata.RefMetaDataTracker;
-import org.broadinstitute.sting.gatk.refdata.utils.GATKFeature;
 import org.broadinstitute.sting.gatk.walkers.BAQMode;
 import org.broadinstitute.sting.gatk.walkers.By;
 import org.broadinstitute.sting.gatk.walkers.DataSource;
@@ -52,15 +50,13 @@ import org.broadinstitute.sting.utils.BaseUtils;
 import org.broadinstitute.sting.utils.baq.BAQ;
 import org.broadinstitute.sting.utils.baq.BAQ.CalculationMode;
 import org.broadinstitute.sting.utils.baq.BAQ.QualityMode;
-import org.broadinstitute.sting.utils.exceptions.UserException;
 import org.broadinstitute.sting.utils.pileup.PileupElement;
 import org.broadinstitute.sting.utils.pileup.PileupElementFilter;
 import org.broadinstitute.sting.utils.pileup.ReadBackedPileup;
 
 import org.broadinstitute.sting.gatk.walkers.PartitionType;
 
-@ReadFilters({ UnmappedReadFilter.class,
-		NotPrimaryAlignmentFilter.class })
+@ReadFilters({ UnmappedReadFilter.class, NotPrimaryAlignmentFilter.class })
 @PartitionBy(PartitionType.LOCUS)
 @By(DataSource.READS)
 @Requires({ DataSource.READS, DataSource.REFERENCE_ORDERED_DATA })
@@ -69,7 +65,7 @@ public class CoverageDistributionWalker extends
 		LocusWalker<IntegerCountersIncrement, IntegerCounterSet> implements
 		TreeReducible<IntegerCounterSet> {
 
-	@Output(doc = "File where to store the coverage distribution in JSON format", shortName="o")
+	@Output(doc = "File where to store the coverage distribution in JSON format", shortName = "o")
 	@Gather(IntegerDistributionSetGatherer.class)
 	private PrintWriter output;
 
@@ -78,10 +74,7 @@ public class CoverageDistributionWalker extends
 
 	@Argument(fullName = "minimumBaseQuality", shortName = "mbq", doc = "Minimum quality for a base to be considered in coverage counting, -1 to indicate no minimum (default)", required = false)
 	public int minimumBaseQuality = -1;
-	
-	@Argument(fullName = "features", shortName="features", doc="ROD data binding indicating site category features", required=false)
-	protected RodBinding<GFFFeature> features = null;
-	
+
 	@Argument(fullName = "minimumMappingQuality", shortName = "mmq", doc = "Minimum mapping quality for a read (thus its based) to be considered in coverage counting, -1 to indicate no minimum (default)", required = false)
 	public int minimumMappingQuality = -1;
 
@@ -97,10 +90,13 @@ public class CoverageDistributionWalker extends
 	@Argument(fullName = "excludeReadDeletions", shortName = "exclRdDel", doc = "Do not consider read deletions in coverage depth calculation", required = false)
 	public boolean excludeReadDeletions = true;
 
+	@Argument(fullName = "features", shortName = "features", doc = "ROD data binding indicating site category features", required = false)
+	protected RodBinding<GFFFeature> features = null;
+
 	private String[] groupNames;
 	private int groupCount;
 	private Map<String, Integer> groupIndices;
-	
+
 	private String[] sequenceNames;
 	private Map<String, Integer> sequenceIndices;
 
@@ -109,13 +105,13 @@ public class CoverageDistributionWalker extends
 	protected Set<IntegerCounterSet> counterSets;
 	protected ThreadLocal<IntegerCounterSet> counterSetByThread;
 
-	private ConcurrentPool<IntegerCountersIncrement> incPool; 
+	private ConcurrentPool<IntegerCountersIncrement> incPool;
 
 	private BAQ baqHMM;
 	private IndexedFastaSequenceFile reference;
 	private CalculationMode cmode;
 	private QualityMode qmode;
-	
+
 	private ReadGroupDB readGroupDb;
 
 	@Override
@@ -125,7 +121,7 @@ public class CoverageDistributionWalker extends
 		if (excludeAmbigousRef && !BaseUtils.isRegularBase(ref.getBase()))
 			return null;
 		IntegerCountersIncrement result = incPool.borrow();
-		result.categories = categoryMask(tracker,features);
+		result.categories = categoryMask(tracker, features);
 		result.sequence = sequenceIndices.get(ref.getLocus().getContig());
 		ReadBackedPileup pileup = context.getBasePileup().getFilteredPileup(
 				pileupFilter);
@@ -133,14 +129,14 @@ public class CoverageDistributionWalker extends
 		if (groupBy != GroupBy.NONE)
 			for (PileupElement pe : pileup) {
 				if (groupBy.implies(GroupBy.RG)) {
-				  String readGroupName = pe.getRead().getReadGroup().getId();
-				  int readGroupIndex = groupIndices.get(readGroupName);
-				  result.groupValues[readGroupIndex]++;
+					String readGroupName = pe.getRead().getReadGroup().getId();
+					int readGroupIndex = groupIndices.get(readGroupName);
+					result.groupValues[readGroupIndex]++;
 				}
 				if (groupBy.implies(GroupBy.SM)) {
-				  String sampleName = pe.getRead().getReadGroup().getSample();
-				  int sampleIndex = groupIndices.get(sampleName);
-				  result.groupValues[sampleIndex]++;
+					String sampleName = pe.getRead().getReadGroup().getSample();
+					int sampleIndex = groupIndices.get(sampleName);
+					result.groupValues[sampleIndex]++;
 				}
 			}
 		return result;
@@ -165,9 +161,10 @@ public class CoverageDistributionWalker extends
 		sequenceNamesInitialize();
 		initializeCoverageCounterSets();
 		initializeBAQCalculatingEngine();
-		initializePileupFilter();
+		pileupFilter = initializePileupFilter(excludeAmbigousBase,
+				excludeAmbigousBase, groupCount, groupCount, groupCount,
+				baqHMM, reference, cmode, qmode);
 	}
-	
 
 	private void groupInitialize() {
 		readGroupDb = new ReadGroupDB(this.getToolkit());
@@ -184,11 +181,11 @@ public class CoverageDistributionWalker extends
 			groupIndices = Collections.emptyMap();
 		else {
 			int nextIndex = 0;
-			groupIndices = new LinkedHashMap<String,Integer>();
-			for (String groupName : groupNames) 
-				groupIndices.put(groupName,nextIndex++);
+			groupIndices = new LinkedHashMap<String, Integer>();
+			for (String groupName : groupNames)
+				groupIndices.put(groupName, nextIndex++);
 		}
-			
+
 	}
 
 	private void initializeBAQCalculatingEngine() {
@@ -198,8 +195,13 @@ public class CoverageDistributionWalker extends
 		cmode = getToolkit().getArguments().BAQMode;
 	}
 
-	private void initializePileupFilter() {
-		pileupFilter = new PileupElementFilter() {
+	static PileupElementFilter initializePileupFilter(
+			final boolean excludeReadDeletions,
+			final boolean excludeAmbigousBase, final int minimumBaseQuality,
+			final int minimumMappingQuality, final int minimumBAQ,
+			final BAQ baqHMM, final IndexedFastaSequenceFile reference,
+			final CalculationMode cmode, final QualityMode qmode) {
+		return new PileupElementFilter() {
 			public boolean allow(PileupElement pe) {
 				if (excludeReadDeletions
 						&& pe.getBaseIndex() == BaseUtils.DELETION_INDEX)
@@ -214,7 +216,8 @@ public class CoverageDistributionWalker extends
 						&& pe.getMappingQual() < minimumMappingQuality)
 					return false;
 				if (minimumBAQ >= 0
-						&& baqFor(pe.getRead(), pe.getOffset()) < minimumBAQ) {
+						&& baqFor(pe.getRead(), pe.getOffset(), baqHMM,
+								reference, cmode, qmode) < minimumBAQ) {
 					return false;
 				}
 				return true;
@@ -222,7 +225,9 @@ public class CoverageDistributionWalker extends
 		};
 	}
 
-	private int baqFor(SAMRecord read, int offset) {
+	private static int baqFor(SAMRecord read, int offset, BAQ baqHMM,
+			IndexedFastaSequenceFile reference, CalculationMode cmode,
+			QualityMode qmode) {
 		baqHMM.baqRead(
 				read,
 				reference,
@@ -239,21 +244,20 @@ public class CoverageDistributionWalker extends
 				new Factory<IntegerCountersIncrement>() {
 					public IntegerCountersIncrement newInstance() {
 						IntegerCountersIncrement result = new IntegerCountersIncrement();
-						result.groupValues = groupCount > 0  ? new int[groupCount]
+						result.groupValues = groupCount > 0 ? new int[groupCount]
 								: null;
 						return result;
 					}
 				}) {
-			
-				@Override
-				public IntegerCountersIncrement borrow() {
-				  IntegerCountersIncrement result = super.borrow();
-				  result.clear();
-				  return result;
-				}
+
+			@Override
+			public IntegerCountersIncrement borrow() {
+				IntegerCountersIncrement result = super.borrow();
+				result.clear();
+				return result;
+			}
 
 		};
-		
 
 	}
 
@@ -287,7 +291,7 @@ public class CoverageDistributionWalker extends
 	@Override
 	public IntegerCounterSet treeReduce(IntegerCounterSet lhs,
 			IntegerCounterSet rhs) {
-		// lhs.applyCounterSet(rhs);
+		lhs.applyCounterSet(rhs);
 		return lhs;
 	}
 
@@ -302,7 +306,7 @@ public class CoverageDistributionWalker extends
 		try {
 			realSum.toCoverageDistributionSet().write(output);
 		} catch (IOException e) {
-			throw new CountCoverageException(
+			throw new CoverageDistributionException(
 					"could not write coverage distribution file", e);
 		}
 	}

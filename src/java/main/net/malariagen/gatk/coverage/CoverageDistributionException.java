@@ -1,28 +1,28 @@
 package net.malariagen.gatk.coverage;
 
 
-public class CountCoverageException extends RuntimeException {
+public class CoverageDistributionException extends RuntimeException {
 
 	/**
 	 * 
 	 */
 	private static final long serialVersionUID = 1042760758499842609L;
 
-	public CountCoverageException() {
+	public CoverageDistributionException() {
 		super();
 		// TODO Auto-generated constructor stub
 	}
 
-	public CountCoverageException(String message, Throwable cause) {
+	public CoverageDistributionException(String message, Throwable cause) {
 		super(message, cause);
 	}
 
-	public CountCoverageException(String message) {
+	public CoverageDistributionException(String message) {
 		super(message);
 		// TODO Auto-generated constructor stub
 	}
 
-	public CountCoverageException(Throwable cause) {
+	public CoverageDistributionException(Throwable cause) {
 		super(cause);
 		// TODO Auto-generated constructor stub
 	}

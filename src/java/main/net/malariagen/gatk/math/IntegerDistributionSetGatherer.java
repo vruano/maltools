@@ -9,7 +9,7 @@ import java.io.Reader;
 import java.io.Writer;
 import java.util.List;
 
-import net.malariagen.gatk.coverage.CountCoverageException;
+import net.malariagen.gatk.coverage.CoverageDistributionException;
 import net.malariagen.gatk.math.IntegerDistributionSet;
 
 import org.broadinstitute.sting.commandline.Gatherer;
@@ -33,7 +33,7 @@ public class IntegerDistributionSetGatherer extends Gatherer {
 								+ "' could not be open for reading", e);
 
 			} catch (IOException e) {
-				throw new CountCoverageException(
+				throw new CoverageDistributionException(
 						"Error when reading coverage distribution set file", e);
 			}
 		IntegerDistributionSet merged = IntegerDistributionSet.merge(insets);
@@ -42,7 +42,7 @@ public class IntegerDistributionSetGatherer extends Gatherer {
 			merged.write(writer);
 			writer.close();
 		} catch (IOException e) {
-			throw new CountCoverageException(
+			throw new CoverageDistributionException(
 					"Error attempting to write a distribution into a file '"
 							+ outfile + "'", e);
 		}
@@ -65,7 +65,7 @@ public class IntegerDistributionSetGatherer extends Gatherer {
 				result.write(writer);
 				writer.close();
 			} catch (IOException e) {
-				throw new CountCoverageException(
+				throw new CoverageDistributionException(
 						"Error attempting to write a distribution into a file '"
 								+ outfile + "'", e);
 			}
@@ -74,7 +74,7 @@ public class IntegerDistributionSetGatherer extends Gatherer {
 			throw new UserException("Input coverage distribution set file could not be open for reading", e);
 
 		} catch (IOException e) {
-			throw new CountCoverageException(
+			throw new CoverageDistributionException(
 					"Error when reading coverage distribution set file", e);
 		}
 	}

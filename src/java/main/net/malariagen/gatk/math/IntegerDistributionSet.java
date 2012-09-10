@@ -23,7 +23,7 @@ public class IntegerDistributionSet {
 	private Map<String,IntegerSampleDistributionSet> samples;
 	private IntegerSampleDistributionSet all;
 	
-	private IntegerDistributionSet() {
+	public IntegerDistributionSet() {
 		
 	}
 	

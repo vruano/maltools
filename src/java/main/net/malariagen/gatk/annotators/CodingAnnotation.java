@@ -32,7 +32,7 @@ public class CodingAnnotation extends InfoFieldAnnotation {
 		return Collections.singletonMap(Constants.CODING_KEY,(Object)isCoding(tracker));		
 	}
 	
-	static boolean isCoding(RefMetaDataTracker tracker) {
+	public static boolean isCoding(RefMetaDataTracker tracker) {
 		for (RODRecordList rrl : tracker.getBoundRodTracks()) {
 			if (!rrl.getName().equals(Constants.FEATURES_ROD_NAME))
 				continue;
