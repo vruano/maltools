@@ -30,7 +30,7 @@ public class CountCoverageWalkerTest extends WalkerTest {
 		File sampleTwo = new File (getClass().getResource("/cases/cctest/sampleTwo.bam").getFile());
 		File output = File.createTempFile("AGVTest", ".json");
         Formatter formatter = new Formatter();
-        Formatter cmdSpec = formatter.format("-R %s -T CoverageDistribution -nt 4 -groupBy SM -features %s -I %s -I %s -o %s",
+        Formatter cmdSpec = formatter.format("-R %s -T CoverageDistribution -groupBy SM -features %s -I %s -I %s -o %s",
         		reference,features,sampleOne,sampleTwo,output);
         // No md5s for now.
         List<String> md5s = Collections.emptyList();

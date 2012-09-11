@@ -70,15 +70,14 @@ TreeReducible<AccessibilityStatistics>{
 	public int minimumBAQ = -1;
 
 	@Argument(fullName = "excludeAmbigousRef", shortName = "exclAmbRef", doc = "Indicates whether totally degenerated ambiguous reference sites should be excluded", required = true)
-	public boolean excludeAmbigousRef = true;
+	public boolean excludeAmbigousRef = false;
 
 	@Argument(fullName = "excludeAmbigousCall", shortName = "exclAmbCall", doc = "Indicates whether totally degenerated ambiguous read-bases should be excluded", required = false)
 	public boolean excludeAmbigousBase = false;
 
-	@Argument(fullName = "excludeReadDeletions", shortName = "exclRdDel", doc = "Do not consider read deletions in coverage depth calculation", required = false)
-	public boolean excludeReadDeletions = true;
+	@Argument(fullName = "includeReadDeletions", shortName = "inclRdDel", doc = "Do not consider read deletions in coverage depth calculation", required = false)
+	public boolean includeReadDeletions = false;
 		
-	
 	@Argument(fullName="normalizePerChromosome", doc="whether we should normalize for each chromosome separately (implies -normalize)", required=false)
 	protected boolean normalizePerChromosome = false;
 	
@@ -107,8 +106,6 @@ TreeReducible<AccessibilityStatistics>{
     Set<String> groupNames;
     
     private ThreadLocal<AccesibilityAnnotations> annotations;
-
-	boolean excludeNonRefCalls = true;
 
 	private PileupElementFilter pileupFilter;
 	
@@ -183,7 +180,7 @@ TreeReducible<AccessibilityStatistics>{
 		
 		annotations = new ThreadLocal<AccesibilityAnnotations>();
 		initializeBAQCalculatingEngine();
-		pileupFilter = CoverageDistributionWalker.initializePileupFilter(excludeReadDeletions, excludeAmbigousBase, minimumBaseQuality, minimumMappingQuality, minimumBAQ, baqHMM, reference, cmode, qmode);
+		pileupFilter = CoverageDistributionWalker.initializePileupFilter(!includeReadDeletions, excludeAmbigousBase, minimumBaseQuality, minimumMappingQuality, minimumBAQ, baqHMM, reference, cmode, qmode);
 
 		writer.writeHeader(new VCFHeader(AccesibilityAnnotations.getHeaderLines(this),groupNames));
 	}
@@ -210,8 +207,8 @@ TreeReducible<AccessibilityStatistics>{
 		Map<String, AlignmentContext> stratified = CoverageBiasWalker.stratifyByGroupName(context, groupNames, groupBy);
 		ReadBackedPileup pileup = context.getBasePileup().getFilteredPileup(
 				pileupFilter);
-		if (pileup.isEmpty()) 
-			return null;
+//		if (pileup.isEmpty()) 
+//			return null;
 		VariantContextBuilder result = new VariantContextBuilder();
 		result.loc(ref.getLocus());
 		result.referenceBaseForIndel(Nucleotide.N.byteValue());

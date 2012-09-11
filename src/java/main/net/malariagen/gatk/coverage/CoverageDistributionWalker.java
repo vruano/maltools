@@ -82,13 +82,13 @@ public class CoverageDistributionWalker extends
 	public int minimumBAQ = -1;
 
 	@Argument(fullName = "excludeAmbigousRef", shortName = "exclAmbRef", doc = "Indicates whether totally degenerated ambiguous reference sites should be excluded", required = true)
-	public boolean excludeAmbigousRef = true;
+	public boolean excludeAmbigousRef = false;
 
 	@Argument(fullName = "excludeAmbigousCall", shortName = "exclAmbCall", doc = "Indicates whether totally degenerated ambiguous read-bases should be excluded", required = false)
 	public boolean excludeAmbigousBase = false;
 
-	@Argument(fullName = "excludeReadDeletions", shortName = "exclRdDel", doc = "Do not consider read deletions in coverage depth calculation", required = false)
-	public boolean excludeReadDeletions = true;
+	@Argument(fullName = "includeReadDeletions", shortName = "inclRdDel", doc = "Consider also deletions in reads as covering the site", required = false)
+	public boolean includeReadDeletions = false;
 
 	@Argument(fullName = "features", shortName = "features", doc = "ROD data binding indicating site category features", required = false)
 	protected RodBinding<GFFFeature> features = null;
@@ -161,7 +161,7 @@ public class CoverageDistributionWalker extends
 		sequenceNamesInitialize();
 		initializeCoverageCounterSets();
 		initializeBAQCalculatingEngine();
-		pileupFilter = initializePileupFilter(excludeAmbigousBase,
+		pileupFilter = initializePileupFilter(includeReadDeletions,
 				excludeAmbigousBase, minimumBaseQuality, minimumMappingQuality, minimumBAQ,
 				baqHMM, reference, cmode, qmode);
 	}
@@ -196,14 +196,14 @@ public class CoverageDistributionWalker extends
 	}
 
 	static PileupElementFilter initializePileupFilter(
-			final boolean excludeReadDeletions,
+			final boolean includeReadDeletions,
 			final boolean excludeAmbigousBase, final int minimumBaseQuality,
 			final int minimumMappingQuality, final int minimumBAQ,
 			final BAQ baqHMM, final IndexedFastaSequenceFile reference,
 			final CalculationMode cmode, final QualityMode qmode) {
 		return new PileupElementFilter() {
 			public boolean allow(PileupElement pe) {
-				if (excludeReadDeletions
+				if (!includeReadDeletions
 						&& pe.getBaseIndex() == BaseUtils.DELETION_INDEX)
 					return false;
 				if (excludeAmbigousBase
