@@ -40,6 +40,8 @@ public class IntegerCountersIncrement {
 		if (groupValues != null)
 			Arrays.fill(groupValues, 0);
 		depth = 0;
+		categories = 0;
+		sequence = -1;
 	}
 	
 }

@@ -58,7 +58,7 @@ import org.broadinstitute.sting.gatk.walkers.PartitionType;
 
 @ReadFilters({ UnmappedReadFilter.class, NotPrimaryAlignmentFilter.class })
 @PartitionBy(PartitionType.LOCUS)
-@By(DataSource.READS)
+@By(DataSource.REFERENCE)
 @Requires({ DataSource.READS, DataSource.REFERENCE_ORDERED_DATA })
 @BAQMode(QualityMode = BAQ.QualityMode.ADD_TAG, ApplicationTime = BAQ.ApplicationTime.HANDLED_IN_WALKER)
 public class CoverageDistributionWalker extends
@@ -126,7 +126,7 @@ public class CoverageDistributionWalker extends
 		ReadBackedPileup pileup = context.getBasePileup().getFilteredPileup(
 				pileupFilter);
 		result.depth = context.size();
-		if (groupBy != GroupBy.NONE)
+		if (groupBy != GroupBy.NONE) 
 			for (PileupElement pe : pileup) {
 				if (groupBy.implies(GroupBy.RG)) {
 					String readGroupName = pe.getRead().getReadGroup().getId();
@@ -291,7 +291,7 @@ public class CoverageDistributionWalker extends
 	@Override
 	public IntegerCounterSet treeReduce(IntegerCounterSet lhs,
 			IntegerCounterSet rhs) {
-		lhs.applyCounterSet(rhs);
+		// The per-thread reuse takes care of merging content
 		return lhs;
 	}
 

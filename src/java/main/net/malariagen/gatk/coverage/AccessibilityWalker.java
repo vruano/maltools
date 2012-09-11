@@ -25,7 +25,6 @@ import org.broadinstitute.sting.commandline.Output;
 import org.broadinstitute.sting.commandline.RodBinding;
 import org.broadinstitute.sting.gatk.contexts.AlignmentContext;
 import org.broadinstitute.sting.gatk.contexts.ReferenceContext;
-import org.broadinstitute.sting.gatk.filters.BadMateFilter;
 import org.broadinstitute.sting.gatk.filters.NotPrimaryAlignmentFilter;
 import org.broadinstitute.sting.gatk.filters.UnmappedReadFilter;
 import org.broadinstitute.sting.gatk.refdata.RefMetaDataTracker;
@@ -107,7 +106,7 @@ TreeReducible<AccessibilityStatistics>{
 
     Set<String> groupNames;
     
-    private AccesibilityAnnotations annotations;
+    private ThreadLocal<AccesibilityAnnotations> annotations;
 
 	boolean excludeNonRefCalls = true;
 
@@ -182,11 +181,11 @@ TreeReducible<AccessibilityStatistics>{
 			}
 		}
 		
-		annotations = new AccesibilityAnnotations(this);
+		annotations = new ThreadLocal<AccesibilityAnnotations>();
 		initializeBAQCalculatingEngine();
 		pileupFilter = CoverageDistributionWalker.initializePileupFilter(excludeReadDeletions, excludeAmbigousBase, minimumBaseQuality, minimumMappingQuality, minimumBAQ, baqHMM, reference, cmode, qmode);
 
-		writer.writeHeader(new VCFHeader(annotations.getHeaderLines()));
+		writer.writeHeader(new VCFHeader(AccesibilityAnnotations.getHeaderLines(this),groupNames));
 	}
 	
 	private BAQ baqHMM;
@@ -206,14 +205,16 @@ TreeReducible<AccessibilityStatistics>{
 			ReferenceContext ref, AlignmentContext context) {
 		if (excludeAmbigousRef && !BaseUtils.isRegularBase(ref.getBase()))
 			return null;
-		VariantContextBuilder result = new VariantContextBuilder();
-		result.loc(ref.getLocus());
-		result.referenceBaseForIndel(Nucleotide.N.byteValue());
 		Nucleotide refNuc = Nucleotide.fromByte(ref.getBase());
 		List<Allele> alleles = new LinkedList<Allele>();
 		Map<String, AlignmentContext> stratified = CoverageBiasWalker.stratifyByGroupName(context, groupNames, groupBy);
 		ReadBackedPileup pileup = context.getBasePileup().getFilteredPileup(
 				pileupFilter);
+		if (pileup.isEmpty()) 
+			return null;
+		VariantContextBuilder result = new VariantContextBuilder();
+		result.loc(ref.getLocus());
+		result.referenceBaseForIndel(Nucleotide.N.byteValue());
 		int[] baseCounts = pileup.getBaseCounts();
 		Allele refAllele = Allele.create(ref.getBase(),true);
 		result.alleles(alleles);
@@ -221,8 +222,11 @@ TreeReducible<AccessibilityStatistics>{
 		Map<String, Map<String, Object>> formatAnnotations = new LinkedHashMap<String,Map<String,Object>>(stratified.size());
 		for (String s : stratified.keySet())
 			formatAnnotations.put(s, new LinkedHashMap<String,Object>(10));
+		AccesibilityAnnotations anno = annotations.get();
+		if (anno == null)
+			annotations.set(anno = new AccesibilityAnnotations(this));
 		
-		annotations.annotate(tracker, ref, stratified, infoAnnotations, formatAnnotations);
+		anno.annotate(tracker, ref, stratified, infoAnnotations, formatAnnotations);
 		GenotypesContext gc = GenotypesContext.create();
 		result.attributes(infoAnnotations);
 		Set<String> noFilters = Collections.emptySet();
@@ -241,6 +245,7 @@ TreeReducible<AccessibilityStatistics>{
 		return result.make();
 	}
 
+
 	@Override
 	public AccessibilityStatistics reduceInit() {
 		return new AccessibilityStatistics();
@@ -249,7 +254,7 @@ TreeReducible<AccessibilityStatistics>{
 	@Override
 	public AccessibilityStatistics reduce(VariantContext value,
 			AccessibilityStatistics sum) {
-		writer.add(value);
+		if (value != null) writer.add(value);
 		return sum;
 	}
 

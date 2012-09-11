@@ -4,7 +4,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
-import java.util.LinkedList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -51,27 +51,37 @@ public class AccesibilityAnnotations {
 
 	private AccessibilityWalker walker;
 
-	private int maxAllMappingQuality;
-	private int[] allMappingQualityCounts;
-	private int[][] mappingQualityCounts;
-	private int[] maxMappingQuality;
-	private int[] groupDepth;
-	private int allDepth;
-	
+
 	private Median medianCalculator = new Median();
 
 	private Map<String, Integer> groupIndex;
 
-	private double[] groupDoubleAuxiliar;
-	private double[] groupDoubleAuxiliar2;
 
 	public AccesibilityAnnotations(AccessibilityWalker walker) {
 		if (walker == null)
 			throw new IllegalArgumentException();
 		this.walker = walker;
-		int nextIdx = 1;
+		int nextIdx = 0;
+		groupIndex = new LinkedHashMap<String, Integer>(
+				walker.groupNames.size());
 		for (String gn : walker.groupNames)
 			groupIndex.put(gn, nextIdx++);
+	}
+
+	public void annotate(RefMetaDataTracker tracker, ReferenceContext ref,
+			Map<String, AlignmentContext> stratifiedAlignmentContext,
+			Map<String, Object> infoAnnotations,
+			Map<String, Map<String, Object>> formatAnnotations) {
+
+		int maxAllMappingQuality;
+		int[] allMappingQualityCounts;
+		int[][] mappingQualityCounts;
+		int[] maxMappingQuality;
+		int[] groupDepth;
+		int allDepth;
+		double[] groupDoubleAuxiliar;
+		double[] groupDoubleAuxiliar2;
+
 		mappingQualityCounts = new int[groupIndex.size()][MAX_MAPPING_QUALITY + 1];
 		maxMappingQuality = new int[groupIndex.size()];
 		maxAllMappingQuality = 0;
@@ -80,19 +90,15 @@ public class AccesibilityAnnotations {
 		groupDoubleAuxiliar = new double[groupIndex.size()];
 		groupDoubleAuxiliar2 = new double[groupIndex.size()];
 		allDepth = 0;
-	}
-
-	public void annotate(RefMetaDataTracker tracker, ReferenceContext ref,
-			Map<String, AlignmentContext> stratifiedAlignmentContext, Map<String,Object> infoAnnotations, Map<String,Map<String,Object>> formatAnnotations) {
 
 		// clear counters.
-		Arrays.fill(allMappingQualityCounts, 0, maxAllMappingQuality, 0);
-		maxAllMappingQuality = 0;
-		for (int i = 0; i < groupIndex.size(); i++)
-			Arrays.fill(mappingQualityCounts[i], 0, maxMappingQuality[i], 0);
-		Arrays.fill(maxMappingQuality, 0);
-		Arrays.fill(groupDepth, 0);
-		allDepth = 0;
+//		Arrays.fill(allMappingQualityCounts, 0, maxAllMappingQuality + 1, 0);
+//		maxAllMappingQuality = 0;
+//		for (int i = 0; i < groupIndex.size(); i++)
+//			Arrays.fill(mappingQualityCounts[i], 0, maxMappingQuality[i] + 1, 0);
+//		Arrays.fill(maxMappingQuality, 0);
+//		Arrays.fill(groupDepth, 0);
+//		allDepth = 0;
 
 		for (Map.Entry<String, AlignmentContext> gn : stratifiedAlignmentContext
 				.entrySet()) {
@@ -113,16 +119,20 @@ public class AccesibilityAnnotations {
 
 		infoAnnotations.put("DP", allDepth);
 		infoAnnotations.put("MQ0", allMappingQualityCounts[0]);
-		infoAnnotations.put("MQ", rms(allMappingQualityCounts,0,maxAllMappingQuality + 1));
-		
+		if (allDepth > 0) infoAnnotations.put("MQ",
+				rms(allMappingQualityCounts, 0, maxAllMappingQuality + 1));
+
 		for (int i = 0; i < groupDepth.length; i++)
 			groupDoubleAuxiliar[i] = (double) groupDepth[i];
-		
-		double groupMedianDepth = medianCalculator.evaluate(groupDoubleAuxiliar);
-		infoAnnotations.put("MedDP",groupMedianDepth);
-		
-		
-		
+
+		if (allDepth > 0) {
+			double groupMedianDepth = medianCalculator
+					.evaluate(groupDoubleAuxiliar);
+			infoAnnotations.put("MedDP", groupMedianDepth);
+		} else {
+			infoAnnotations.put("MedDP", 0.0);
+		}
+
 		boolean isCoding = false;
 		if (walker.features != null) {
 			isCoding = walker.isCoding(tracker);
@@ -152,36 +162,60 @@ public class AccesibilityAnnotations {
 						: gSet.getAllSequencesDistributionSet();
 				IntegerDistribution gDist = walker.normalizePerCodingStatus ? gSeqSet
 						.getCategoryDistribution(isCoding ? LocusCategory.CODING
-								: LocusCategory.NON_CODING) : gSeqSet
-						.getAllCategoriesDistribution();
+								: LocusCategory.NON_CODING)
+						: gSeqSet.getAllCategoriesDistribution();
 				int index = groupIndex.get(gn);
-				Map<String,Object> annotations = formatAnnotations.get(gn);
+				Map<String, Object> annotations = formatAnnotations.get(gn);
 				annotations.put("MQ0", mappingQualityCounts[index][0]);
-				groupDoubleAuxiliar[index] = 100.0 * mappingQualityCounts[index][0] / groupDoubleAuxiliar[index];
-				annotations.put("MQ", rms(mappingQualityCounts[index],0,maxMappingQuality[index] + 1));
+				groupDoubleAuxiliar[index] = groupDoubleAuxiliar[index] == 0 ? 0
+						: 100.0 * mappingQualityCounts[index][0]
+								/ groupDepth[index];
 				annotations.put("DP", groupDepth[index]);
-				double cmf = groupDepth[index] / gDist.median();
-				annotations.put("CMF", cmf);
-				groupDoubleAuxiliar2[index] = cmf;
-				annotations.put("CCP", gDist.cumulativeProbability(groupDepth[index]));
-			}	
-			double cmfMedian = medianCalculator.evaluate(groupDoubleAuxiliar2);
-			infoAnnotations.put("MedCMF",cmfMedian);
-		}
-		else {
+				if (groupDepth[index] == 0) {
+					annotations.put("CMF", 0);
+					annotations.put("CCP", gDist.cumulativeProbability(0));
+				} else {
+					annotations.put(
+							"MQ",
+							rms(mappingQualityCounts[index], 0,
+									maxMappingQuality[index] + 1));
+					double cmf = groupDepth[index] / gDist.median();
+					annotations.put("CMF", cmf);
+					groupDoubleAuxiliar2[index] = cmf;
+					annotations.put("CCP",
+							gDist.cumulativeProbability(groupDepth[index]));
+				}
+			}
+			if (allDepth > 0) {
+				double cmfMedian = medianCalculator
+						.evaluate(groupDoubleAuxiliar2);
+				infoAnnotations.put("MedCMF", cmfMedian);
+			} else {
+				infoAnnotations.put("MedCMF", 0.0);
+			}
+		} else {
 			for (String gn : walker.groupNames) {
 				int index = groupIndex.get(gn);
-				Map<String,Object> annotations = formatAnnotations.get(gn);
+				Map<String, Object> annotations = formatAnnotations.get(gn);
 				annotations.putAll(annotations);
 				annotations.put("MQ0", mappingQualityCounts[index][0]);
-				groupDoubleAuxiliar[index] = 100.0 * mappingQualityCounts[index][0] / groupDoubleAuxiliar[index];
-				annotations.put("MQ", rms(mappingQualityCounts[index],0,maxMappingQuality[index] + 1));
+				groupDoubleAuxiliar[index] = groupDoubleAuxiliar[index] == 0 ? 0
+						: 100.0 * mappingQualityCounts[index][0]
+								/ groupDepth[index];
 				annotations.put("DP", groupDepth[index]);
-			}	
+				if (groupDepth[index] != 0)
+					annotations.put(
+							"MQ",
+							rms(mappingQualityCounts[index], 0,
+									maxMappingQuality[index] + 1));
+			}
 		}
-		double mq0Median = medianCalculator.evaluate(groupDoubleAuxiliar);
-		infoAnnotations.put("MedMQ0pc", mq0Median);
-		
+		if (allDepth > 0 && allMappingQualityCounts[0] > 0) {
+			double mq0Median = medianCalculator.evaluate(groupDoubleAuxiliar);
+			infoAnnotations.put("MedMQ0pc", mq0Median);
+		} else {
+			infoAnnotations.put("MedMQ0pc", 0.0);
+		}
 	}
 
 	private static double rms(int... values) {
@@ -214,25 +248,58 @@ public class AccesibilityAnnotations {
 		}
 	}
 
-	public Set<VCFHeaderLine> getHeaderLines() {
+	public static Set<VCFHeaderLine> getHeaderLines(AccessibilityWalker walker) {
 		Set<VCFHeaderLine> result = new HashSet<VCFHeaderLine>();
-		result.add(new VCFInfoHeaderLine("DP",1,VCFHeaderLineType.Integer,"total depth at that site across samples"));
-		result.add(new VCFInfoHeaderLine("MQ0",1,VCFHeaderLineType.Integer,"total number of reads with mapping quality zero across all samples overlapping this position"));
-		result.add(new VCFInfoHeaderLine("MQ", 1, VCFHeaderLineType.Float,"RMS of mapping qualities of reads overlapping this position"));
-		result.add(new VCFFormatHeaderLine("DP",1,VCFHeaderLineType.Integer,"total depth at that site across samples"));
-		result.add(new VCFFormatHeaderLine("MQ0",1,VCFHeaderLineType.Integer,"total number of reads with mapping quality zero across all samples overlapping this position"));
-		result.add(new VCFFormatHeaderLine("MQ", 1, VCFHeaderLineType.Float,"RMS of mapping qualities of reads overlapping this position"));
-		result.add(new VCFInfoHeaderLine("MedMQ0pc",1,VCFHeaderLineType.Float,"MQ0 pc median across samples"));
-		result.add(new VCFInfoHeaderLine("MedDP",1,VCFHeaderLineType.Float,"DP median across samples"));
+		result.add(new VCFInfoHeaderLine("DP", 1, VCFHeaderLineType.Integer,
+				"total depth at that site across samples"));
+		result.add(new VCFInfoHeaderLine(
+				"MQ0",
+				1,
+				VCFHeaderLineType.Integer,
+				"total number of reads with mapping quality zero across all samples overlapping this position"));
+		result.add(new VCFInfoHeaderLine("MQ", 1, VCFHeaderLineType.Float,
+				"Mapping Quality RMS of reads overlapping this position"));
+		result.add(new VCFFormatHeaderLine("DP", 1, VCFHeaderLineType.Integer,
+				"Total depth at that site across samples"));
+		result.add(new VCFFormatHeaderLine(
+				"MQ0",
+				1,
+				VCFHeaderLineType.Integer,
+				"Total number of reads with mapping quality 0 across all samples overlapping this position"));
+		result.add(new VCFFormatHeaderLine("MQ", 1, VCFHeaderLineType.Float,
+				"RMS of mapping qualities of reads overlapping this position"));
+		result.add(new VCFInfoHeaderLine("MedMQ0pc", 1,
+				VCFHeaderLineType.Float, "MQ0 pc median across samples"));
+		result.add(new VCFInfoHeaderLine("MedDP", 1, VCFHeaderLineType.Float,
+				"Median sample DP"));
 		if (walker.normalize) {
-			result.add(new VCFInfoHeaderLine("MedCMF",1,VCFHeaderLineType.Float,"Cmf median across samples"));
-			result.add(new VCFInfoHeaderLine("Cmf",1,VCFHeaderLineType.Float,"coverage median fold: ratio between the depth at this position and the normalized median"));
-			result.add(new VCFInfoHeaderLine("Ccp",1,VCFHeaderLineType.Float,"coverage cumulative probability. e.g. 0.15 means that 15% of positions have lower or equal depth"));
-			result.add(new VCFFormatHeaderLine("CMF",1,VCFHeaderLineType.Float,"coverage median fold: ratio between the depth at this position and the normalized median"));
-			result.add(new VCFFormatHeaderLine("CCP",1,VCFHeaderLineType.Float,"coverage cumulative probability. e.g. 0.15 means that 15% of positions have lower or equal depth"));
+			result.add(new VCFInfoHeaderLine("MedCMF", 1,
+					VCFHeaderLineType.Float, "Cmf median across samples"));
+			result.add(new VCFInfoHeaderLine(
+					"Cmf",
+					1,
+					VCFHeaderLineType.Float,
+					"coverage median fold: ratio between the depth at this position and the normalized median"));
+			result.add(new VCFInfoHeaderLine(
+					"Ccp",
+					1,
+					VCFHeaderLineType.Float,
+					"coverage cumulative probability. e.g. 0.15 means that 15% of positions have lower or equal depth"));
+			result.add(new VCFFormatHeaderLine(
+					"CMF",
+					1,
+					VCFHeaderLineType.Float,
+					"coverage median fold: ratio between the depth at this position and the normalized median"));
+			result.add(new VCFFormatHeaderLine(
+					"CCP",
+					1,
+					VCFHeaderLineType.Float,
+					"coverage cumulative probability. e.g. 0.15 means that 15% of positions have lower or equal depth"));
 		}
 		if (walker.features != null)
-			result.add(new VCFInfoHeaderLine("CODING",0,VCFHeaderLineType.Flag,"Indicates that the locus is coding"));
+			result.add(new VCFInfoHeaderLine("CODING", 0,
+					VCFHeaderLineType.Flag,
+					"Indicates that the locus is coding"));
 		return result;
 	}
 
