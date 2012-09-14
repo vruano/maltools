@@ -43,7 +43,6 @@ public class AccessibilityWalkerTest extends WalkerTest {
 		File sampleOne = new File (getClass().getResource("/cases/awtest/sampleOne.bam").getFile());
 		File sampleTwo = new File (getClass().getResource("/cases/awtest/sampleTwo.bam").getFile());
 		File cds = new File (getClass().getResource("/cases/awtest/coverage-distribution.json").getFile());
-		File mq0pcds = new File (getClass().getResource("/cases/awtest/mq0pc-distribution.json").getFile());
 		File output = File.createTempFile("cqw", ".json");
         Formatter formatter = new Formatter();
         Formatter cmdSpec = formatter.format("-R %s -T CoverageQuality -groupBy SM -features %s -I %s -I %s -o %s -cds %s",
