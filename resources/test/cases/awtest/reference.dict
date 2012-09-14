@@ -1,0 +1,18 @@
+@HD	VN:1.0	SO:unsorted
+@SQ	SN:MAL1	LN:643292	UR:file:/home/valentin/Developer/maltools/resources/test/cases/cctest/reference.fa	M5:6a7e6510bdae0ad38e8bc3aa1adf537f
+@SQ	SN:MAL10	LN:1687655	UR:file:/home/valentin/Developer/maltools/resources/test/cases/cctest/reference.fa	M5:a13945591ca5a84710655be93c75d623
+@SQ	SN:MAL11	LN:2038337	UR:file:/home/valentin/Developer/maltools/resources/test/cases/cctest/reference.fa	M5:909466c6a0faec815f63b21047beea15
+@SQ	SN:MAL12	LN:2271478	UR:file:/home/valentin/Developer/maltools/resources/test/cases/cctest/reference.fa	M5:c4427f71425a56c2e6325089b6bc2b7d
+@SQ	SN:MAL13	LN:2895605	UR:file:/home/valentin/Developer/maltools/resources/test/cases/cctest/reference.fa	M5:5c761a4674f0363bb789b5a982952bfc
+@SQ	SN:MAL14	LN:3291871	UR:file:/home/valentin/Developer/maltools/resources/test/cases/cctest/reference.fa	M5:03d21468ae712ffe4f1c62d54e4c2e2a
+@SQ	SN:MAL2	LN:947102	UR:file:/home/valentin/Developer/maltools/resources/test/cases/cctest/reference.fa	M5:d34154a67b6b8e10d2d7aea3c83e09e7
+@SQ	SN:MAL3	LN:1060087	UR:file:/home/valentin/Developer/maltools/resources/test/cases/cctest/reference.fa	M5:468c14169020248f4e41799de3a4bef5
+@SQ	SN:MAL4	LN:1204112	UR:file:/home/valentin/Developer/maltools/resources/test/cases/cctest/reference.fa	M5:9b74fcd8d379f3763a31050acf098f3a
+@SQ	SN:MAL5	LN:1343552	UR:file:/home/valentin/Developer/maltools/resources/test/cases/cctest/reference.fa	M5:3d84171954a6768f2a9d93796fe58d9a
+@SQ	SN:MAL6	LN:1418244	UR:file:/home/valentin/Developer/maltools/resources/test/cases/cctest/reference.fa	M5:d2f87cf0c3570ae0da5dfd71bd4c506a
+@SQ	SN:MAL7	LN:1501717	UR:file:/home/valentin/Developer/maltools/resources/test/cases/cctest/reference.fa	M5:493245de8db9737efb5ce128e6b65661
+@SQ	SN:MAL8	LN:1419563	UR:file:/home/valentin/Developer/maltools/resources/test/cases/cctest/reference.fa	M5:1878bd1367b051daff937555e44f41b7
+@SQ	SN:MAL9	LN:1541723	UR:file:/home/valentin/Developer/maltools/resources/test/cases/cctest/reference.fa	M5:87f4b581b5db461261b36b5344fe9df4
+@SQ	SN:MITO1	LN:5967	UR:file:/home/valentin/Developer/maltools/resources/test/cases/cctest/reference.fa	M5:2eedeb16ed825e7c843f0e70163fd635
+@SQ	SN:PLAST1	LN:15421	UR:file:/home/valentin/Developer/maltools/resources/test/cases/cctest/reference.fa	M5:c81e1e2bf3ef551d5db412bec1e441f0
+@SQ	SN:PLAST2	LN:14009	UR:file:/home/valentin/Developer/maltools/resources/test/cases/cctest/reference.fa	M5:d77f23357657a80be88c8eec6191a425

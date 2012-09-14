@@ -20,9 +20,9 @@ public class AccessibilityWalkerTest extends WalkerTest {
 		File features = new File (getClass().getResource("/cases/awtest/reference.gff").getFile());
 		File sampleOne = new File (getClass().getResource("/cases/awtest/sampleOne.bam").getFile());
 		File sampleTwo = new File (getClass().getResource("/cases/awtest/sampleTwo.bam").getFile());
-		File output = File.createTempFile("AGVTest", ".json");
+		File output = File.createTempFile("cqw", ".json");
         Formatter formatter = new Formatter();
-        Formatter cmdSpec = formatter.format("-R %s -T Accessibility -groupBy SM -features %s -I %s -I %s -o %s",
+        Formatter cmdSpec = formatter.format("-R %s -T CoverageQuality -groupBy SM -features %s -I %s -I %s -o %s",
         		reference,features,sampleOne,sampleTwo,output);
         // No md5s for now.
         List<String> md5s = Collections.emptyList();
@@ -43,9 +43,10 @@ public class AccessibilityWalkerTest extends WalkerTest {
 		File sampleOne = new File (getClass().getResource("/cases/awtest/sampleOne.bam").getFile());
 		File sampleTwo = new File (getClass().getResource("/cases/awtest/sampleTwo.bam").getFile());
 		File cds = new File (getClass().getResource("/cases/awtest/coverage-distribution.json").getFile());
-		File output = File.createTempFile("AGVTest", ".json");
+		File mq0pcds = new File (getClass().getResource("/cases/awtest/mq0pc-distribution.json").getFile());
+		File output = File.createTempFile("cqw", ".json");
         Formatter formatter = new Formatter();
-        Formatter cmdSpec = formatter.format("-R %s -T Accessibility -groupBy SM -features %s -I %s -I %s -o %s -cds %s",
+        Formatter cmdSpec = formatter.format("-R %s -T CoverageQuality -groupBy SM -features %s -I %s -I %s -o %s -cds %s",
         		reference,features,sampleOne,sampleTwo,output,cds);
         // No md5s for now.
         List<String> md5s = Collections.emptyList();

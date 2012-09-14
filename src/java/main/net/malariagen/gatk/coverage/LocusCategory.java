@@ -1,20 +1,16 @@
 package net.malariagen.gatk.coverage;
 
 import java.util.Collection;
-import java.util.List;
 import java.util.Map;
 
 import net.malariagen.gatk.annotators.Constants;
 import net.malariagen.gatk.gff.GFFFeature;
 import net.sf.samtools.SAMRecord;
 
-import org.broad.tribble.Feature;
 import org.broadinstitute.sting.commandline.RodBinding;
 import org.broadinstitute.sting.gatk.refdata.ReadMetaDataTracker;
 import org.broadinstitute.sting.gatk.refdata.RefMetaDataTracker;
 import org.broadinstitute.sting.gatk.refdata.utils.GATKFeature;
-import org.broadinstitute.sting.gatk.refdata.utils.RODRecordList;
-import org.broadinstitute.sting.utils.exceptions.UserException;
 
 public enum LocusCategory {
 	CODING, NON_CODING, GENIC, INTER_GENIC, FEATURELESS;
@@ -32,7 +28,7 @@ public enum LocusCategory {
 	public static byte categoryMask(RefMetaDataTracker tracker,
 			RodBinding<GFFFeature> binding) {
 		byte result = 0;
-		if (binding != null) {
+		if (binding != null) 
 			for (GFFFeature ft : tracker.getValues(binding)) {
 				switch (ft.getType()) {
 				case CDS:
@@ -42,7 +38,7 @@ public enum LocusCategory {
 					result |= GENIC_MASK;
 				}
 			}
-		} else
+		else
 			result |= FEATURELESS_MASK;
 		if ((result & GENIC_MASK) == 0)
 			result |= INTER_GENIC_MASK;

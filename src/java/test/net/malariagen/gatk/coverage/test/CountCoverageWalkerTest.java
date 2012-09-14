@@ -45,6 +45,29 @@ public class CountCoverageWalkerTest extends WalkerTest {
      }
 
 	@Test
+	public void testMQ0PCDistributionWalker() throws IOException {
+		File reference = new File (getClass().getResource("/cases/cctest/reference.fa").getFile());
+		File features = new File (getClass().getResource("/cases/cctest/reference.gff").getFile());
+		File sampleOne = new File (getClass().getResource("/cases/cctest/sampleOne.bam").getFile());
+		File sampleTwo = new File (getClass().getResource("/cases/cctest/sampleTwo.bam").getFile());
+		File output = File.createTempFile("mq0pcd", ".json");
+        Formatter formatter = new Formatter();
+        Formatter cmdSpec = formatter.format("-R %s -T MQ0PcDistribution -groupBy SM -features %s -I %s -I %s -o %s",
+        		reference,features,sampleOne,sampleTwo,output);
+        // No md5s for now.
+        List<String> md5s = Collections.emptyList();
+		WalkerTest.WalkerTestSpec spec = new WalkerTest.WalkerTestSpec(cmdSpec.toString(),md5s);
+        try {
+		   executeTest("testCoverageCounting", spec);
+        }
+        catch (Throwable t) {
+        	t.printStackTrace();
+        	fail(t.getMessage());
+        }
+     }
+	
+	
+	@Test
 	public void testCountCoverageWalkerLongData() throws IOException {
 		File reference = new File (getClass().getResource("/testdata/reference.fa").getFile());
 		File features = new File (getClass().getResource("/testdata/reference.gff").getFile());
