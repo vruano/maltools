@@ -1,6 +1,8 @@
 package net.malariagen.gatk.walker;
 
 import java.util.HashSet;
+
+import org.broadinstitute.sting.gatk.DownsampleType;
 import org.broadinstitute.sting.gatk.filters.BadMateFilter;
 import org.broadinstitute.sting.gatk.filters.UnmappedReadFilter;
 
@@ -24,6 +26,7 @@ import org.broadinstitute.sting.gatk.refdata.ReadMetaDataTracker;
 import org.broadinstitute.sting.gatk.walkers.BAQMode;
 import org.broadinstitute.sting.gatk.walkers.By;
 import org.broadinstitute.sting.gatk.walkers.DataSource;
+import org.broadinstitute.sting.gatk.walkers.Downsample;
 import org.broadinstitute.sting.gatk.walkers.ReadFilters;
 import org.broadinstitute.sting.gatk.walkers.ReadWalker;
 import org.broadinstitute.sting.gatk.walkers.Requires;
@@ -35,6 +38,7 @@ import org.broadinstitute.sting.utils.sam.GATKSAMRecord;
 @ReadFilters({ NotPrimaryAlignmentFilter.class })
 @By(DataSource.READS)
 @Requires(DataSource.READS)
+@Downsample(by=DownsampleType.NONE)
 @BAQMode(QualityMode = BAQ.QualityMode.DONT_MODIFY, ApplicationTime = BAQ.ApplicationTime.HANDLED_IN_WALKER)
 public abstract class FragmentWalker<MapType, ReduceType> extends
 		ReadWalker<GATKSAMRecord, FragmentWalkerReduceType<ReduceType>> {
