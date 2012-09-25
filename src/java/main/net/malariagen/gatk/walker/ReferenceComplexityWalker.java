@@ -1,7 +1,5 @@
 package net.malariagen.gatk.walker;
 
-import java.io.File;
-import java.io.IOException;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -13,11 +11,7 @@ import java.util.Map;
 import java.util.Set;
 
 import net.malariagen.gatk.coverage.CoverageBiasWalker.GroupBy;
-import net.malariagen.gatk.utils.ReadGroup;
-import net.malariagen.gatk.utils.ReadGroupDB;
 import net.malariagen.gatk.walker.SequenceComplexity.LocusComplexity;
-import net.malariagen.vcf.VCFReadGroupHeaderLine;
-import net.sf.samtools.SAMReadGroupRecord;
 
 import org.broadinstitute.sting.commandline.Argument;
 import org.broadinstitute.sting.commandline.Output;
@@ -39,8 +33,6 @@ import org.broadinstitute.sting.utils.codecs.vcf.VCFHeaderLineType;
 import org.broadinstitute.sting.utils.codecs.vcf.VCFInfoHeaderLine;
 import org.broadinstitute.sting.utils.codecs.vcf.VCFWriter;
 import org.broadinstitute.sting.utils.exceptions.UserException;
-import org.broadinstitute.sting.utils.pileup.PileupElement;
-import org.broadinstitute.sting.utils.sam.GATKSAMRecord;
 import org.broadinstitute.sting.utils.variantcontext.Allele;
 import org.broadinstitute.sting.utils.variantcontext.Genotype;
 import org.broadinstitute.sting.utils.variantcontext.GenotypesContext;
@@ -53,6 +45,10 @@ import org.broadinstitute.sting.utils.variantcontext.VariantContextBuilder;
 public class ReferenceComplexityWalker
 		extends
 		LocusWalker<net.malariagen.gatk.walker.ReferenceComplexityWalker.Locus, MultiWindowSequenceComplexity> {
+
+	public enum Whence {
+		START,CENTER,END;
+	}
 
 	static class Locus {
 		ReferenceContext ref;
@@ -71,6 +67,9 @@ public class ReferenceComplexityWalker
 
 	@Output(shortName = "o", fullName = "output", doc = "File to which variants should be written", required = true)
 	protected VCFWriter writer = null;
+	
+	@Argument(shortName = "whence", fullName="whence", doc ="Where the targeted position in the reference is located within the window (START,CENTER or END) ", required = false)
+	protected Whence whence = Whence.CENTER;
 
 	@Override
 	public Locus map(RefMetaDataTracker tracker, ReferenceContext ref,
@@ -134,9 +133,22 @@ public class ReferenceComplexityWalker
 			headerLines.add(new VCFInfoHeaderLine("DUST", 1,
 					VCFHeaderLineType.Float,
 					"DUST complexity metric for the given window (only if TriCnt > 1)"));
-			headerLines.add(new VCFInfoHeaderLine("END", 1,
+			switch (whence) {
+			case CENTER:
+				headerLines.add(new VCFInfoHeaderLine("START", 1,
+						VCFHeaderLineType.Float,
+						"Stat position of the window interval"));
+			case START:
+				headerLines.add(new VCFInfoHeaderLine("END", 1,
 					VCFHeaderLineType.Float,
 					"Stop position of the window interval"));
+				break;
+			case END:
+				headerLines.add(new VCFInfoHeaderLine("START", 1,
+						VCFHeaderLineType.Float,
+						"Start position of the window interval"));
+			}
+		
 		}
 		else {
 			groupNames = groupWindowSize.keySet();
@@ -163,6 +175,21 @@ public class ReferenceComplexityWalker
 			headerLines.add(new VCFFormatHeaderLine("ED", 1,
 					VCFHeaderLineType.Float,
 					"Stop position of the window interval"));
+			switch (whence) {
+			case CENTER:
+				headerLines.add(new VCFInfoHeaderLine("ST", 1,
+						VCFHeaderLineType.Float,
+						"Start position of the window interval"));
+			case START:
+				headerLines.add(new VCFInfoHeaderLine("ED", 1,
+					VCFHeaderLineType.Float,
+					"Stop position of the window interval"));
+				break;
+			case END:
+				headerLines.add(new VCFInfoHeaderLine("ST", 1,
+						VCFHeaderLineType.Float,
+						"Start position of the window interval"));
+			}
 			
 		}
 		header = new VCFHeader(headerLines,groupNames);
@@ -182,7 +209,7 @@ public class ReferenceComplexityWalker
 		for (Integer i : windowSizes) {
 			windowSizeInts[nextIdx++] = i;
 		}
-		return new MultiWindowSequenceComplexity(windowSizeInts);
+		return new MultiWindowSequenceComplexity(windowSizeInts,whence);
 	}
 
 	@Override
@@ -191,6 +218,7 @@ public class ReferenceComplexityWalker
 		if (sum.lastLocus() != null && value.ref.getLocus().compareContigs(sum.lastLocus()) != 0) 
 			for (Map<Integer, SequenceComplexity.LocusComplexity> l : sum.flush())
 				if (l.size() != 0) emit(l);
+		sum = this.reduceInit();
 		List<Map<Integer, SequenceComplexity.LocusComplexity>> lcm = sum.count(
 				value.ref);
 		for (Map<Integer, SequenceComplexity.LocusComplexity> l : lcm)
@@ -226,7 +254,13 @@ public class ReferenceComplexityWalker
 			}
 			attributes.put("NucCnt", lc.getNucCount());
 			attributes.put("TriCnt", lc.getTrinucCount());
-			attributes.put("END", lc.getLocus().getStart() + lc.size() - 1);
+			switch (whence) {
+			case CENTER:
+				attributes.put("START",lc.getLocus().getStart());
+			case START:  attributes.put("END", lc.getLocus().getStart() + lc.size() - 1); break;
+			case END:
+				attributes.put("START",lc.getLocus().getStart());
+			}
 			if (lc.getLocus().compareTo(loc) < 0)
 				loc = lc.getLocus();
 		}
@@ -248,7 +282,14 @@ public class ReferenceComplexityWalker
 					attr.put("TE", lc.getTriEnt());
 					if (lc.getTrinucCount() > 1) attr.put("DU", lc.getDUST());
 				}
-				attr.put("ED", lc.getLocus().getStart() + lc.size() - 1);
+				switch (whence) {
+				case CENTER:
+					attr.put("ST",lc.getLocus().getStart());
+				case START:  				
+					attr.put("ED", lc.getLocus().getStart() + lc.size() - 1);  break;
+				case END:
+					attr.put("ST",lc.getLocus().getStart());
+				}
 				if (lc.getLocus().compareTo(loc) < 0)
 					loc = lc.getLocus();
 			}

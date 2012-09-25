@@ -8,6 +8,8 @@ import java.util.Map;
 import java.util.PriorityQueue;
 
 
+import net.malariagen.gatk.walker.ReferenceComplexityWalker.Whence;
+
 import org.broadinstitute.sting.gatk.contexts.ReferenceContext;
 import org.broadinstitute.sting.utils.GenomeLoc;
 
@@ -16,6 +18,7 @@ public class MultiWindowSequenceComplexity {
 	protected SequenceComplexity[] complexities;
 	protected Map<Integer, SequenceComplexity> byWs;
 	protected int maxWindow = 0;
+	protected Whence whence;
 
 	protected PriorityQueue<WindowSet> windows = new PriorityQueue<WindowSet>();
 	protected Map<GenomeLoc, WindowSet> windowByLoc = new HashMap<GenomeLoc, WindowSet>(
@@ -85,7 +88,8 @@ public class MultiWindowSequenceComplexity {
 		}
 	}
 
-	MultiWindowSequenceComplexity(int... ws) {
+	MultiWindowSequenceComplexity(int[] ws, Whence whence) {
+		this.whence = whence;
 		for (int i : ws)
 			if (i <= 0)
 				throw new IllegalArgumentException(
@@ -94,8 +98,15 @@ public class MultiWindowSequenceComplexity {
 		for (int i : ws) {
 			if (i > maxWindow)
 				maxWindow = i;
-			if (byWs.get(i) == null)
-				byWs.put(i, SequenceComplexity.create(i));
+			int padding;
+			switch (whence) {
+			case START: padding = 0; break;
+			case END: padding = i - 1; break;
+			default: // CENTER
+				padding = i >> 1;
+			}
+			if (byWs.get(i) == null) 
+				byWs.put(i, SequenceComplexity.create(i,padding));
 		}
 
 		complexities = byWs.values().toArray(
@@ -136,7 +147,6 @@ public class MultiWindowSequenceComplexity {
 	}
 
 	public GenomeLoc lastLocus() {
-		// TODO Auto-generated method stub
 		return lastLocus;
 	}
 

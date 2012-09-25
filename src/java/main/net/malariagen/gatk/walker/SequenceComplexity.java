@@ -32,25 +32,25 @@ public class SequenceComplexity {
 
 	public List<LocusComplexity> flush() {
 		List<LocusComplexity> result = new ArrayList<LocusComplexity>(nucs.size());
-		while (nucs.size() > 1) {
-		  removeNucleotide();
-                  result.add(emit());
+		while (locs.size() > 1) {
+		   removeNucleotide();
+           result.add(emit());
 		}
-                if (nucs.size() > 0) removeNucleotide();
+		result.clear();
 		return result;
 	}
 
 	
 	public LocusComplexity count(ReferenceContext ref) {
-		return count(ref,false);
+		return count(ref,true);
 	}
 	
-	public LocusComplexity count(ReferenceContext ref, boolean forceEmit) {
+	protected LocusComplexity count(ReferenceContext ref, boolean forceEmit) {
 		GenomeLoc loc = ref.getLocus();
 		Nucleotide n = Nucleotide.fromByte(ref.getBase());
 		if (end != null && !loc.getContig().equals(end.getContig()))
 			clear();
-		int gap = (nucs.size() != 0) ? end.getStop() - loc.getStart() : 0;
+		int gap = (end != null) ? end.getStop() - loc.getStart() : 0;
 		while (gap-- > 0) {
 			if (nucs.size() == windowSize) 
 				removeNucleotide();
@@ -200,6 +200,20 @@ public class SequenceComplexity {
 
 	public static SequenceComplexity create(int windowSize) {
 		return new SequenceComplexity(windowSize);
+	}
+	
+	public static SequenceComplexity create(int windowSize, int padding) {
+		SequenceComplexity result = create(windowSize);
+		result.pad(padding);
+		return result;
+	}
+
+	private void pad(int padding) {
+		for (int i = 0; i < padding; i++) {
+			nucs.add(Nucleotide.N);
+			if (i > 1)
+			  trinucs.add(Trinucleotide.NNN);
+		}
 	}
 
 	public class LocusComplexity {
