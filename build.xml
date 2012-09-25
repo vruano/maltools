@@ -26,12 +26,14 @@
   <attribute name="dir" default=""/>
   <attribute name="branch" default="DEFAULT"/>
   <attribute name="commit" default="DEFAULT"/>
+  <attribute name="tag" default="DEFAULT"/>
   <attribute name="patch" default="NONE"/>
   <sequential>
     <exec executable="${git-get.exec}" failonerror="true">
       <arg line="-c @{commit}" />
       <arg line="-b @{branch}" />
       <arg line="-p @{patch}" />
+      <arg line="-t @{tag}" />
       <arg line="-pm .patch_applied" />
       <arg line="-bm .built" />
       <arg value="@{url}" />
@@ -154,7 +156,7 @@
 </target>
 
 <target name="bwa.init" depends="init">
-  <svn-get url="${bwa.url}" dir="${bwa.dir}" revision="${bwa.rev}" />
+  <git-get url="${bwa.url}" dir="${bwa.dir}" commit="${bwa.commit}" branch="${bwa.branch}" patch="${bwa.patch}" tag="${bwa.tag}" />
   <make dir="${bwa.dir}" target="all" />
 </target>
 

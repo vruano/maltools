@@ -2,9 +2,14 @@
 
 use strict;
 use warnings;
+use Getopt::Long;
 use Cwd qw(realpath);
 use File::Spec::Functions qw(catfile);
 use File::Basename qw(dirname);
+
+my $memory = 1000;
+
+GetOptions("memory=s" => \$memory);
 
 my $pgv_home = $ENV{MALTOOLS_HOME} || realpath(catfile(dirname($0),".."));
 my $cmd = shift or die "you must indicate a picard command as the first argument";
@@ -15,4 +20,4 @@ unless ($args_str =~ /VALIDATION_STRINGENCY/) {
 
 my $jar_file = catfile($pgv_home,'lib','java','picard-commands',$cmd . ".jar");
 
-exec("java -Xmx1000m -jar $jar_file $args_str");
+exec("java -Xmx${memory}m -jar $jar_file $args_str");

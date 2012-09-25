@@ -14,7 +14,7 @@ public class FragmentListWalkerTest {
 	@Test
 	public void test3D7Reference() throws IOException {
 	//	File testBam = new File(this.getClass().getClassLoader().getResource("cases/flisttest/data/crosses/bam-files/PG0052-C.bam").getFile());
-		File testBam = new File(this.getClass().getClassLoader().getResource("cases/flisttest/PG0051-C.bam").getFile());
+		File testBam = new File(this.getClass().getClassLoader().getResource("cases/flisttest/PG0052-C.bam").getFile());
 		File refFasta = new File(this.getClass().getClassLoader().getResource("cases/flisttest/data/reference/3D7_pm.fa").getFile());
 			
 		File outDir = File.createTempFile("rctest", ".out.gz");

@@ -9,17 +9,21 @@ use Getopt::Long;
 
 my $commit = undef;
 my $branch = undef;
+my $tag = undef;
 my $patch = undef;
 my $patch_mark = ".patch_applied";
 my $build_mark;
 
-GetOptions("c=s" => \$commit,"b=s" => \$branch, "p=s" => \$patch, "build-mark|bm=s" => \$build_mark, "patch-mark|pm=s" => \$patch_mark);
+GetOptions("c=s" => \$commit,"t=s" => \$tag, "b=s" => \$branch, "p=s" => \$patch, "build-mark|bm=s" => \$build_mark, "patch-mark|pm=s" => \$patch_mark);
 
 $commit = undef if $commit && $commit eq "DEFAULT";
 $branch = undef if $branch && $branch eq "DEFAULT";
 $patch = undef if $patch && $patch eq "NONE";
+$tag = undef if $tag && $tag eq "DEFAULT";
 
-
+if ($tag && $commit) {
+  die "you cannot indicate a tag and commit hash at the same time";
+}
 
 if ($patch && !-e $patch) {
   die "patch file provided '$patch' does not exists or is inaccessible";
@@ -62,17 +66,27 @@ my $current_branch = undef;
 my $current_commit = undef;
 my $branch_exists = 0;
 my $commit_branch_exists = 0;
+my $commit_branch = undef;
 
 
-if ($branch || $commit) {
+if ($branch || $commit || $tag) {
   my $branch_output = `cd $dir; git branch`;
   !$? && $branch_output =~ /^\s*\*\s*(.+)\s*$/m  or die "could not determine git branch at '$dir'. aborting!!!";
   $current_branch = $1;
+  if ($tag) {
+    my $tag_str = `git describe --tags`;
+    $need_update = 1 if $tag_str !~ /^\Q$tag\E$/m;
+  }
   if ($branch) {
-    $need_update = $current_branch ne $branch;
+    $need_update ||= $current_branch ne $branch;
     $branch_exists = $branch_output =~ /\b\Q$branch\E\b/;
   }
-  if ($commit) {
+  if ($tag) {
+    $commit = $tag;
+    $commit_branch = "tag-$tag";
+    $commit_branch_exists = $branch_output =~ /\b\Qtag-$commit\E\b/;
+  } elsif ($commit) {
+    $commit_branch = "commit-$commit";
     $commit_branch_exists = $branch_output =~ /\b\Qcommit-$commit\E\b/;
   }
 }
@@ -102,7 +116,6 @@ if ($need_update) {
     }
   }
   else { # commit must be difened otherwise we would have exit already.
-    my $commit_branch = "commit-$commit";
     if ($commit_branch_exists) {
       $checkout_command = "git checkout $commit_branch";
     }
@@ -115,7 +128,10 @@ if ($need_update) {
   system("cd $dir; $checkout_command");
   exit $? if $?;
 
-  if ($commit) {
+  if ($tag) {
+
+  }
+  elsif ($commit) {
     my $log_output = `cd $dir; git --no-pager log --max-count=1`;
     !$? && $log_output =~ /^\s*commit\s+(\S+)\s*$/m or die "could not determine the git commit at '$dir'. aborting!!!";
     $current_commit = $1;
