@@ -51,6 +51,7 @@ public class CoverageQualityAnnotations {
 		int[] allMappingQualityCounts;
 		int[][] mappingQualityCounts;
 		int[] maxMappingQuality;
+		int[] maxForwardStartQuality;
 		int[] groupDepth;
 		int allDepth;
 		double[] groupDoubleAuxiliar;
@@ -59,6 +60,7 @@ public class CoverageQualityAnnotations {
 
 		mappingQualityCounts = new int[groupIndex.size()][MAX_MAPPING_QUALITY + 1];
 		maxMappingQuality = new int[groupIndex.size()];
+		maxForwardStartQuality = new int[groupIndex.size()];
 		maxAllMappingQuality = 0;
 		allMappingQualityCounts = new int[MAX_MAPPING_QUALITY + 1];
 		groupDepth = new int[groupIndex.size()];
@@ -72,7 +74,7 @@ public class CoverageQualityAnnotations {
 		
 		annotate$makeDepthAndMQ0(stratifiedAlignmentContext,
 				allMappingQualityCounts, mappingQualityCounts,
-				maxMappingQuality, groupDepth, maxAllMappingQuality$ref,
+				maxMappingQuality, groupDepth, maxForwardStartQuality, maxAllMappingQuality$ref,
 				allDepth$ref);
 		
 		allDepth = allDepth$ref.value;
@@ -87,11 +89,11 @@ public class CoverageQualityAnnotations {
 					formatAnnotations, allMappingQualityCounts,
 					mappingQualityCounts, maxMappingQuality, groupDepth,
 					allDepth, groupDoubleAuxiliar, groupDoubleAuxiliar2,
-					groupDoubleAuxiliar3, isCoding);
+					groupDoubleAuxiliar3, isCoding, maxForwardStartQuality);
 		else 
 			annotate$makeUnormalizedFormatAnnotations(formatAnnotations,
 					mappingQualityCounts, maxMappingQuality, groupDepth,
-					groupDoubleAuxiliar);
+					groupDoubleAuxiliar,maxForwardStartQuality);
 		if (allDepth > 0 && allMappingQualityCounts[0] > 0) {
 			double mq0Median = medianCalculator.evaluate(groupDoubleAuxiliar);
 			infoAnnotations.put("MedMQ0pc", mq0Median);
@@ -103,11 +105,12 @@ public class CoverageQualityAnnotations {
 	private void annotate$makeUnormalizedFormatAnnotations(
 			Map<String, Map<String, Object>> formatAnnotations,
 			int[][] mappingQualityCounts, int[] maxMappingQuality,
-			int[] groupDepth, double[] groupDoubleAuxiliar) {
+			int[] groupDepth, double[] groupDoubleAuxiliar, int[] maxForwardStartQuality) {
 		for (String gn : walker.groupNames) {
 			int index = groupIndex.get(gn);
 			Map<String, Object> annotations = formatAnnotations.get(gn);
 			annotations.putAll(annotations);
+			annotations.put("MfsQ", maxForwardStartQuality[index]);
 			annotations.put("MQ0", mappingQualityCounts[index][0]);
 			groupDoubleAuxiliar[index] = groupDoubleAuxiliar[index] == 0 ? 0
 					: 100.0 * mappingQualityCounts[index][0]
@@ -127,7 +130,7 @@ public class CoverageQualityAnnotations {
 			int[] allMappingQualityCounts, int[][] mappingQualityCounts,
 			int[] maxMappingQuality, int[] groupDepth, int allDepth,
 			double[] groupDoubleAuxiliar, double[] groupDoubleAuxiliar2,
-			double[] groupDoubleAuxiliar3, boolean isCoding) {
+			double[] groupDoubleAuxiliar3, boolean isCoding, int[] maxForwardStartQuality) {
 		IntegerDistribution allCovDist = getAllDistribution(
 				walker.coverageDistributionSet, ref, isCoding);
 		IntegerDistribution allMq0pcDist = getAllDistribution(
@@ -161,6 +164,7 @@ public class CoverageQualityAnnotations {
 					walker.mq0pcDistributionSet, ref, isCoding, gn);
 			int index = groupIndex.get(gn);
 			Map<String, Object> annotations = formatAnnotations.get(gn);
+			annotations.put("MfsQ", maxForwardStartQuality[index]);
 			annotations.put("MQ0", mappingQualityCounts[index][0]);
 			groupDoubleAuxiliar[index] = groupDoubleAuxiliar[index] == 0 ? 0
 					: 100.0 * mappingQualityCounts[index][0]
@@ -224,6 +228,7 @@ public class CoverageQualityAnnotations {
 			Map<String, Object> infoAnnotations, int maxAllMappingQuality,
 			int[] allMappingQualityCounts, int[] groupDepth, int allDepth,
 			double[] groupDoubleAuxiliar) {
+		
 		infoAnnotations.put("DP", allDepth);
 		infoAnnotations.put("MQ0", allMappingQualityCounts[0]);
 		if (allDepth > 0)
@@ -242,18 +247,20 @@ public class CoverageQualityAnnotations {
 		}
 
 		boolean isCoding = false;
-		if (walker.features != null) {
+		if (walker.features.isBound()) {
 			isCoding = walker.isCoding(tracker);
 			if (isCoding)
 				infoAnnotations.put("CODING", null);
 		}
+		if (walker.uniqueness.isBound()) 
+			infoAnnotations.put("UQ", walker.uniquenessScore(tracker));
 		return isCoding;
 	}
 
 	private void annotate$makeDepthAndMQ0(
 			Map<String, AlignmentContext> stratifiedAlignmentContext,
 			int[] allMappingQualityCounts, int[][] mappingQualityCounts,
-			int[] maxMappingQuality, int[] groupDepth,
+			int[] maxMappingQuality, int[] groupDepth, int[] maxForwardStartQuality,
 			IntRef maxAllMappingQuality$ref, IntRef allDepth$ref) {
 		for (Map.Entry<String, AlignmentContext> gn : stratifiedAlignmentContext
 				.entrySet()) {
@@ -269,6 +276,8 @@ public class CoverageQualityAnnotations {
 				if (allMappingQualityCounts[mq]++ == 0
 						&& mq > maxAllMappingQuality$ref.value)
 					maxAllMappingQuality$ref.value = mq;
+				if (pe.getOffset() == 0 && maxForwardStartQuality[index] < mq)
+					maxForwardStartQuality[index] = mq;
 			}
 		}
 	}
@@ -358,10 +367,17 @@ public class CoverageQualityAnnotations {
 				"Total number of reads with mapping quality 0 across all samples overlapping this position"));
 		result.add(new VCFFormatHeaderLine("MQ", 1, VCFHeaderLineType.Float,
 				"RMS of mapping qualities of reads overlapping this position"));
+		result.add(new VCFFormatHeaderLine("MfsQ", 1, VCFHeaderLineType.Integer,
+				"Maximum Mapping Quality of reads STARTING in the forward strand"));
 		result.add(new VCFInfoHeaderLine("MedMQ0pc", 1,
 				VCFHeaderLineType.Float, "MQ0 pc median across samples"));
 		result.add(new VCFInfoHeaderLine("MedDP", 1, VCFHeaderLineType.Float,
 				"Median sample DP"));
+		if (!walker.features.isBound())
+			result.add(new VCFInfoHeaderLine("CODING",0,VCFHeaderLineType.Flag,"Mark positions that are considered as protein-coding"));
+		if (!walker.uniqueness.isBound())
+			result.add(new VCFInfoHeaderLine("UQ",1,VCFHeaderLineType.Integer,"Indicates the uniqueness score for that position"));
+		
 		if (walker.normalize) {
 			if (walker.coverageDistributionSet != null) {
 				result.add(new VCFInfoHeaderLine("MedCMF", 1,

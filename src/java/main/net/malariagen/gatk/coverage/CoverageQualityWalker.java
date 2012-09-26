@@ -16,6 +16,7 @@ import net.malariagen.gatk.coverage.CoverageBiasWalker.GroupBy;
 import net.malariagen.gatk.gff.GFFFeature;
 import net.malariagen.gatk.math.IntegerDistribution;
 import net.malariagen.gatk.math.IntegerDistributionSet;
+import net.malariagen.gatk.uniqueness.UQNFeature;
 import net.malariagen.gatk.utils.ReadGroupDB;
 import net.malariagen.utils.Nucleotide;
 import net.sf.picard.reference.IndexedFastaSequenceFile;
@@ -93,6 +94,11 @@ TreeReducible<CoverageQualityStatistics>{
 	@Argument(fullName="features", shortName="features", doc="file containing the GFF records indicating where the coding regions are located", required=false)
 	protected RodBinding<GFFFeature> features = null;
 	
+
+	@Argument(fullName="uniqueness", shortName="uniqueness", doc="file containing the Uniqueness scores", required=false)
+	protected RodBinding<UQNFeature> uniqueness = null;
+	
+	
 	@Argument(fullName="groupBy", shortName="groupBy", doc="whether we should generate stats per read-group (RG), sample (SM), both (SMRG) or none (NONE default)", required=false)
 	protected GroupBy groupBy = GroupBy.NONE;
 	
@@ -159,7 +165,7 @@ TreeReducible<CoverageQualityStatistics>{
 				if (coverageDistributionSet.getAllSamplesDistributionSet().getSequenceDistributionSet(loc.getContig()) == null)
 					throw new UserException("the coverage distribution set provided does not contain information for chromosome/sequence '" + loc.getContig() + "'");
 			if (normalizePerCodingStatus) {
-				if (features == null)
+				if (!features.isBound())
 					throw new UserException("per coding-status normalization requested but no genome feature GFF file provided (-features option) ");
 				IntegerDistribution codingDist = coverageDistributionSet.getAllSamplesDistributionSet().getSequenceDistributionSet(getToolkit().getIntervals().iterator().next().getContig()).getCategoryDistribution(LocusCategory.CODING);
 				IntegerDistribution nonCodingDist = coverageDistributionSet.getAllSamplesDistributionSet().getSequenceDistributionSet(getToolkit().getIntervals().iterator().next().getContig()).getCategoryDistribution(LocusCategory.NON_CODING);
@@ -269,9 +275,15 @@ TreeReducible<CoverageQualityStatistics>{
 		if (value != null) writer.add(value);
 		return sum;
 	}
+	
+	public int uniquenessScore(RefMetaDataTracker tracker) {
+		for (UQNFeature gf : tracker.getValues(uniqueness))
+			return gf.getScore();
+		return 99;
+	}
 
 	public boolean isCoding(RefMetaDataTracker tracker) {
-		for (GFFFeature gf : tracker.getValues(GFFFeature.class))
+		for (GFFFeature gf : tracker.getValues(features))
 				if (gf.getType().isProteinCoding())
 					return true;
 		return false;
