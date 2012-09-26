@@ -171,7 +171,7 @@ public class ReferenceComplexityWalker
 				headerLines
 						.add(new VCFInfoHeaderLine("CodingCount", 1,
 								VCFHeaderLineType.Integer,
-								"Number of position that are considered coding within the window"));
+								"Number of positions that are considered coding within the window; can be greater than NC if the window contains N or X"));
 			headerLines
 					.add(new VCFInfoHeaderLine("GCBias", 1,
 							VCFHeaderLineType.Float,
@@ -216,7 +216,7 @@ public class ReferenceComplexityWalker
 				headerLines
 						.add(new VCFFormatHeaderLine("CC", 1,
 								VCFHeaderLineType.Integer,
-								"Number of position that are considered coding within the window"));
+								"Number of positions that are considered coding within the window; can be greater than NC if the window contains N or X"));
 			headerLines
 					.add(new VCFFormatHeaderLine("GT", 1,
 							VCFHeaderLineType.String,

@@ -131,6 +131,8 @@ public class SequenceComplexity {
 		trinucsTotal = 0;
 		Arrays.fill(nucsCount, 0);
 		Arrays.fill(trinucsCount, 0);
+		codingCount = 0;
+		isCoding.clear();
 	}
 
 	// Fix seed to make it deterministic.
@@ -221,6 +223,7 @@ public class SequenceComplexity {
 	private void pad(int padding) {
 		for (int i = 0; i < padding; i++) {
 			nucs.add(Nucleotide.N);
+			isCoding.add(null);
 			if (i > 1)
 			  trinucs.add(Trinucleotide.NNN);
 		}
