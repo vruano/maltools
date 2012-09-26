@@ -1,5 +1,6 @@
 package net.malariagen.gatk.walker;
 
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -7,11 +8,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.PriorityQueue;
 
-
 import net.malariagen.gatk.walker.ReferenceComplexityWalker.Whence;
 
 import org.broadinstitute.sting.gatk.contexts.ReferenceContext;
 import org.broadinstitute.sting.utils.GenomeLoc;
+import org.broadinstitute.sting.utils.GenomeLocParser;
 
 public class MultiWindowSequenceComplexity {
 
@@ -24,42 +25,52 @@ public class MultiWindowSequenceComplexity {
 	protected Map<GenomeLoc, WindowSet> windowByLoc = new HashMap<GenomeLoc, WindowSet>(
 			100);
 	private GenomeLoc lastLocus;
-        private GenomeLoc lastEmited;
-	
+	private GenomeLoc lastEmited;
+
 	public List<Map<Integer, SequenceComplexity.LocusComplexity>> flush() {
-		for (Integer i : byWs.keySet()) 
+		for (Integer i : byWs.keySet())
 			for (SequenceComplexity.LocusComplexity slc : byWs.get(i).flush()) {
 				GenomeLoc loc = slc.getLocus();
-                                if (windowByLoc.get(loc) == null)
-                                   System.err.println(" " + lastLocus + " " + lastEmited + " " + loc);
-				windowByLoc.get(loc).bySize.put(i,slc);
-                        }
+//				if (ii == 256)
+//					System.err.println("SDS " + loc + " " + ii);
+				if (windowByLoc.get(loc) == null)
+					System.err.println(" " + lastLocus + " " + lastEmited + " "
+							+ loc);
+				windowByLoc.get(loc).bySize.put(i, slc);
+			}
 		List<Map<Integer, SequenceComplexity.LocusComplexity>> result = new LinkedList<Map<Integer, SequenceComplexity.LocusComplexity>>();
 		while (!windows.isEmpty()) {
 			WindowSet ws2 = windows.remove();
 			if (ws2.bySize.size() < byWs.size())
-				throw new IllegalStateException("some window size did not flush to the end");
+				throw new IllegalStateException(
+						"some window size did not flush to the end "
+								+ ws2.start + " " + ws2.bySize.size() + " "
+								+ byWs.size() + " " + Arrays.toString(ws2.bySize.keySet().toArray()));
 			result.add(ws2.bySize);
 			windowByLoc.remove(ws2.start);
 		}
 		return result;
-		
+
 	}
-	
-	public List<Map<Integer, SequenceComplexity.LocusComplexity>> count(ReferenceContext ref) {
+
+	public List<Map<Integer, SequenceComplexity.LocusComplexity>> count(
+			ReferenceContext ref) {
 
 		GenomeLoc loc = ref.getLocus();
+
 		lastLocus = loc;
+
 		WindowSet ws = windowByLoc.get(loc);
 		if (ws == null) {
-			if (!windows.isEmpty() && !windows.element().start.getContig().equals(loc.getContig())) {
-		        throw new IllegalArgumentException("what tha");
-//				windows.clear();
+			if (!windows.isEmpty()
+					&& !windows.element().start.getContig().equals(
+							loc.getContig())) {
+				throw new IllegalArgumentException("what tha!");
 			}
 			windowByLoc.put(loc, ws = new WindowSet(loc));
 			windows.add(ws);
 		}
-		
+
 		for (Integer i : byWs.keySet()) {
 			SequenceComplexity.LocusComplexity lc = byWs.get(i).count(ref);
 			if (lc == null)
@@ -79,16 +90,15 @@ public class MultiWindowSequenceComplexity {
 				result.add(ws2.bySize);
 				windowByLoc.remove(ws2.start);
 				windows.remove();
-                                lastEmited = ws2.start;
+				lastEmited = ws2.start;
 			}
 			return result;
-		}
-		else {
-		  return Collections.emptyList();
+		} else {
+			return Collections.emptyList();
 		}
 	}
 
-	MultiWindowSequenceComplexity(int[] ws, Whence whence) {
+	MultiWindowSequenceComplexity(int[] ws, Whence whence, GenomeLocParser p) {
 		this.whence = whence;
 		for (int i : ws)
 			if (i <= 0)
@@ -100,13 +110,17 @@ public class MultiWindowSequenceComplexity {
 				maxWindow = i;
 			int padding;
 			switch (whence) {
-			case START: padding = 0; break;
-			case END: padding = i - 1; break;
+			case START:
+				padding = 0;
+				break;
+			case END:
+				padding = i - 1;
+				break;
 			default: // CENTER
-				padding = i >> 1;
+				padding = (i >> 1) - 1;
 			}
-			if (byWs.get(i) == null) 
-				byWs.put(i, SequenceComplexity.create(i,padding));
+			if (byWs.get(i) == null)
+				byWs.put(i, SequenceComplexity.create(i, padding));
 		}
 
 		complexities = byWs.values().toArray(
@@ -126,15 +140,15 @@ public class MultiWindowSequenceComplexity {
 			if (o == null)
 				return false;
 			else if (o instanceof WindowSet)
-				return equal((WindowSet)o);
-			else 
+				return equal((WindowSet) o);
+			else
 				return false;
 		}
-		
+
 		public int hashCode() {
 			return start.hashCode();
 		}
-		
+
 		public boolean equal(WindowSet o) {
 			return compareTo(o) == 0;
 		}

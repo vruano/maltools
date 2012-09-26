@@ -78,19 +78,6 @@ public class ReferenceComplexityWalkerWrapper {
 			reverse.add(gt);
 		}
 		
-//		private VariantContext translateWsToGroupName(VariantContext vc) {
-//			VariantContextBuilder vcb = new VariantContextBuilder(vc);
-//			GenotypesContext gc = GenotypesContext.create();
-//			for (Genotype gt : forward.getGenotypes()) {
-///				List<String> names = windowSizeToGroup.get(gt.getSampleName());
-//				//System.err.println("" + gt.getSampleName() + " " + java.util.Arrays.toString(names.toArray()));
-//				for (String name : names) {
-//					if (groupNames.contains(name)) gc.add(new Genotype(name, gt.getAlleles(), gt.getLog10PError(), gt.getFilters(), gt.getAttributes(), gt.isPhased()));
-//				}
-//			}
-//			vcb.genotypes(gc);
-//			return vcb.make();
-//		}
 
 		public double getGcBias(String name, boolean forward) {
 			if (forward)
@@ -203,7 +190,7 @@ public class ReferenceComplexityWalkerWrapper {
 		};
 		complexityWalker.initialize();
 		windowSizeToGroup = new HashMap<String,List<String>>();
-		for (Map.Entry<String,Integer> e : this.complexityWalker.realGroupWindowSize.entrySet()) {
+		for (Map.Entry<String,Integer> e : this.complexityWalker.groupWindowSize.entrySet()) {
 			String wsStr = "" + e.getValue();
 			List<String> groupList = windowSizeToGroup.get(wsStr);
 			if (groupList == null)

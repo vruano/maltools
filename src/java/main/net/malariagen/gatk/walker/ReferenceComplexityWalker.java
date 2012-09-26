@@ -10,11 +10,18 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import net.malariagen.gatk.annotators.CodingAnnotation;
+import net.malariagen.gatk.annotators.FragmentStartCount;
+import net.malariagen.gatk.annotators.UniquenessScore;
 import net.malariagen.gatk.coverage.CoverageBiasWalker.GroupBy;
+import net.malariagen.gatk.gff.GFFFeature;
+import net.malariagen.gatk.uniqueness.UQNFeature;
 import net.malariagen.gatk.walker.SequenceComplexity.LocusComplexity;
 
+import org.broad.tribble.Feature;
 import org.broadinstitute.sting.commandline.Argument;
 import org.broadinstitute.sting.commandline.Output;
+import org.broadinstitute.sting.commandline.RodBinding;
 import org.broadinstitute.sting.gatk.contexts.AlignmentContext;
 import org.broadinstitute.sting.gatk.contexts.ReferenceContext;
 import org.broadinstitute.sting.gatk.refdata.RefMetaDataTracker;
@@ -24,6 +31,11 @@ import org.broadinstitute.sting.gatk.walkers.DataSource;
 import org.broadinstitute.sting.gatk.walkers.LocusWalker;
 import org.broadinstitute.sting.gatk.walkers.PartitionBy;
 import org.broadinstitute.sting.gatk.walkers.PartitionType;
+import org.broadinstitute.sting.gatk.walkers.annotator.DepthOfCoverage;
+import org.broadinstitute.sting.gatk.walkers.annotator.MappingQualityZero;
+import org.broadinstitute.sting.gatk.walkers.annotator.RMSMappingQuality;
+import org.broadinstitute.sting.gatk.walkers.annotator.interfaces.AnnotatorCompatibleWalker;
+import org.broadinstitute.sting.gatk.walkers.annotator.interfaces.InfoFieldAnnotation;
 import org.broadinstitute.sting.utils.GenomeLoc;
 import org.broadinstitute.sting.utils.baq.BAQ;
 import org.broadinstitute.sting.utils.codecs.vcf.VCFFormatHeaderLine;
@@ -44,14 +56,17 @@ import org.broadinstitute.sting.utils.variantcontext.VariantContextBuilder;
 @BAQMode(QualityMode = BAQ.QualityMode.DONT_MODIFY, ApplicationTime = BAQ.ApplicationTime.FORBIDDEN)
 public class ReferenceComplexityWalker
 		extends
-		LocusWalker<net.malariagen.gatk.walker.ReferenceComplexityWalker.Locus, MultiWindowSequenceComplexity> {
+		LocusWalker<net.malariagen.gatk.walker.ReferenceComplexityWalker.Locus, MultiWindowSequenceComplexity>
+		implements AnnotatorCompatibleWalker {
 
 	public enum Whence {
-		START,CENTER,END;
+		START, CENTER, END;
 	}
 
 	static class Locus {
 		ReferenceContext ref;
+		public int uniqueness;
+		public boolean coding;
 	}
 
 	@Argument(shortName = "W", fullName = "windowSize", required = false, doc = "window-size to get stats on")
@@ -62,39 +77,64 @@ public class ReferenceComplexityWalker
 
 	protected Integer windowSize;
 
+	@Argument(shortName = "uniqueness", doc = "Uniqueness file, in  provided the uniquenes score value will be added to the output", required = false)
+	public RodBinding<UQNFeature> uniqueness = null;
+
+	@Argument(shortName = "features", doc = "Annotation GFF file", required = false)
+	public RodBinding<GFFFeature> features = null;
+
 	@Argument(shortName = "rounding", fullName = "windowSizeRounding", doc = "window size rounding, 1 means no rounding", required = false)
 	protected int rounding = 1;
 
 	@Output(shortName = "o", fullName = "output", doc = "File to which variants should be written", required = true)
 	protected VCFWriter writer = null;
-	
-	@Argument(shortName = "whence", fullName="whence", doc ="Where the targeted position in the reference is located within the window (START,CENTER or END) ", required = false)
+
+	@Argument(shortName = "whence", fullName = "whence", doc = "Where the targeted position in the reference is located within the window (START,CENTER or END) ", required = false)
 	protected Whence whence = Whence.CENTER;
+
+	private Map<GenomeLoc, Locus> locus;
 
 	@Override
 	public Locus map(RefMetaDataTracker tracker, ReferenceContext ref,
 			AlignmentContext context) {
 		Locus result = new Locus();
 		result.ref = ref;
+		if (uniqueness != null)
+			result.uniqueness = uniquenessScore(tracker, ref);
+		if (features != null)
+			result.coding = isCoding(tracker);
+		locus.put(ref.getLocus(), result);
 		return result;
+	}
+
+	private boolean isCoding(RefMetaDataTracker tracker) {
+		for (GFFFeature gf : tracker.getValues(GFFFeature.class))
+			if (gf.getType().isProteinCoding())
+				return true;
+		return false;
+	}
+
+	private int uniquenessScore(RefMetaDataTracker tracker, ReferenceContext ref) {
+		UQNFeature gf = tracker.getFirstValue(UQNFeature.class);
+		return gf == null ? 99 : gf.getScore();
 	}
 
 	@Output(shortName = "groupBy", required = false)
 	protected GroupBy groupBy = null;
 
 	Map<String, Integer> groupWindowSize;
-	Map<String, Integer> realGroupWindowSize;
-
 
 	@Override
 	public void initialize() {
 		super.initialize();
+		locus = new HashMap<GenomeLoc, Locus>();
 		if (writer == null)
 			throw new IllegalStateException("the write is yet null");
 		if (!windowSizeList.isEmpty())
 			windowSize = windowSizeList.get(0);
 		else
-			throw new IllegalArgumentException("you must indicate at least one window size (-W)");
+			throw new IllegalArgumentException(
+					"you must indicate at least one window size (-W)");
 		if (rounding <= 0)
 			throw new UserException("the window size rounding must be positive");
 
@@ -108,31 +148,44 @@ public class ReferenceComplexityWalker
 		groupWindowSize = new HashMap<String, Integer>(100);
 		for (Integer ws : this.windowSizeList) {
 			if (ws == null || ws <= 0)
-				throw new UserException("no requested window size can be null, zero or negative (-W " + ws + ")");
-			int actualWs = (int) Math.round(ws/rounding) * rounding;
+				throw new UserException(
+						"no requested window size can be null, zero or negative (-W "
+								+ ws + ")");
+			int actualWs = (int) Math.round(ws / rounding) * rounding;
 			groupWindowSize.put("" + ws, actualWs);
 		}
 		Set<String> groupNames;
+		if (uniqueness.isBound())
+			headerLines.add(new VCFInfoHeaderLine("UQ", 1,
+					VCFHeaderLineType.Integer, "Uniqueness score"));
+		if (features.isBound())
+			headerLines.add(new VCFInfoHeaderLine("CODING", 0,
+					VCFHeaderLineType.Flag,
+					"Marks positions that are withing protein coding exons"));
 		if (useInfoFields) {
 			groupNames = Collections.emptySet();
-			headerLines.add(new VCFInfoHeaderLine("GCBias", 1,
-					VCFHeaderLineType.Float,
-					"GC bias expressed in a percentage from 0 to 100 (only if NucCnt > 0)"));
+			headerLines
+					.add(new VCFInfoHeaderLine("GCBias", 1,
+							VCFHeaderLineType.Float,
+							"GC bias expressed in a percentage from 0 to 100 (only if NucCnt > 0)"));
 			headerLines.add(new VCFInfoHeaderLine("NucEnt", 1,
 					VCFHeaderLineType.Float,
 					"Nucleotide entropy in nats (only if NucCnt > 0)"));
 			headerLines.add(new VCFInfoHeaderLine("TriEnt", 1,
 					VCFHeaderLineType.Float,
 					"Trinucleotide entropy in nats (only if TriCnt > 0)"));
-			headerLines.add(new VCFInfoHeaderLine("NucCnt", 1,
-					VCFHeaderLineType.Integer,
-					"Number of sense nucleotides in the window (A, C, G or T)"));
-			headerLines.add(new VCFInfoHeaderLine("TriCnt", 1,
-					VCFHeaderLineType.Integer,
-					"Number of sense trinucleotides in the window (composed only by A, C, G or T)"));
-			headerLines.add(new VCFInfoHeaderLine("DUST", 1,
-					VCFHeaderLineType.Float,
-					"DUST complexity metric for the given window (only if TriCnt > 1)"));
+			headerLines
+					.add(new VCFInfoHeaderLine("NucCnt", 1,
+							VCFHeaderLineType.Integer,
+							"Number of sense nucleotides in the window (A, C, G or T)"));
+			headerLines
+					.add(new VCFInfoHeaderLine("TriCnt", 1,
+							VCFHeaderLineType.Integer,
+							"Number of sense trinucleotides in the window (composed only by A, C, G or T)"));
+			headerLines
+					.add(new VCFInfoHeaderLine("DUST", 1,
+							VCFHeaderLineType.Float,
+							"DUST complexity metric for the given window (only if TriCnt > 1)"));
 			switch (whence) {
 			case CENTER:
 				headerLines.add(new VCFInfoHeaderLine("START", 1,
@@ -140,62 +193,66 @@ public class ReferenceComplexityWalker
 						"Stat position of the window interval"));
 			case START:
 				headerLines.add(new VCFInfoHeaderLine("END", 1,
-					VCFHeaderLineType.Float,
-					"Stop position of the window interval"));
+						VCFHeaderLineType.Float,
+						"Stop position of the window interval"));
 				break;
 			case END:
 				headerLines.add(new VCFInfoHeaderLine("START", 1,
 						VCFHeaderLineType.Float,
 						"Start position of the window interval"));
 			}
-		
-		}
-		else {
+
+		} else {
 			groupNames = groupWindowSize.keySet();
-			headerLines.add(new VCFFormatHeaderLine("GT", 1, VCFHeaderLineType.String,
-					"Genotype Call, never used but left in to be compliant with all standards"));
-			headerLines.add(new VCFFormatHeaderLine("GC", 1,
-					VCFHeaderLineType.Float,
-					"GC bias expressed in a percentage from 0 to 100 (only if NC > 0)"));
+			headerLines
+					.add(new VCFFormatHeaderLine("GT", 1,
+							VCFHeaderLineType.String,
+							"Genotype Call, never used but left in to be compliant with all standards"));
+			headerLines
+					.add(new VCFFormatHeaderLine("GC", 1,
+							VCFHeaderLineType.Float,
+							"GC bias expressed in a percentage from 0 to 100 (only if NC > 0)"));
 			headerLines.add(new VCFFormatHeaderLine("NE", 1,
 					VCFHeaderLineType.Float,
 					"Nucleotide entropy in nats (only if NC > 0)"));
 			headerLines.add(new VCFFormatHeaderLine("TE", 1,
 					VCFHeaderLineType.Float,
 					"Trinucleotide entropy in nats (only if TC > 0)"));
-			headerLines.add(new VCFFormatHeaderLine("NC", 1,
-					VCFHeaderLineType.Integer,
-					"Number of sense nucleotides in the window (A, C, G or T)"));
-			headerLines.add(new VCFFormatHeaderLine("TC", 1,
-					VCFHeaderLineType.Integer,
-					"Number of sense trinucleotides in the window (composed only by A, C, G or T)"));
-			headerLines.add(new VCFFormatHeaderLine("DU", 1,
-					VCFHeaderLineType.Float,
-					"DUST complexity metric for the given window (only if TC > 1)"));
+			headerLines
+					.add(new VCFFormatHeaderLine("NC", 1,
+							VCFHeaderLineType.Integer,
+							"Number of sense nucleotides in the window (A, C, G or T)"));
+			headerLines
+					.add(new VCFFormatHeaderLine("TC", 1,
+							VCFHeaderLineType.Integer,
+							"Number of sense trinucleotides in the window (composed only by A, C, G or T)"));
+			headerLines
+					.add(new VCFFormatHeaderLine("DU", 1,
+							VCFHeaderLineType.Float,
+							"DUST complexity metric for the given window (only if TC > 1)"));
 			headerLines.add(new VCFFormatHeaderLine("ED", 1,
 					VCFHeaderLineType.Float,
 					"Stop position of the window interval"));
 			switch (whence) {
 			case CENTER:
-				headerLines.add(new VCFInfoHeaderLine("ST", 1,
+				headerLines.add(new VCFFormatHeaderLine("ST", 1,
 						VCFHeaderLineType.Float,
 						"Start position of the window interval"));
 			case START:
-				headerLines.add(new VCFInfoHeaderLine("ED", 1,
-					VCFHeaderLineType.Float,
-					"Stop position of the window interval"));
+				headerLines.add(new VCFFormatHeaderLine("ED", 1,
+						VCFHeaderLineType.Float,
+						"Stop position of the window interval"));
 				break;
 			case END:
-				headerLines.add(new VCFInfoHeaderLine("ST", 1,
+				headerLines.add(new VCFFormatHeaderLine("ST", 1,
 						VCFHeaderLineType.Float,
 						"Start position of the window interval"));
 			}
-			
+
 		}
-		header = new VCFHeader(headerLines,groupNames);
+		header = new VCFHeader(headerLines, groupNames);
 		writer.writeHeader(header);
 	}
-
 
 	@Override
 	public MultiWindowSequenceComplexity reduceInit() {
@@ -209,29 +266,35 @@ public class ReferenceComplexityWalker
 		for (Integer i : windowSizes) {
 			windowSizeInts[nextIdx++] = i;
 		}
-		return new MultiWindowSequenceComplexity(windowSizeInts,whence);
+		return new MultiWindowSequenceComplexity(windowSizeInts, whence, this
+				.getToolkit().getGenomeLocParser());
 	}
 
 	@Override
 	public MultiWindowSequenceComplexity reduce(Locus value,
 			MultiWindowSequenceComplexity sum) {
-		if (sum.lastLocus() != null && value.ref.getLocus().compareContigs(sum.lastLocus()) != 0) 
-			for (Map<Integer, SequenceComplexity.LocusComplexity> l : sum.flush())
-				if (l.size() != 0) emit(l);
-		sum = this.reduceInit();
-		List<Map<Integer, SequenceComplexity.LocusComplexity>> lcm = sum.count(
-				value.ref);
+		if (sum.lastLocus() != null
+				&& value.ref.getLocus().compareContigs(sum.lastLocus()) != 0) {
+			for (Map<Integer, SequenceComplexity.LocusComplexity> l : sum
+					.flush())
+				if (l.size() != 0)
+					emit(l);
+			sum = this.reduceInit();
+		}
+		List<Map<Integer, SequenceComplexity.LocusComplexity>> lcm = sum
+				.count(value.ref);
 		for (Map<Integer, SequenceComplexity.LocusComplexity> l : lcm)
 			if (l.size() != 0)
 				emit(l);
 		return sum;
 	}
-	
+
 	@Override
 	public void onTraversalDone(MultiWindowSequenceComplexity sum) {
 		super.onTraversalDone(sum);
 		for (Map<Integer, SequenceComplexity.LocusComplexity> l : sum.flush())
-			if (l.size() != 0) emit(l);
+			if (l.size() != 0)
+				emit(l);
 	}
 
 	private void emit(Map<Integer, LocusComplexity> lcm) {
@@ -250,20 +313,28 @@ public class ReferenceComplexityWalker
 			}
 			if (lc.getTrinucCount() > 0) {
 				attributes.put("TriEnt", lc.getTriEnt());
-				if (lc.getTrinucCount() > 1) attributes.put("DUST", lc.getDUST());
+				if (lc.getTrinucCount() > 1)
+					attributes.put("DUST", lc.getDUST());
 			}
 			attributes.put("NucCnt", lc.getNucCount());
 			attributes.put("TriCnt", lc.getTrinucCount());
 			switch (whence) {
 			case CENTER:
-				attributes.put("START",lc.getLocus().getStart());
-			case START:  attributes.put("END", lc.getLocus().getStart() + lc.size() - 1); break;
+				attributes.put("START", lc.getLocus().getStart());
+			case START:
+				attributes.put("END", lc.getLocus().getStart() + lc.size() - 1);
+				break;
 			case END:
-				attributes.put("START",lc.getLocus().getStart());
+				attributes.put("START", lc.getLocus().getStart());
 			}
 			if (lc.getLocus().compareTo(loc) < 0)
 				loc = lc.getLocus();
 		}
+		Locus l = locus.remove(loc);
+		if (uniqueness.isBound())
+			attributes.put("UQ", l.uniqueness);
+		if (features.isBound())
+			attributes.put("CODING", null);
 		vcb.attributes(attributes);
 		List<Allele> noCall = Collections.singletonList(Allele.NO_CALL);
 		Set<String> noFilters = Collections.emptySet();
@@ -280,15 +351,17 @@ public class ReferenceComplexityWalker
 				attr.put("TC", lc.getTrinucCount());
 				if (lc.getTrinucCount() > 0) {
 					attr.put("TE", lc.getTriEnt());
-					if (lc.getTrinucCount() > 1) attr.put("DU", lc.getDUST());
+					if (lc.getTrinucCount() > 1)
+						attr.put("DU", lc.getDUST());
 				}
 				switch (whence) {
 				case CENTER:
-					attr.put("ST",lc.getLocus().getStart());
-				case START:  				
-					attr.put("ED", lc.getLocus().getStart() + lc.size() - 1);  break;
+					attr.put("ST", lc.getLocus().getStart());
+				case START:
+					attr.put("ED", lc.getLocus().getStart() + lc.size() - 1);
+					break;
 				case END:
-					attr.put("ST",lc.getLocus().getStart());
+					attr.put("ST", lc.getLocus().getStart());
 				}
 				if (lc.getLocus().compareTo(loc) < 0)
 					loc = lc.getLocus();
@@ -310,12 +383,37 @@ public class ReferenceComplexityWalker
 
 	public MultiWindowSequenceComplexity reduce(ReferenceContext rc,
 			MultiWindowSequenceComplexity sum) {
-		List<Map<Integer, SequenceComplexity.LocusComplexity>> lcm = sum.count(
-				rc);
+		List<Map<Integer, SequenceComplexity.LocusComplexity>> lcm = sum
+				.count(rc);
 		for (Map<Integer, SequenceComplexity.LocusComplexity> l : lcm)
 			if (l.size() != 0)
 				emit(l);
 		return sum;
+	}
+
+	@Override
+	public RodBinding<VariantContext> getSnpEffRodBinding() {
+		return null;
+	}
+
+	@Override
+	public RodBinding<VariantContext> getDbsnpRodBinding() {
+		return null;
+	}
+
+	@Override
+	public List<RodBinding<VariantContext>> getCompRodBindings() {
+		return Collections.emptyList();
+	}
+
+	@Override
+	public List<RodBinding<VariantContext>> getResourceRodBindings() {
+		return Collections.emptyList();
+	}
+
+	@Override
+	public boolean alwaysAppendDbsnpId() {
+		return false;
 	}
 
 }

@@ -20,7 +20,7 @@ public class SequenceComplexity {
 	int size;
 	List<GenomeLoc> locs;
 	GenomeLoc end;
-	LinkedList<Nucleotide> nucs;
+	private LinkedList<Nucleotide> nucs;
 	LinkedList<Trinucleotide> trinucs;
 	int[] nucsCount;
 	int[] trinucsCount;
@@ -34,18 +34,19 @@ public class SequenceComplexity {
 		List<LocusComplexity> result = new ArrayList<LocusComplexity>(nucs.size());
 		while (locs.size() > 1) {
 		   removeNucleotide();
-           result.add(emit());
+//		   if (windowSize == 256) System.err.println("" + locs.get(0) + " " + windowSize);
+		   result.add(emit());
 		}
-		result.clear();
+		clear();
 		return result;
 	}
 
 	
 	public LocusComplexity count(ReferenceContext ref) {
-		return count(ref,true);
+		return count(ref,false);
 	}
 	
-	protected LocusComplexity count(ReferenceContext ref, boolean forceEmit) {
+	private LocusComplexity count(ReferenceContext ref, boolean forceEmit) {
 		GenomeLoc loc = ref.getLocus();
 		Nucleotide n = Nucleotide.fromByte(ref.getBase());
 		if (end != null && !loc.getContig().equals(end.getContig()))
@@ -99,6 +100,7 @@ public class SequenceComplexity {
 
 
 	private void removeNucleotide() {
+
 		Nucleotide n0 = nucs.remove(0);
 		Trinucleotide t0 = !trinucs.isEmpty() ? trinucs.remove(0) : Trinucleotide.NNN;
 		locs.remove(0);
@@ -144,7 +146,7 @@ public class SequenceComplexity {
 		else 
 			dust = dust / (trinucsTotal - 1);
 		
-		LocusComplexity result = new LocusComplexity(loc, nucsTotal, trinucsTotal, nucs.get(0), gcBias, nucEnt,
+		LocusComplexity result = new LocusComplexity(loc, nucsTotal, trinucsTotal, nucs.get(nucs.size() - locs.size()), gcBias, nucEnt,
 				dust, triEnt);
 		return result;
 	}
