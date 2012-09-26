@@ -25,12 +25,13 @@ public class ReferenceComplexityTest {
 
 	@Test
 	public void test3D7Reference2() throws IOException {
-		File testBam = new File(this.getClass().getClassLoader().getResource("3D7.bam").getFile());
-		File refFasta = new File(this.getClass().getClassLoader().getResource("3D7_pm.fa").getFile());
-		File outDir = File.createTempFile("rctest", ".out");
+//		File refFasta = new File(this.getClass().getClassLoader().getResource("3D7_pm.fa").getFile());
+		File refFasta = new File("/home/valentin/Science/CoveragePf/Simulation/Pf3D7_v3/data/Pf3D7_v3.fa");
+		File refGff = new File("/home/valentin/Science/CoveragePf/Simulation/Pf3D7_v3/data/Pf3D7_v3.gff");
+		File outDir = File.createTempFile(refFasta.getName() + "-", ".vcf");
 		
 		try {
-			WalkerTest.executeTest("ReferenceComplexity", String.format("-T ReferenceComplexity -W 256 -W 128 -W 64 -W 32 -R %s -I %s -o %s",refFasta,testBam,outDir), null);
+			WalkerTest.executeTest("ReferenceComplexity", String.format("-T ReferenceComplexity -W 76 -W 100 -W 152 -W 200 -W 75 -W 150 -R %s -features %s -o %s",refFasta,refGff,outDir), null);
 		} catch (Throwable t) {
 			t.printStackTrace();
 	//		fail();

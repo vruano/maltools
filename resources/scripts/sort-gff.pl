@@ -10,8 +10,11 @@ use warnings;
 
 my $line = <STDIN>;
 while (defined $line) {
- print STDERR "LINE: $line\n";
- if ($line !~ /^\s*#/) {
+ if ($line =~ /^##FASTA/) {
+   $line = <STDIN> while (defined $line && $line !~ /^##gff/);
+   next;
+ }
+ elsif ($line !~ /^\s*#/) {
    my ($seq,$db,$type,$start,$stop,@others) = split(/\t/,$line);
    my $current_seq = $seq;
    my @features = ();

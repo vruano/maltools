@@ -37,4 +37,12 @@ public class UQNCodec extends AbstractFeatureCodec<UQNFeature> {
 		return null;
 	}
 
+	
+	@Override
+	public boolean canDecode(String path) {
+		if (path.endsWith("uq"))
+			return true;
+		else 
+			return false;
+	}
 }

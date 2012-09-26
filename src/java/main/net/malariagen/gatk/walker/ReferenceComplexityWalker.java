@@ -31,6 +31,7 @@ import org.broadinstitute.sting.gatk.walkers.DataSource;
 import org.broadinstitute.sting.gatk.walkers.LocusWalker;
 import org.broadinstitute.sting.gatk.walkers.PartitionBy;
 import org.broadinstitute.sting.gatk.walkers.PartitionType;
+import org.broadinstitute.sting.gatk.walkers.Requires;
 import org.broadinstitute.sting.gatk.walkers.annotator.DepthOfCoverage;
 import org.broadinstitute.sting.gatk.walkers.annotator.MappingQualityZero;
 import org.broadinstitute.sting.gatk.walkers.annotator.RMSMappingQuality;
@@ -52,6 +53,7 @@ import org.broadinstitute.sting.utils.variantcontext.VariantContext;
 import org.broadinstitute.sting.utils.variantcontext.VariantContextBuilder;
 
 @By(DataSource.REFERENCE)
+@Requires({DataSource.REFERENCE,DataSource.REFERENCE_BASES,DataSource.REFERENCE_ORDERED_DATA})
 @PartitionBy(PartitionType.CONTIG)
 @BAQMode(QualityMode = BAQ.QualityMode.DONT_MODIFY, ApplicationTime = BAQ.ApplicationTime.FORBIDDEN)
 public class ReferenceComplexityWalker
@@ -99,23 +101,24 @@ public class ReferenceComplexityWalker
 			AlignmentContext context) {
 		Locus result = new Locus();
 		result.ref = ref;
-		if (uniqueness != null)
+		if (uniqueness.isBound())
 			result.uniqueness = uniquenessScore(tracker, ref);
-		if (features != null)
+		if (features.isBound())
 			result.coding = isCoding(tracker);
 		locus.put(ref.getLocus(), result);
 		return result;
 	}
 
 	private boolean isCoding(RefMetaDataTracker tracker) {
-		for (GFFFeature gf : tracker.getValues(GFFFeature.class))
+		for (GFFFeature gf : tracker.getValues(features)) {
 			if (gf.getType().isProteinCoding())
 				return true;
+		}
 		return false;
 	}
 
 	private int uniquenessScore(RefMetaDataTracker tracker, ReferenceContext ref) {
-		UQNFeature gf = tracker.getFirstValue(UQNFeature.class);
+		UQNFeature gf = tracker.getFirstValue(uniqueness);
 		return gf == null ? 99 : gf.getScore();
 	}
 
@@ -345,7 +348,7 @@ public class ReferenceComplexityWalker
 		Locus l = locus.remove(loc);
 		if (uniqueness.isBound())
 			attributes.put("UQ", l.uniqueness);
-		if (features.isBound())
+		if (features.isBound() && l.coding)
 			attributes.put("CODING", null);
 		vcb.attributes(attributes);
 		List<Allele> noCall = Collections.singletonList(Allele.NO_CALL);
