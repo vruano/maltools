@@ -164,6 +164,11 @@ public class ReferenceComplexityWalker
 					"Marks positions that are withing protein coding exons"));
 		if (useInfoFields) {
 			groupNames = Collections.emptySet();
+			if (features.isBound())
+				headerLines
+						.add(new VCFInfoHeaderLine("CodingCount", 1,
+								VCFHeaderLineType.Integer,
+								"Number of position that are considered coding within the window"));
 			headerLines
 					.add(new VCFInfoHeaderLine("GCBias", 1,
 							VCFHeaderLineType.Float,
@@ -204,6 +209,11 @@ public class ReferenceComplexityWalker
 
 		} else {
 			groupNames = groupWindowSize.keySet();
+			if (features.isBound())
+				headerLines
+						.add(new VCFFormatHeaderLine("CC", 1,
+								VCFHeaderLineType.Integer,
+								"Number of position that are considered coding within the window"));
 			headerLines
 					.add(new VCFFormatHeaderLine("GT", 1,
 							VCFHeaderLineType.String,
@@ -281,8 +291,8 @@ public class ReferenceComplexityWalker
 					emit(l);
 			sum = this.reduceInit();
 		}
-		List<Map<Integer, SequenceComplexity.LocusComplexity>> lcm = sum
-				.count(value.ref);
+		List<Map<Integer, SequenceComplexity.LocusComplexity>> lcm = sum.count(
+				value.ref, value.coding);
 		for (Map<Integer, SequenceComplexity.LocusComplexity> l : lcm)
 			if (l.size() != 0)
 				emit(l);
@@ -307,6 +317,8 @@ public class ReferenceComplexityWalker
 		Map<String, Object> attributes = new LinkedHashMap<String, Object>(4);
 		if (useInfoFields && lcm.containsKey(windowSize)) {
 			LocusComplexity lc = lcm.get(windowSize);
+			if (features.isBound())
+				attributes.put("CodingCount", lc.getCodingCount());
 			if (lc.getNucCount() > 0) {
 				attributes.put("NucEnt", lc.getNucEnt());
 				attributes.put("GCBias", lc.getGcBias());
@@ -343,6 +355,8 @@ public class ReferenceComplexityWalker
 			LocusComplexity lc = lcm.get(gws.getValue());
 			Map<String, Object> attr = new LinkedHashMap<String, Object>(4);
 			if (lc != null) {
+				if (features.isBound())
+					attr.put("CC", lc.getCodingCount());
 				attr.put("NC", lc.getNucCount());
 				if (lc.getNucCount() > 0) {
 					attr.put("NE", lc.getNucEnt());

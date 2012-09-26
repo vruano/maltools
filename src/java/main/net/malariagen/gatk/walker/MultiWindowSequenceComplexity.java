@@ -55,6 +55,11 @@ public class MultiWindowSequenceComplexity {
 
 	public List<Map<Integer, SequenceComplexity.LocusComplexity>> count(
 			ReferenceContext ref) {
+		return count(ref,null);
+	}
+	
+	public List<Map<Integer, SequenceComplexity.LocusComplexity>> count(
+			ReferenceContext ref, Boolean isCoding) {
 
 		GenomeLoc loc = ref.getLocus();
 
@@ -72,7 +77,7 @@ public class MultiWindowSequenceComplexity {
 		}
 
 		for (Integer i : byWs.keySet()) {
-			SequenceComplexity.LocusComplexity lc = byWs.get(i).count(ref);
+			SequenceComplexity.LocusComplexity lc = byWs.get(i).count(ref,isCoding);
 			if (lc == null)
 				continue;
 			ws = windowByLoc.get(lc.getLocus());

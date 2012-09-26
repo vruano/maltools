@@ -21,9 +21,11 @@ public class SequenceComplexity {
 	List<GenomeLoc> locs;
 	GenomeLoc end;
 	private LinkedList<Nucleotide> nucs;
+	private LinkedList<Boolean> isCoding;
 	LinkedList<Trinucleotide> trinucs;
 	int[] nucsCount;
 	int[] trinucsCount;
+	int codingCount;
 	int nucsTotal;
 	int trinucsTotal;
 	private double[] entropy;
@@ -43,10 +45,10 @@ public class SequenceComplexity {
 
 	
 	public LocusComplexity count(ReferenceContext ref) {
-		return count(ref,false);
+		return count(ref,null);
 	}
 	
-	private LocusComplexity count(ReferenceContext ref, boolean forceEmit) {
+	public LocusComplexity count(ReferenceContext ref, Boolean isCoding) {
 		GenomeLoc loc = ref.getLocus();
 		Nucleotide n = Nucleotide.fromByte(ref.getBase());
 		if (end != null && !loc.getContig().equals(end.getContig()))
@@ -57,6 +59,7 @@ public class SequenceComplexity {
 				removeNucleotide();
 			trinucs.add(Trinucleotide.NNN);
 			nucs.add(Nucleotide.N);
+			this.isCoding.add(null);
 			locs.add(loc);
 			loc = ref.getGenomeLocParser().createGenomeLoc(loc.getContig(), loc.getStart() + 1, loc.getStart() + 1);
 		}
@@ -65,6 +68,8 @@ public class SequenceComplexity {
 		end = loc;
 		nucs.add(n);
 		locs.add(loc);
+		this.isCoding.add(isCoding);
+		if (isCoding == Boolean.TRUE) codingCount++;
 		if (n != Nucleotide.N) {
 			nucsCount[n.ordinal()]++;
 			nucsTotal++;
@@ -89,7 +94,7 @@ public class SequenceComplexity {
 			trinucsTotal++;
 		}
 
-		if (forceEmit || nucs.size() == windowSize)
+		if (nucs.size() == windowSize)
 			return emit();
 		else if (nucs.size() > windowSize)
 			throw new RuntimeException("cannot be " + windowSize + "  "  + nucs.size());
@@ -104,7 +109,9 @@ public class SequenceComplexity {
 		Nucleotide n0 = nucs.remove(0);
 		Trinucleotide t0 = !trinucs.isEmpty() ? trinucs.remove(0) : Trinucleotide.NNN;
 		locs.remove(0);
-
+		Boolean coding = isCoding.remove();
+		if (coding == Boolean.TRUE)
+			codingCount--;
 		if (n0 != Nucleotide.N) {
 			nucsCount[n0.ordinal()]--;
 			nucsTotal--;
@@ -147,7 +154,7 @@ public class SequenceComplexity {
 			dust = dust / (trinucsTotal - 1);
 		
 		LocusComplexity result = new LocusComplexity(loc, nucsTotal, trinucsTotal, nucs.get(nucs.size() - locs.size()), gcBias, nucEnt,
-				dust, triEnt);
+				dust, triEnt, codingCount);
 		return result;
 	}
 
@@ -180,6 +187,7 @@ public class SequenceComplexity {
 		entropy = new double[ws + 1];
 		entropyMinus2 = new double[ws - 1];
 		nucs = new LinkedList<Nucleotide>();
+		isCoding = new LinkedList<Boolean>();
 		trinucs = new LinkedList<Trinucleotide>();
 		nucsCount = new int[4];
 		trinucsCount = new int[64];
@@ -228,9 +236,10 @@ public class SequenceComplexity {
 		private double triEnt;
 		private int size;
 		private int triSize;
+		private int codingCount;
 
 		public LocusComplexity(GenomeLoc loc, int size, int triSize, Nucleotide n,
-				double gcBias, double nucEnt, double dust, double triEnt) {
+				double gcBias, double nucEnt, double dust, double triEnt, int codingCount) {
 			this.loc = loc;
 			this.gcBias = gcBias;
 			this.nucEnt = nucEnt;
@@ -239,10 +248,15 @@ public class SequenceComplexity {
 			this.triEnt = triEnt;
 			this.size = size;
 			this.triSize = triSize;
+			this.codingCount = codingCount;
 		}
 
 		public int size() {
 			return size;
+		}
+		
+		public int getCodingCount() {
+			return codingCount;
 		}
 
 		public GenomeLoc getLocus() {

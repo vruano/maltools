@@ -79,6 +79,7 @@ public class ReferenceComplexityWalkerWrapper {
 		}
 		
 
+
 		public double getGcBias(String name, boolean forward) {
 			if (forward)
 				return getForwardGcBias(name);
