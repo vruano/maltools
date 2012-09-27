@@ -3,6 +3,7 @@ package net.malariagen.gatk.coverage;
 import static net.malariagen.gatk.coverage.LocusCategory.*;
 import net.malariagen.gatk.coverage.CoverageBiasWalker.GroupBy;
 import net.malariagen.gatk.math.IntegerCountersIncrement;
+import net.malariagen.utils.Nucleotide;
 
 import org.broadinstitute.sting.gatk.DownsampleType;
 import org.broadinstitute.sting.gatk.contexts.AlignmentContext;
@@ -32,9 +33,8 @@ import org.broadinstitute.sting.gatk.walkers.PartitionType;
 @Downsample(by = DownsampleType.NONE)
 @Requires({ DataSource.READS, DataSource.REFERENCE_ORDERED_DATA })
 @BAQMode(QualityMode = BAQ.QualityMode.ADD_TAG, ApplicationTime = BAQ.ApplicationTime.HANDLED_IN_WALKER)
-public class MQ0PcDistributionWalker extends IntegerStatDistributionWalker {
+public class MjDPPcDistributionWalker extends IntegerStatDistributionWalker {
 	
-
 	@Override
 	public IntegerCountersIncrement map(RefMetaDataTracker tracker,
 			ReferenceContext ref, AlignmentContext context) {
@@ -47,29 +47,40 @@ public class MQ0PcDistributionWalker extends IntegerStatDistributionWalker {
 		ReadBackedPileup pileup = context.getBasePileup().getFilteredPileup(
 				pileupFilter);
 		result.depth = context.size();
-		int totalMQ0 = 0;
+		int[] allNucDepth = new int[4];
+		int[][] perGroupNucDepth = new int[result.groupValues.length][4];
 		if (groupBy != GroupBy.NONE){
-			int[] mq0 = new int[result.groupValues.length];
 			for (PileupElement pe : pileup) {
+				int baseIndex = Nucleotide.fromByte(pe.getBase()).ordinal();
+				allNucDepth[baseIndex]++;
 				if (groupBy.implies(GroupBy.RG)) {
 					String readGroupName = pe.getRead().getReadGroup().getId();
 					int readGroupIndex = groupIndices.get(readGroupName);
-					result.groupValues[readGroupIndex]++;
-					if (pe.getMappingQual() == 0)
-						mq0[readGroupIndex]++;
+					perGroupNucDepth[readGroupIndex][baseIndex]++;
 				}
 				if (groupBy.implies(GroupBy.SM)) {
 					String sampleName = pe.getRead().getReadGroup().getSample();
 					int sampleIndex = groupIndices.get(sampleName);
-					result.groupValues[sampleIndex]++;
-					if (pe.getMappingQual() == 0)
-						mq0[sampleIndex]++;
+					perGroupNucDepth[sampleIndex][baseIndex]++;
 				}
 			}
-			for (int i = 0; i < mq0.length; i++)
-				result.groupValues[i] = (result.groupValues[i]== 0) ? 0 :  (int) Math.round((mq0[i] * 100.0) / result.groupValues[i]);
+			for (int i = 0; i < perGroupNucDepth.length; i++) {
+				int mjIndex = 0;
+				int total = perGroupNucDepth[i][0];
+				for (int j = 1; j < 4; j++) {
+					int jDepth = perGroupNucDepth[i][j];
+					total += jDepth;
+					if (jDepth > perGroupNucDepth[i][mjIndex])
+						mjIndex = j;
+				}
+				result.groupValues[i] = total == 0 ? 0 : (int) Math.round(100.0 * perGroupNucDepth[i][mjIndex]/(double)total);
+			}
 		}
-		result.depth = result.depth == 0 ? 0 : (int) Math.round((totalMQ0 * 100.0) / result.depth);
+		int mjIndex = 0;
+		for (int j = 1; j < 4; j++) 
+			if (allNucDepth[j] > allNucDepth[mjIndex])
+				mjIndex = j;
+		result.depth = result.depth == 0 ? 0 : (int) Math.round(100.0 * allNucDepth[mjIndex]/ (double) result.depth);
 		return result;
 	}
 

@@ -30,13 +30,14 @@ public class IntegerCounterSet  {
 		all.addValue(value, categories, sequence);
 	}
 	
-	public void addSampleValues(int[] values, byte categories, int sequence) {
+	public void addSampleValues(int[] values, byte categories, int sequence, boolean useSum) {
 		int total = 0;
 		for (int i = 0; i < values.length; i++) {
 			total += values[i];
 			addValue(values[i],i,categories,sequence);
 		}		
-		addAllValue(total,categories,sequence);
+		if (useSum)
+			addAllValue(total,categories,sequence);
 	}
 	
 	public void addValue(int value, int sample, byte categories, int sequence) {

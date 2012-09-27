@@ -26,12 +26,15 @@ public class ReferenceComplexityTest {
 	@Test
 	public void test3D7Reference2() throws IOException {
 //		File refFasta = new File(this.getClass().getClassLoader().getResource("3D7_pm.fa").getFile());
-		File refFasta = new File("/home/valentin/Science/CoveragePf/Simulation/Pf3D7_v3/data/Pf3D7_v3.fa");
-		File refGff = new File("/home/valentin/Science/CoveragePf/Simulation/Pf3D7_v3/data/Pf3D7_v3.gff");
+		//File refFasta = new File("/home/valentin/Science/CoveragePf/Simulation/Pf3D7_v3/data/Pf3D7_v3.fa");
+		//File refGff = new File("/home/valentin/Science/CoveragePf/Simulation/Pf3D7_v3/data/Pf3D7_v3.gff");
+		File refFasta = new File("/home/valentin/Science/CoveragePf/Simulation/Pf3D7_v2/data/3D7_pm.fa");
+		File refGff = new File("/home/valentin/Science/CoveragePf/Simulation/Pf3D7_v2/data/3D7_pm.gff");
+		File refUq = new File("/home/valentin/Science/CoveragePf/Simulation/Pf3D7_v2/data/3D7_pm.uq");
 		File outDir = File.createTempFile(refFasta.getName() + "-", ".vcf");
 		
 		try {
-			WalkerTest.executeTest("ReferenceComplexity", String.format("-T ReferenceComplexity -W 76 -W 100 -W 152 -W 200 -W 75 -W 150 -R %s -features %s -o %s",refFasta,refGff,outDir), null);
+			WalkerTest.executeTest("ReferenceComplexity", String.format("-T ReferenceComplexity -W 31 -W 75 -W 151 -W 199 -W 501 -W 301 -W 1001 -W 101 -R %s -features %s -uniqueness %s -o %s",refFasta,refGff,refUq,outDir), null);
 		} catch (Throwable t) {
 			t.printStackTrace();
 	//		fail();

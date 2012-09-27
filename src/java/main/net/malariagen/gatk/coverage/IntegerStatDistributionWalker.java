@@ -113,6 +113,8 @@ public abstract class IntegerStatDistributionWalker extends
 	private IndexedFastaSequenceFile reference;
 	private CalculationMode cmode;
 	private QualityMode qmode;
+	
+	private boolean useSum;
 
 	private ReadGroupDB readGroupDb;
 
@@ -135,6 +137,7 @@ public abstract class IntegerStatDistributionWalker extends
 
 	@Override
 	public void initialize() {
+		useSum = this.allValueIsTheSum();
 		groupInitialize();
 		sequenceNamesInitialize();
 		initializeCoverageCounterSets();
@@ -258,12 +261,19 @@ public abstract class IntegerStatDistributionWalker extends
 			IntegerCounterSet ccs) {
 		if (cci == null)
 			return ccs;
-		if (groupBy != GroupBy.NONE)
-			ccs.addSampleValues(cci.groupValues, cci.categories, cci.sequence);
+		if (groupBy != GroupBy.NONE) {
+			ccs.addSampleValues(cci.groupValues, cci.categories, cci.sequence, useSum);
+			if (!useSum)
+				ccs.addAllValue(cci.depth, cci.categories, cci.sequence);
+		}
 		else
 			ccs.addAllValue(cci.depth, cci.categories, cci.sequence);
 		incPool.restore(cci);
 		return ccs;
+	}
+	
+	protected boolean allValueIsTheSum() {
+		return false;
 	}
 
 	@Override

@@ -140,12 +140,11 @@ public class SequenceComplexity {
 
 	private LocusComplexity emit() {
 		GenomeLoc loc = locs.get(0);
-		double gcBias = Double.NaN;
+		int gcCount = 0;
 		double nucEnt = 0;
 		double triEnt = 0;
 		double dust = 0;
-		gcBias = (nucsCount[NUC_G_ORDINAL] + nucsCount[NUC_C_ORDINAL]) / (double) nucsTotal;
-		gcBias *= 100;
+		gcCount = (nucsCount[NUC_G_ORDINAL] + nucsCount[NUC_C_ORDINAL]);
 		nucEnt = entropy(nucsCount,nucsTotal);
 		triEnt = entropy(trinucsCount,trinucsTotal);
 		for (int c : trinucsCount) 
@@ -155,7 +154,7 @@ public class SequenceComplexity {
 		else 
 			dust = dust / (trinucsTotal - 1);
 		
-		LocusComplexity result = new LocusComplexity(loc, nucsTotal, trinucsTotal, nucs.get(nucs.size() - locs.size()), gcBias, nucEnt,
+		LocusComplexity result = new LocusComplexity(loc, nucsTotal, trinucsTotal, nucs.get(nucs.size() - locs.size()), gcCount, nucEnt,
 				dust, triEnt, codingCount);
 		return result;
 	}
@@ -231,7 +230,7 @@ public class SequenceComplexity {
 
 	public class LocusComplexity {
 
-		private double gcBias;
+		private double gcCount;
 		private double nucEnt;
 		private double dust;
 		private GenomeLoc loc;
@@ -242,9 +241,9 @@ public class SequenceComplexity {
 		private int codingCount;
 
 		public LocusComplexity(GenomeLoc loc, int size, int triSize, Nucleotide n,
-				double gcBias, double nucEnt, double dust, double triEnt, int codingCount) {
+				int gcCount, double nucEnt, double dust, double triEnt, int codingCount) {
 			this.loc = loc;
-			this.gcBias = gcBias;
+			this.gcCount = gcCount;
 			this.nucEnt = nucEnt;
 			this.dust = dust;
 			this.refNuc = n;
@@ -270,8 +269,8 @@ public class SequenceComplexity {
 			return refNuc;
 		}
 
-		public double getGcBias() {
-			return gcBias;
+		public double getGcCount() {
+			return gcCount;
 		}
 
 		public double getNucEnt() {

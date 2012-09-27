@@ -10,15 +10,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import net.malariagen.gatk.annotators.CodingAnnotation;
-import net.malariagen.gatk.annotators.FragmentStartCount;
-import net.malariagen.gatk.annotators.UniquenessScore;
 import net.malariagen.gatk.coverage.CoverageBiasWalker.GroupBy;
 import net.malariagen.gatk.gff.GFFFeature;
 import net.malariagen.gatk.uniqueness.UQNFeature;
 import net.malariagen.gatk.walker.SequenceComplexity.LocusComplexity;
 
-import org.broad.tribble.Feature;
 import org.broadinstitute.sting.commandline.Argument;
 import org.broadinstitute.sting.commandline.Output;
 import org.broadinstitute.sting.commandline.RodBinding;
@@ -32,11 +28,7 @@ import org.broadinstitute.sting.gatk.walkers.LocusWalker;
 import org.broadinstitute.sting.gatk.walkers.PartitionBy;
 import org.broadinstitute.sting.gatk.walkers.PartitionType;
 import org.broadinstitute.sting.gatk.walkers.Requires;
-import org.broadinstitute.sting.gatk.walkers.annotator.DepthOfCoverage;
-import org.broadinstitute.sting.gatk.walkers.annotator.MappingQualityZero;
-import org.broadinstitute.sting.gatk.walkers.annotator.RMSMappingQuality;
 import org.broadinstitute.sting.gatk.walkers.annotator.interfaces.AnnotatorCompatibleWalker;
-import org.broadinstitute.sting.gatk.walkers.annotator.interfaces.InfoFieldAnnotation;
 import org.broadinstitute.sting.utils.GenomeLoc;
 import org.broadinstitute.sting.utils.baq.BAQ;
 import org.broadinstitute.sting.utils.codecs.vcf.VCFFormatHeaderLine;
@@ -173,9 +165,9 @@ public class ReferenceComplexityWalker
 								VCFHeaderLineType.Integer,
 								"Number of positions that are considered coding within the window; can be greater than NC if the window contains N or X"));
 			headerLines
-					.add(new VCFInfoHeaderLine("GCBias", 1,
+					.add(new VCFInfoHeaderLine("GCCnt", 1,
 							VCFHeaderLineType.Float,
-							"GC bias expressed in a percentage from 0 to 100 (only if NucCnt > 0)"));
+							"Number of G or C nucleotides in the window"));
 			headerLines.add(new VCFInfoHeaderLine("NucEnt", 1,
 					VCFHeaderLineType.Float,
 					"Nucleotide entropy in nats (only if NucCnt > 0)"));
@@ -224,7 +216,7 @@ public class ReferenceComplexityWalker
 			headerLines
 					.add(new VCFFormatHeaderLine("GC", 1,
 							VCFHeaderLineType.Float,
-							"GC bias expressed in a percentage from 0 to 100 (only if NC > 0)"));
+							"Number of G or C nucleotides in the window"));
 			headerLines.add(new VCFFormatHeaderLine("NE", 1,
 					VCFHeaderLineType.Float,
 					"Nucleotide entropy in nats (only if NC > 0)"));
@@ -324,13 +316,13 @@ public class ReferenceComplexityWalker
 				attributes.put("CodingCount", lc.getCodingCount());
 			if (lc.getNucCount() > 0) {
 				attributes.put("NucEnt", lc.getNucEnt());
-				attributes.put("GCBias", lc.getGcBias());
 			}
 			if (lc.getTrinucCount() > 0) {
 				attributes.put("TriEnt", lc.getTriEnt());
 				if (lc.getTrinucCount() > 1)
 					attributes.put("DUST", lc.getDUST());
 			}
+			attributes.put("GCCnt", lc.getGcCount());
 			attributes.put("NucCnt", lc.getNucCount());
 			attributes.put("TriCnt", lc.getTrinucCount());
 			switch (whence) {
@@ -361,9 +353,9 @@ public class ReferenceComplexityWalker
 				if (features.isBound())
 					attr.put("CC", lc.getCodingCount());
 				attr.put("NC", lc.getNucCount());
+				attr.put("GC", lc.getGcCount());
 				if (lc.getNucCount() > 0) {
 					attr.put("NE", lc.getNucEnt());
-					attr.put("GC", lc.getGcBias());
 				}
 				attr.put("TC", lc.getTrinucCount());
 				if (lc.getTrinucCount() > 0) {

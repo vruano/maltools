@@ -18,6 +18,7 @@ import net.malariagen.gatk.math.IntegerDistribution;
 import net.malariagen.gatk.math.IntegerDistributionSet;
 import net.malariagen.gatk.uniqueness.UQNFeature;
 import net.malariagen.gatk.utils.ReadGroupDB;
+import net.malariagen.gatk.walker.FragmentFilter;
 import net.malariagen.utils.Nucleotide;
 import net.sf.picard.reference.IndexedFastaSequenceFile;
 
@@ -94,10 +95,17 @@ TreeReducible<CoverageQualityStatistics>{
 	@Argument(fullName="features", shortName="features", doc="file containing the GFF records indicating where the coding regions are located", required=false)
 	protected RodBinding<GFFFeature> features = null;
 	
-
+	@Argument(fullName="fragmentFilter", shortName="filter", doc="indicates what pair to filter out (default NONE)", required=false)
+	protected Set<FragmentFilter> fragmentFilters = Collections.singleton(FragmentFilter.NONE);
+	
+	@Argument(fullName="outputMaximumForwardStartQuality", shortName="MfsQ", doc="request for the Maximum Forward Start Quality to be outputted", required=false)
+	protected boolean outputMaximumForwardStartQuality = false;
+	
+	@Argument(fullName="maximumFragmentSize", shortName="mfs", doc="maximum fragment size beyond which, read pair are considered to be intrachromosomal translocations", required=false)
+	protected int maximumFragmentSize = 10000;
+	
 	@Argument(fullName="uniqueness", shortName="uniqueness", doc="file containing the Uniqueness scores", required=false)
 	protected RodBinding<UQNFeature> uniqueness = null;
-	
 	
 	@Argument(fullName="groupBy", shortName="groupBy", doc="whether we should generate stats per read-group (RG), sample (SM), both (SMRG) or none (NONE default)", required=false)
 	protected GroupBy groupBy = GroupBy.NONE;
@@ -110,7 +118,6 @@ TreeReducible<CoverageQualityStatistics>{
 	//Is not very informative in practice 
 	//@Argument(shortName="mq0pcds", fullName="MQ0PCDistributionSet", doc="MQ0 percentage distribution set (implies -normalize)", required=false)
 	protected List<File> mq0pcDistributionFiles = Collections.emptyList();
-	
 	
 	@Output(shortName="o", doc="output vcf file name, by default it uses the standard output", required=false)
 	protected VCFWriter writer;
