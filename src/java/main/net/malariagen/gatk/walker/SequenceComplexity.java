@@ -230,7 +230,7 @@ public class SequenceComplexity {
 
 	public class LocusComplexity {
 
-		private double gcCount;
+		private int gcCount;
 		private double nucEnt;
 		private double dust;
 		private GenomeLoc loc;
@@ -269,7 +269,7 @@ public class SequenceComplexity {
 			return refNuc;
 		}
 
-		public double getGcCount() {
+		public int getGcCount() {
 			return gcCount;
 		}
 

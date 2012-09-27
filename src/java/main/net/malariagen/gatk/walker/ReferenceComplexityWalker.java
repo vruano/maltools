@@ -166,7 +166,7 @@ public class ReferenceComplexityWalker
 								"Number of positions that are considered coding within the window; can be greater than NC if the window contains N or X"));
 			headerLines
 					.add(new VCFInfoHeaderLine("GCCnt", 1,
-							VCFHeaderLineType.Float,
+							VCFHeaderLineType.Integer,
 							"Number of G or C nucleotides in the window"));
 			headerLines.add(new VCFInfoHeaderLine("NucEnt", 1,
 					VCFHeaderLineType.Float,
@@ -215,7 +215,7 @@ public class ReferenceComplexityWalker
 							"Genotype Call, never used but left in to be compliant with all standards"));
 			headerLines
 					.add(new VCFFormatHeaderLine("GC", 1,
-							VCFHeaderLineType.Float,
+							VCFHeaderLineType.Integer,
 							"Number of G or C nucleotides in the window"));
 			headerLines.add(new VCFFormatHeaderLine("NE", 1,
 					VCFHeaderLineType.Float,

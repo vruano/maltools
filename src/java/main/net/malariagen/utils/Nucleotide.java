@@ -30,4 +30,8 @@ public enum Nucleotide {
 	public byte byteValue() {
 		return byteValue;
 	}
+
+	public boolean isProper() {
+		return ordinal() <= T.ordinal();
+	}
 }

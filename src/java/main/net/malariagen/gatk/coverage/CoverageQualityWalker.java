@@ -235,8 +235,7 @@ TreeReducible<CoverageQualityStatistics>{
 		Map<String, AlignmentContext> stratified = CoverageBiasWalker.stratifyByGroupName(context, groupNames, groupBy);
 		ReadBackedPileup pileup = context.getBasePileup().getFilteredPileup(
 				pileupFilter);
-//		if (pileup.isEmpty()) 
-//			return null;
+
 		VariantContextBuilder result = new VariantContextBuilder();
 		result.loc(ref.getLocus());
 		result.referenceBaseForIndel(Nucleotide.N.byteValue());
