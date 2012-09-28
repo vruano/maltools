@@ -119,9 +119,22 @@ public abstract class IntegerStatDistributionWalker extends
 	private ReadGroupDB readGroupDb;
 
 	@Override
-	public abstract IntegerCountersIncrement map(RefMetaDataTracker tracker,
-			ReferenceContext ref, AlignmentContext context);
+	public IntegerCountersIncrement map(RefMetaDataTracker tracker,
+			ReferenceContext ref, AlignmentContext context) {
+		if (excludeAmbigousRef && !BaseUtils.isRegularBase(ref.getBase()))
+			return null;
+		IntegerCountersIncrement result = incPool.borrow();
+		context = new AlignmentContext(context.getLocation(), context
+				.getBasePileup().getFilteredPileup(pileupFilter),
+				context.getSkippedBases(),
+				context.hasPileupBeenDownsampled());
+		counterIncrementsOf(tracker,ref,context,result);
+		return result;
+	}
 	
+	protected abstract void counterIncrementsOf(RefMetaDataTracker tracker,
+			ReferenceContext ref, AlignmentContext context, IntegerCountersIncrement ici);
+
 	@Override
 	public IntegerCounterSet reduceInit() {
 		IntegerCounterSet result = counterSetByThread.get();

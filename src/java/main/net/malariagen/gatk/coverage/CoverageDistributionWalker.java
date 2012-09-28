@@ -68,12 +68,9 @@ public class CoverageDistributionWalker extends IntegerStatDistributionWalker {
 	
 
 	@Override
-	public IntegerCountersIncrement map(RefMetaDataTracker tracker,
-			ReferenceContext ref, AlignmentContext context) {
+	public void counterIncrementsOf(RefMetaDataTracker tracker,
+			ReferenceContext ref, AlignmentContext context, IntegerCountersIncrement result) {
 
-		if (excludeAmbigousRef && !BaseUtils.isRegularBase(ref.getBase()))
-			return null;
-		IntegerCountersIncrement result = incPool.borrow();
 		result.categories = categoryMask(tracker, features);
 		result.sequence = sequenceIndices.get(ref.getLocus().getContig());
 		ReadBackedPileup pileup = context.getBasePileup().getFilteredPileup(
@@ -92,7 +89,6 @@ public class CoverageDistributionWalker extends IntegerStatDistributionWalker {
 					result.groupValues[sampleIndex]++;
 				}
 			}
-		return result;
 	}
 
 }
