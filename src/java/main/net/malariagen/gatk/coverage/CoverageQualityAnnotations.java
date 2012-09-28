@@ -77,29 +77,32 @@ public class CoverageQualityAnnotations {
 		
 		IntRef maxAllMappingQuality$ref = new IntRef(maxAllMappingQuality);
 		IntRef allDepth$ref = new IntRef(allDepth);
+		IntRef allMjAlleleDepth$ref = new IntRef();
+		IntRef allAlleleDepth$ref = new IntRef();
 		
+		int[] allAlleleCounts = new int[groupIndex.size()];
 		annotate$makeDepthAndMQ0(stratifiedAlignmentContext,
 				allMappingQualityCounts, mappingQualityCounts,
-				maxMappingQuality, groupDepth, maxForwardStartQuality, mjAlleleCounts, mjAlleleFreqs, maxAllMappingQuality$ref,
-				allDepth$ref);
+				maxMappingQuality, groupDepth, maxForwardStartQuality, mjAlleleCounts, allAlleleCounts, mjAlleleFreqs, maxAllMappingQuality$ref,
+				allDepth$ref, allMjAlleleDepth$ref, allAlleleDepth$ref);
 		
 		allDepth = allDepth$ref.value;
 		maxAllMappingQuality = maxAllMappingQuality$ref.value;
 
 		boolean isCoding = annotate$makeUnormalizeInfoAnnotations(tracker,infoAnnotations,
 				maxAllMappingQuality, allMappingQualityCounts, groupDepth,
-				allDepth, groupDoubleAuxiliar,mjAlleleFreqs);
+				allDepth, allMjAlleleDepth$ref.value, allAlleleDepth$ref.value, groupDoubleAuxiliar,mjAlleleFreqs);
 		
 		if (walker.normalize) 
 			annotate$makeNormalizedAnnotations(ref, infoAnnotations,
 					formatAnnotations, allMappingQualityCounts,
 					mappingQualityCounts, maxMappingQuality, groupDepth,
 					allDepth, groupDoubleAuxiliar, groupDoubleAuxiliar2,
-					groupDoubleAuxiliar3, isCoding, maxForwardStartQuality, mjAlleleCounts);
+					groupDoubleAuxiliar3, isCoding, maxForwardStartQuality, mjAlleleCounts, allAlleleCounts);
 		else 
 			annotate$makeUnormalizedFormatAnnotations(formatAnnotations,
 					mappingQualityCounts, maxMappingQuality, groupDepth,
-					groupDoubleAuxiliar,maxForwardStartQuality, mjAlleleCounts);
+					groupDoubleAuxiliar,maxForwardStartQuality, mjAlleleCounts, allAlleleCounts);
 		if (allDepth > 0 && allMappingQualityCounts[0] > 0) {
 			double mq0Median = medianCalculator.evaluate(groupDoubleAuxiliar);
 			infoAnnotations.put("MedMQ0pc", mq0Median);
@@ -111,7 +114,7 @@ public class CoverageQualityAnnotations {
 	private void annotate$makeUnormalizedFormatAnnotations(
 			Map<String, Map<String, Object>> formatAnnotations,
 			int[][] mappingQualityCounts, int[] maxMappingQuality,
-			int[] groupDepth, double[] groupDoubleAuxiliar, int[] maxForwardStartQuality, int[] mjAlleleCounts) {
+			int[] groupDepth, double[] groupDoubleAuxiliar, int[] maxForwardStartQuality, int[] mjAlleleCounts, int[] allAlleleCounts) {
 		for (String gn : walker.groupNames) {
 			int index = groupIndex.get(gn);
 			Map<String, Object> annotations = formatAnnotations.get(gn);
@@ -123,6 +126,7 @@ public class CoverageQualityAnnotations {
 					: 100.0 * mappingQualityCounts[index][0]
 							/ groupDepth[index];
 			annotations.put("DP", groupDepth[index]);
+			if (groupDepth[index] - allAlleleCounts[index] > 0) annotations.put("NDP", groupDepth[index] - allAlleleCounts[index]);
 			if (groupDepth[index] != 0)
 				annotations.put(
 						"MQ",
@@ -137,7 +141,7 @@ public class CoverageQualityAnnotations {
 			int[] allMappingQualityCounts, int[][] mappingQualityCounts,
 			int[] maxMappingQuality, int[] groupDepth, int allDepth,
 			double[] groupDoubleAuxiliar, double[] groupDoubleAuxiliar2,
-			double[] groupDoubleAuxiliar3, boolean isCoding, int[] maxForwardStartQuality, int[] mjAlleleCounts) {
+			double[] groupDoubleAuxiliar3, boolean isCoding, int[] maxForwardStartQuality, int[] mjAlleleCounts, int[] allAlleleDepths) {
 		IntegerDistribution allCovDist = getAllDistribution(
 				walker.coverageDistributionSet, ref, isCoding);
 		IntegerDistribution allMq0pcDist = getAllDistribution(
@@ -177,6 +181,7 @@ public class CoverageQualityAnnotations {
 			groupDoubleAuxiliar[index] = groupDoubleAuxiliar[index] == 0 ? 0
 					: 100.0 * mappingQualityCounts[index][0]
 							/ groupDepth[index];
+			if (groupDepth[index] - allAlleleDepths[index] > 0) annotations.put("NDP", groupDepth[index] - allAlleleDepths[index]);
 			annotations.put("DP", groupDepth[index]);
 			if (groupDepth[index] > 0)
 				annotations.put(
@@ -234,15 +239,17 @@ public class CoverageQualityAnnotations {
 
 	private boolean annotate$makeUnormalizeInfoAnnotations(RefMetaDataTracker tracker,
 			Map<String, Object> infoAnnotations, int maxAllMappingQuality,
-			int[] allMappingQualityCounts, int[] groupDepth, int allDepth, 
-			double[] groupDoubleAuxiliar, double[] mjAlleleFreqs) {
+			int[] allMappingQualityCounts, int[] groupDepth, int allDepth, int mjAlleleDepth, 
+			int allAlleleDepth, double[] groupDoubleAuxiliar, double[] mjAlleleFreqs) {
 		
 		infoAnnotations.put("DP", allDepth);
+		if (allDepth - allAlleleDepth > 0) infoAnnotations.put("NDP", allDepth - allAlleleDepth);
+		infoAnnotations.put("MaDP", mjAlleleDepth);
 		infoAnnotations.put("MQ0", allMappingQualityCounts[0]);
 		if (allDepth > 0) {
 			infoAnnotations.put("MQ",
 					rms(allMappingQualityCounts, 0, maxAllMappingQuality + 1));
-			infoAnnotations.put("MedMaDPpc", 100.0 * rms(sliceOutNaNs(mjAlleleFreqs)));
+			infoAnnotations.put("MedMaDPpc", 100.0 * medianCalculator.evaluate(sliceOutNaNs(mjAlleleFreqs)));
 		}
 		
 		for (int i = 0; i < groupDepth.length; i++)
@@ -269,11 +276,11 @@ public class CoverageQualityAnnotations {
 
 	private double[] sliceOutNaNs(double[] mjAlleleFreqs) {
 		for (double d : mjAlleleFreqs)
-			if (Double.isNaN(d)) {
+			if (Double.isNaN(d) || d == 0) {
 				double[] result = new double[mjAlleleFreqs.length];
 				int nextIdx = 0;
 				for (double d2 : mjAlleleFreqs)
-					if (Double.isNaN(d2)) continue; else result[nextIdx++] = d2;
+					if (!Double.isNaN(d2) && d != 0) result[nextIdx++] = d2;
 				return Arrays.copyOf(result, nextIdx);
 			}
 		return mjAlleleFreqs;
@@ -282,13 +289,16 @@ public class CoverageQualityAnnotations {
 	private void annotate$makeDepthAndMQ0(
 			Map<String, AlignmentContext> stratifiedAlignmentContext,
 			int[] allMappingQualityCounts, int[][] mappingQualityCounts,
-			int[] maxMappingQuality, int[] groupDepth, int[] maxForwardStartQuality, int[] mjAlleleCounts, double[] mjAlleleFreq,
-			IntRef maxAllMappingQuality$ref, IntRef allDepth$ref) {
+			int[] maxMappingQuality, int[] groupDepth, int[] maxForwardStartQuality, int[] mjAlleleCounts, int[] allAlleleCounts, double[] mjAlleleFreq,
+			IntRef maxAllMappingQuality$ref, IntRef allDepth$ref, IntRef mjAlleleDepth$ref, IntRef allAlleleDepth$ref) {
+		int[] allNucCounts = new int[4];
 		int[] nucCounts = new int[4];
-		int nucTotal = 0;
-		int mjIndex = 0;
+		int totalAllNucCounts = 0;
+		int allMjIndex = 0;
 		for (Map.Entry<String, AlignmentContext> gn : stratifiedAlignmentContext
 				.entrySet()) {
+			int nucTotal = 0;
+			int mjIndex = 0;
 			int index = groupIndex.get(gn.getKey());
 			int[] mappingQualityCount = mappingQualityCounts[index];
 			allDepth$ref.value += groupDepth[index] = gn.getValue().getBasePileup()
@@ -304,16 +314,19 @@ public class CoverageQualityAnnotations {
 				if (pe.getOffset() == 0 && maxForwardStartQuality[index] < mq)
 					maxForwardStartQuality[index] = mq;
 				Nucleotide n = Nucleotide.fromByte(pe.getBase());
-				if (!n.isProper()) continue;
+				if (!n.isProper()) { System.err.println("" + n + " " + pe.getBase() + " " + walker.excludeAmbigousBase); continue; }
 				if (++nucCounts[n.ordinal()] > nucCounts[mjIndex]) mjIndex = n.ordinal();
+				if (++allNucCounts[n.ordinal()] > allNucCounts[allMjIndex]) allMjIndex = n.ordinal();
 				nucTotal++;
 			}
+			totalAllNucCounts += nucTotal;
 			mjAlleleCounts[index] = nucCounts[mjIndex];
-			mjAlleleFreq[index] =  (nucTotal == 0) ? Double.NaN : nucCounts[mjIndex] / (double) nucTotal;
+			allAlleleCounts[index] = nucTotal;
+			mjAlleleFreq[index] =  nucTotal == 0 ? 0 : ((double)nucCounts[mjIndex]) / (double) nucTotal;
 			Arrays.fill(nucCounts,0);
-			nucTotal = 0;
-			mjIndex = 0;
 		}
+		allAlleleDepth$ref.value = totalAllNucCounts;
+		mjAlleleDepth$ref.value = allNucCounts[allMjIndex];
 	}
 
 	private IntegerDistribution getSampleDistribution(
@@ -360,16 +373,6 @@ public class CoverageQualityAnnotations {
 		}
 		return Math.sqrt(((double) sqSum) / count);
 	}
-
-	private static double rms(double... values) {
-		long sqSum = 0;
-		long count = 0;
-		for (int i = 0; i < values.length; i++) {
-			count += values[i];
-			sqSum += values[i] * i * i;
-		}
-		return Math.sqrt(((double) sqSum) / count);
-	}
 	
 	
 	private static double rms(int[] values, int fromIndex, int toIndex) {
@@ -395,7 +398,10 @@ public class CoverageQualityAnnotations {
 	public static Set<VCFHeaderLine> getHeaderLines(CoverageQualityWalker walker) {
 		Set<VCFHeaderLine> result = new HashSet<VCFHeaderLine>();
 		result.add(new VCFInfoHeaderLine("DP", 1, VCFHeaderLineType.Integer,
-				"total depth at that site across samples"));
+				"total depth at that site across samples. This could include ambigous calls (e.g. N, X) or deletions (see the NDP field)"));
+		result.add(new VCFInfoHeaderLine("NDP", 1, VCFHeaderLineType.Integer,
+				"Total call depth on non-proper nucleotides (N, X ...) or deletions (omitted if equal to 0)"));
+		result.add(new VCFInfoHeaderLine("MaDP", 1, VCFHeaderLineType.Integer,"total depth at the site of the major allele pooling all the samples data"));
 		result.add(new VCFInfoHeaderLine(
 				"MQ0",
 				1,
@@ -404,7 +410,9 @@ public class CoverageQualityAnnotations {
 		result.add(new VCFInfoHeaderLine("MQ", 1, VCFHeaderLineType.Float,
 				"Mapping Quality RMS of reads overlapping this position"));
 		result.add(new VCFFormatHeaderLine("DP", 1, VCFHeaderLineType.Integer,
-				"Total depth at that site across samples"));
+				"Total depth at that site.  This could include ambigous calls (e.g. N, X) or deletions (see the NDP field)"));
+		result.add(new VCFFormatHeaderLine("NDP", 1, VCFHeaderLineType.Integer,
+				"Total call depth on non-proper nucleotides (N, X ...) or deletions (omitted if equal to 0)"));
 		result.add(new VCFFormatHeaderLine(
 				"MQ0",
 				1,

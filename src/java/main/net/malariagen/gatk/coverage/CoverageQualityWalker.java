@@ -186,7 +186,7 @@ TreeReducible<CoverageQualityStatistics>{
 		
 		annotations = new ThreadLocal<CoverageQualityAnnotations>();
 		initializeBAQCalculatingEngine();
-		pileupFilter = CoverageDistributionWalker.initializePileupFilter(!includeReadDeletions, excludeAmbigousBase, minimumBaseQuality, minimumMappingQuality, minimumBAQ, baqHMM, reference, cmode, qmode);
+		pileupFilter = CoverageDistributionWalker.initializePileupFilter(includeReadDeletions, excludeAmbigousBase, minimumBaseQuality, minimumMappingQuality, minimumBAQ, baqHMM, reference, cmode, qmode);
 
 		writer.writeHeader(new VCFHeader(CoverageQualityAnnotations.getHeaderLines(this),groupNames));
 	}
@@ -232,10 +232,13 @@ TreeReducible<CoverageQualityStatistics>{
 			return null;
 		Nucleotide refNuc = Nucleotide.fromByte(ref.getBase());
 		List<Allele> alleles = new LinkedList<Allele>();
+		context = new AlignmentContext(context.getLocation(), context
+				.getBasePileup().getFilteredPileup(pileupFilter),
+				context.getSkippedBases(),
+				context.hasPileupBeenDownsampled());
 		Map<String, AlignmentContext> stratified = CoverageBiasWalker.stratifyByGroupName(context, groupNames, groupBy);
-		ReadBackedPileup pileup = context.getBasePileup().getFilteredPileup(
-				pileupFilter);
 
+		ReadBackedPileup pileup = context.getBasePileup();
 		VariantContextBuilder result = new VariantContextBuilder();
 		result.loc(ref.getLocus());
 		result.referenceBaseForIndel(Nucleotide.N.byteValue());

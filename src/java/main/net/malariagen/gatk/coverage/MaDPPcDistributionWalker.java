@@ -33,7 +33,7 @@ import org.broadinstitute.sting.gatk.walkers.PartitionType;
 @Downsample(by = DownsampleType.NONE)
 @Requires({ DataSource.READS, DataSource.REFERENCE_ORDERED_DATA })
 @BAQMode(QualityMode = BAQ.QualityMode.ADD_TAG, ApplicationTime = BAQ.ApplicationTime.HANDLED_IN_WALKER)
-public class MjDPPcDistributionWalker extends IntegerStatDistributionWalker {
+public class MaDPPcDistributionWalker extends IntegerStatDistributionWalker {
 	
 	@Override
 	public IntegerCountersIncrement map(RefMetaDataTracker tracker,
@@ -52,16 +52,16 @@ public class MjDPPcDistributionWalker extends IntegerStatDistributionWalker {
 		if (groupBy != GroupBy.NONE){
 			for (PileupElement pe : pileup) {
 				int baseIndex = Nucleotide.fromByte(pe.getBase()).ordinal();
-				allNucDepth[baseIndex]++;
+				if (baseIndex <= Nucleotide.T.ordinal()) allNucDepth[baseIndex]++;
 				if (groupBy.implies(GroupBy.RG)) {
 					String readGroupName = pe.getRead().getReadGroup().getId();
 					int readGroupIndex = groupIndices.get(readGroupName);
-					perGroupNucDepth[readGroupIndex][baseIndex]++;
+					if (baseIndex <= Nucleotide.T.ordinal()) perGroupNucDepth[readGroupIndex][baseIndex]++;
 				}
 				if (groupBy.implies(GroupBy.SM)) {
 					String sampleName = pe.getRead().getReadGroup().getSample();
 					int sampleIndex = groupIndices.get(sampleName);
-					perGroupNucDepth[sampleIndex][baseIndex]++;
+					if (baseIndex <= Nucleotide.T.ordinal()) perGroupNucDepth[sampleIndex][baseIndex]++;
 				}
 			}
 			for (int i = 0; i < perGroupNucDepth.length; i++) {

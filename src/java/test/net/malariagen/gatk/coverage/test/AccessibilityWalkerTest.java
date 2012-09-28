@@ -45,7 +45,7 @@ public class AccessibilityWalkerTest extends WalkerTest {
 		File cds = new File (getClass().getResource("/cases/awtest/coverage-distribution.json").getFile());
 		File output = File.createTempFile("cqw", ".json");
         Formatter formatter = new Formatter();
-        Formatter cmdSpec = formatter.format("-R %s -T CoverageQuality -groupBy SM -features %s -I %s -I %s -o %s -cds %s",
+        Formatter cmdSpec = formatter.format("-R %s -T CoverageQuality -groupBy SM -exclAmbCall -features %s -I %s -I %s -o %s -cds %s",
         		reference,features,sampleOne,sampleTwo,output,cds);
         // No md5s for now.
         List<String> md5s = Collections.emptyList();
