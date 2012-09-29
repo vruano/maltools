@@ -41,8 +41,7 @@ public class MaDPPcDistributionWalker extends IntegerStatDistributionWalker {
 
 		result.categories = categoryMask(tracker, features);
 		result.sequence = sequenceIndices.get(ref.getLocus().getContig());
-		ReadBackedPileup pileup = context.getBasePileup().getFilteredPileup(
-				pileupFilter);
+		ReadBackedPileup pileup = context.getBasePileup();
 		result.depth = context.size();
 		int[] allNucDepth = new int[4];
 		int[][] perGroupNucDepth = new int[result.groupValues.length][4];

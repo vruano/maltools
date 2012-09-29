@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="iso-8859-1" standalone="yes" ?>
+
+<installation version="1.0">
+  <info>
+    <appname>@{project.name}</appname>
+    <appversion>@{project.version}</appversion>
+    <uninstaller path="${INSTALL_PATH}/bin/uninstaller" name="uninstall.jar" write="yes"/>
+  </info>
+
+  <guiprefs width="600" height="480" resizable="yes">
+    <laf name="kunststoff">
+      <os family="unix"/>
+    </laf>
+    <modifier key="useHeadingPanel" value="yes"/>
+    <modifier key="useHeadingForSummary" value="yes"/>
+    <modifier key="headingImageOnLeft" value="yes"/>
+    <modifier key="headingLineCount" value="2"/>
+    <modifier key="headingFontSize" value="1.5"/>
+    <modifier key="headingBackgroundColor" value="0x00ffffff"/>
+    <modifier key="headingPanelCounter" value="text"/>
+    <modifier key="headingPanelCounterPos" value="inHeading"/>
+  </guiprefs>
+
+  <locale>
+     <langpack iso3="eng"/>
+  </locale>
+
+  <resources>
+   <res id="userInputSpec.xml" src="@{resources.dir}/build/installer-user-input-spec.xml"/>
+  </resources>
+
+  <panels>
+    <panel classname="HelloPanel"/>
+    <panel classname="TargetPanel"/>
+    <panel classname="UserInputPanel" id="UserInputPanel.0"/>
+    <panel classname="SummaryPanel"/>
+    <panel classname="InstallPanel"/>
+    <panel classname="SimpleFinishPanel"/>
+  </panels>
+
+  <variables>
+    <variable name="PROG_NAME" value="maltools"/>
+  </variables>
+  
+
+  <packs>
+    <pack name="Core" required="yes">
+      <description>base components</description>
+      <file src="core/bin" targetdir="$INSTALL_PATH"/>
+      <file src="core/conf" targetdir="$INSTALL_PATH"/>
+      <file src="core/lib" targetdir="$INSTALL_PATH"/>
+      <file src="core/resources" targetdir="$INSTALL_PATH"/>
+      <file src="uninstaller" targetdir="$INSTALL_PATH/bin"/>
+      <singlefile src="cli_prog" target="$INSTALL_PATH/bin/$PROG_NAME"/>
+      <parsable targetfile="$INSTALL_PATH/bin/setenv.sh" />
+      <parsable targetfile="$INSTALL_PATH/bin/setenv.csh" />
+      <executable targetfile="$INSTALL_PATH/bin/gatk" />
+      <executable targetfile="$INSTALL_PATH/bin/$PROG_NAME" />
+      <executable targetfile="$INSTALL_PATH/bin/picard" />
+      <executable targetfile="$INSTALL_PATH/bin/bwa" />
+      <executable targetfile="$INSTALL_PATH/bin/samtools" />
+      <executable targetfile="$INSTALL_PATH/bin/bcftools" />
+      <executable targetfile="$INSTALL_PATH/bin/uninstaller/uninstall.sh"/>
+      <executable targetfile="$INSTALL_PATH/bin/uninstaller/uninstall.csh"/>
+    </pack>
+  </packs>
+
+</installation>

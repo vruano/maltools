@@ -73,8 +73,7 @@ public class CoverageDistributionWalker extends IntegerStatDistributionWalker {
 
 		result.categories = categoryMask(tracker, features);
 		result.sequence = sequenceIndices.get(ref.getLocus().getContig());
-		ReadBackedPileup pileup = context.getBasePileup().getFilteredPileup(
-				pileupFilter);
+		ReadBackedPileup pileup = context.getBasePileup();
 		result.depth = context.size();
 		if (groupBy != GroupBy.NONE) 
 			for (PileupElement pe : pileup) {

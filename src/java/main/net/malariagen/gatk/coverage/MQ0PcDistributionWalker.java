@@ -19,7 +19,6 @@ import org.broadinstitute.sting.gatk.walkers.PartitionBy;
 import org.broadinstitute.sting.gatk.walkers.ReadFilters;
 import org.broadinstitute.sting.gatk.walkers.Requires;
 
-import org.broadinstitute.sting.utils.BaseUtils;
 import org.broadinstitute.sting.utils.baq.BAQ;
 import org.broadinstitute.sting.utils.pileup.PileupElement;
 import org.broadinstitute.sting.utils.pileup.ReadBackedPileup;
@@ -41,8 +40,7 @@ public class MQ0PcDistributionWalker extends IntegerStatDistributionWalker {
 
 		result.categories = categoryMask(tracker, features);
 		result.sequence = sequenceIndices.get(ref.getLocus().getContig());
-		ReadBackedPileup pileup = context.getBasePileup().getFilteredPileup(
-				pileupFilter);
+		ReadBackedPileup pileup = context.getBasePileup();
 		result.depth = context.size();
 		int totalMQ0 = 0;
 		if (groupBy != GroupBy.NONE){
