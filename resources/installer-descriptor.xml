@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="iso-8859-1" standalone="yes" ?>
+
+<installation version="1.0">
+  <info>
+    <appname>@{project.name}</appname>
+    <appversion>@{project.version}</appversion>
+  </info>
+
+  <guiprefs width="600" height="480" resizable="yes">
+    <laf name="kunststoff">
+      <os family="unix"/>
+    </laf>
+    <modifier key="useHeadingPanel" value="yes"/>
+    <modifier key="useHeadingForSummary" value="yes"/>
+    <modifier key="headingImageOnLeft" value="yes"/>
+    <modifier key="headingLineCount" value="2"/>
+    <modifier key="headingFontSize" value="1.5"/>
+    <modifier key="headingBackgroundColor" value="0x00ffffff"/>
+    <modifier key="headingPanelCounter" value="text"/>
+    <modifier key="headingPanelCounterPos" value="inHeading"/>
+  </guiprefs>
+
+  <locale>
+     <langpack iso3="eng"/>
+  </locale>
+
+   <panels>
+     <panel classname="HelloPanel"/>
+     <panel classname="TargetPanel"/>
+     <panel classname="SimpleFinishPanel"/>
+   </panels>
+
+   <packs>
+     <pack name="@{project.name}" required="yes">
+       <description>maltools program files</description>
+       <file src="." targetdir="$INSTALL_PATH"/>
+     </pack>
+   </packs>
+</installation>

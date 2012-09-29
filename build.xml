@@ -143,6 +143,14 @@
   <taskdef name="ivy-cachepath" classname="org.apache.ivy.ant.IvyCachePath"/>
 </target>
 
+<target name="izpack.init" depends="ivy.init">
+  <ivy-retrieve conf="release" />
+  <taskdef name="izpack" classpath="${3rdparty.dir}/izpack-standalone-compiler-jar.jar"
+    classname="com.izforge.izpack.ant.IzPackTask"/>
+</target>
+
+
+
 <target name="test.init" depends="ivy.init">
   <ivy-retrieve conf="test"/>
   <ivy-cachepath pathid="ivy.cachepath.test" conf="test" type="jar" />
@@ -378,6 +386,14 @@
   </copy>
   <chmod perm="a+rx" type="file" dir="${dist.layout.dir}/bin" includes="**/*" />
   <chmod perm="a+rx" type="file" dir="${dist.layout.dir}/resources/pgv_pipeline/variation_filtering2" includes="**/*.pl" />
+</target>
+
+<target name="installer" depends="izpack.init">
+  <echo message="Running IzPack to build the installer..." />
+  <izpack input="${resources.dir}/installer-descriptor.xml"
+          output="${dist.dir}/${project.name}-${project.version}-install.jar"
+          basedir="${dist.dir}/layout-${project.version}"
+          inheritAll="true" />
 </target>
 
 <target name="install" depends="install.config,dist.layout">

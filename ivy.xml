@@ -23,8 +23,11 @@
     <configurations defaultconf="devel" >
       <conf name="devel" visibility="private" />
       <conf name="test" visibility="private" />
+      <conf name="release" visibility="private" />
     </configurations>
+            
     <dependencies>
+      <dependency org="org.codehaus.izpack" name="izpack-standalone-compiler" rev="4.3.2" conf="release->default"/>
       <dependency org="junit" name="junit" rev="4.10" conf="test->default" />
       <dependency org="org.apache.ant" name="ant-junit" rev="1.8.2" conf="test->default" />
       <dependency org="org.yaml" name="snakeyaml" rev="1.10" conf="devel->default,sources" />
