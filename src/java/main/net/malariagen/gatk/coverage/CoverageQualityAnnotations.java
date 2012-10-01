@@ -314,7 +314,7 @@ public class CoverageQualityAnnotations {
 				if (pe.getOffset() == 0 && maxForwardStartQuality[index] < mq)
 					maxForwardStartQuality[index] = mq;
 				Nucleotide n = Nucleotide.fromByte(pe.getBase());
-				if (!n.isProper()) { System.err.println("" + n + " " + pe.getBase() + " " + walker.excludeAmbigousBase); continue; }
+				if (!n.isProper()) continue; 
 				if (++nucCounts[n.ordinal()] > nucCounts[mjIndex]) mjIndex = n.ordinal();
 				if (++allNucCounts[n.ordinal()] > allNucCounts[allMjIndex]) allMjIndex = n.ordinal();
 				nucTotal++;
