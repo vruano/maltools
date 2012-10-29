@@ -7,7 +7,7 @@
 	<classpathentry kind="con" path="org.eclipse.jdt.junit.JUNIT_CONTAINER/4"/>
 	<classpathentry kind="lib" path="3rdparty/gatk/dist/activation-1.1.jar"/>
 	<classpathentry kind="lib" path="3rdparty/gatk/dist/Aligner.jar"/>
-	<classpathentry kind="lib" path="3rdparty/gatk/dist/AnalyzeCovariates.jar"/>
+	<classpathentry kind="lib" path="3rdparty/gatk/dist/AnalyzeCovariates.jar" sourcepath="3rdparty/gatk/public/java"/>
 	<classpathentry kind="lib" path="3rdparty/gatk/dist/asm-all-3.3.1.jar"/>
 	<classpathentry kind="lib" path="3rdparty/gatk/dist/bcel-5.2.jar"/>
 	<classpathentry kind="lib" path="3rdparty/gatk/dist/cofoja-1.0-20110609.jar"/>

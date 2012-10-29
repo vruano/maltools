@@ -44,7 +44,7 @@ public class FragmentListWalker extends FragmentWalker<FragmentRecord,net.malari
 	@Argument(shortName="compress", fullName="compressOutput", doc="compress the output using GZIP. By default only output files finising with .gz are compressed", required = false)
 	protected Boolean compressOutput = null;
 	
-	@Argument(shortName="readGC", fullName="outputReadGC", doc="GC content output is based on the reads as opposed to the fragment as imputed using the reference", required = false)
+	@Argument(shortName="readGC", fullName="outputReadGC", doc="Outputs the GC content for each read in the pair", required = false)
 	protected boolean outputReadGC = false;
 	
 	@Argument(shortName = "mappedGC", fullName="outputMappedGC", doc="GC content output is based on mapped reads only. Implies -readGC when both reads are mapped.", required = false)
