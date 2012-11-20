@@ -36,16 +36,12 @@ import org.broadinstitute.sting.gatk.walkers.PartitionType;
 public class MaDPPcDistributionWalker extends IntegerStatDistributionWalker {
 	
 	@Override
-	public IntegerCountersIncrement map(RefMetaDataTracker tracker,
-			ReferenceContext ref, AlignmentContext context) {
+	public void counterIncrementsOf(RefMetaDataTracker tracker,
+			ReferenceContext ref, AlignmentContext context, IntegerCountersIncrement result) {
 
-		if (excludeAmbigousRef && !BaseUtils.isRegularBase(ref.getBase()))
-			return null;
-		IntegerCountersIncrement result = incPool.borrow();
 		result.categories = categoryMask(tracker, features);
 		result.sequence = sequenceIndices.get(ref.getLocus().getContig());
-		ReadBackedPileup pileup = context.getBasePileup().getFilteredPileup(
-				pileupFilter);
+		ReadBackedPileup pileup = context.getBasePileup();
 		result.depth = context.size();
 		int[] allNucDepth = new int[4];
 		int[][] perGroupNucDepth = new int[result.groupValues.length][4];
@@ -81,7 +77,6 @@ public class MaDPPcDistributionWalker extends IntegerStatDistributionWalker {
 			if (allNucDepth[j] > allNucDepth[mjIndex])
 				mjIndex = j;
 		result.depth = result.depth == 0 ? 0 : (int) Math.round(100.0 * allNucDepth[mjIndex]/ (double) result.depth);
-		return result;
 	}
 
 }

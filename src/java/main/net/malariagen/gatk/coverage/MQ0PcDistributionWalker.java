@@ -19,7 +19,6 @@ import org.broadinstitute.sting.gatk.walkers.PartitionBy;
 import org.broadinstitute.sting.gatk.walkers.ReadFilters;
 import org.broadinstitute.sting.gatk.walkers.Requires;
 
-import org.broadinstitute.sting.utils.BaseUtils;
 import org.broadinstitute.sting.utils.baq.BAQ;
 import org.broadinstitute.sting.utils.pileup.PileupElement;
 import org.broadinstitute.sting.utils.pileup.ReadBackedPileup;
@@ -36,16 +35,12 @@ public class MQ0PcDistributionWalker extends IntegerStatDistributionWalker {
 	
 
 	@Override
-	public IntegerCountersIncrement map(RefMetaDataTracker tracker,
-			ReferenceContext ref, AlignmentContext context) {
+	public void counterIncrementsOf(RefMetaDataTracker tracker,
+			ReferenceContext ref, AlignmentContext context, IntegerCountersIncrement result) {
 
-		if (excludeAmbigousRef && !BaseUtils.isRegularBase(ref.getBase()))
-			return null;
-		IntegerCountersIncrement result = incPool.borrow();
 		result.categories = categoryMask(tracker, features);
 		result.sequence = sequenceIndices.get(ref.getLocus().getContig());
-		ReadBackedPileup pileup = context.getBasePileup().getFilteredPileup(
-				pileupFilter);
+		ReadBackedPileup pileup = context.getBasePileup();
 		result.depth = context.size();
 		int totalMQ0 = 0;
 		if (groupBy != GroupBy.NONE){
@@ -70,7 +65,6 @@ public class MQ0PcDistributionWalker extends IntegerStatDistributionWalker {
 				result.groupValues[i] = (result.groupValues[i]== 0) ? 0 :  (int) Math.round((mq0[i] * 100.0) / result.groupValues[i]);
 		}
 		result.depth = result.depth == 0 ? 0 : (int) Math.round((totalMQ0 * 100.0) / result.depth);
-		return result;
 	}
 
 }

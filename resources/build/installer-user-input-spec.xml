@@ -1,0 +1,9 @@
+
+<userInput>
+  <panel order="0">
+    <createForPack name="core"/>
+    <field type="text" align="left" variable="">
+      <spec txt="Name of the command line interface program:" size="25" set="maltools" />
+    </field>
+  </panel>
+</userInput>
